@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { 
-  Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
-  Undo2, BookOpen, Dices, Eye, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Hand, Coffee, Ghost
-} from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -133,7 +127,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => { onAvatarClick(index); }} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
+        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
             {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -146,6 +140,17 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
       </div>
     </div>
   );
+};
+
+const VisualDie = ({ value, onClick, skin }) => {
+    const [rolling, setRolling] = useState(false);
+    const s = DICE_SKINS[skin] || DICE_SKINS.classic;
+    const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
+    return (
+        <button onClick={handleClick} className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
+            {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
+        </button>
+    );
 };
 
 const FloatingScore = ({ x, y, value }) => {
@@ -185,7 +190,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DÉSACTIVÉ PAR DÉFAUT
+  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -199,33 +204,14 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   
-  // NOUVELLES FONCTIONNALITES (Variables d'état)
+  // NEW MOBILE FEATURES STATES (Sans Haptic)
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
-  const [hapticEnabled, setHapticEnabled] = useState(true); // VIBRATIONS ACTIVÉES
   const [showFingerGame, setShowFingerGame] = useState(false);
   const [touchPoints, setTouchPoints] = useState([]);
   const [fingerWinner, setFingerWinner] = useState(null);
   
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-
-  // HAPTIC FEEDBACK HELPER
-  const vibrate = (ms = 50) => {
-    if (hapticEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(ms);
-    }
-  };
-
-  const VisualDie = ({ value, onClick, skin }) => {
-    const [rolling, setRolling] = useState(false);
-    const s = DICE_SKINS[skin] || DICE_SKINS.classic;
-    const handleClick = () => { vibrate(20); setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
-    return (
-        <button onClick={handleClick} className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
-            {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
-        </button>
-    );
-  };
 
   // WAKE LOCK LOGIC
   useEffect(() => {
@@ -247,10 +233,9 @@ export default function YamsUltimateLegacy() {
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
-  const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled, hapticEnabled}));}catch(e){}};
+  const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled}));}catch(e){}};
   const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
-  setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);
-  setHapticEnabled(d.hapticEnabled !== undefined ? d.hapticEnabled : true);}}}catch(e){}};
+  setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
   
   useEffect(() => { if(!isGameStarted()) { const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); } }, [jokerMax, players]);
@@ -281,14 +266,13 @@ export default function YamsUltimateLegacy() {
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
 
-  const useJoker = (player) => { if(jokers[player] > 0) { if(window.confirm(`Utiliser un Joker pour ${player} ? Cela coûtera 10 points à la fin !`)) { vibrate(50); setJokers({...jokers, [player]: jokers[player] - 1}); } } };
-  const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); vibrate(30); };
+  const useJoker = (player) => { if(jokers[player] > 0) { if(window.confirm(`Utiliser un Joker pour ${player} ? Cela coûtera 10 points à la fin !`)) { setJokers({...jokers, [player]: jokers[player] - 1}); } } };
+  const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); };
 
   const updateScore=(player,category,value, event)=>{
-    if(value !== '') vibrate(40);
     const cellKey=`${player}-${category}`;
-    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); vibrate([50,50,50]); return; } }
-    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); vibrate([50,50,50]); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); vibrate([50,50,50]); return; } }
+    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
+    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
     const valInt = value === '' ? 0 : parseInt(value);
@@ -299,11 +283,11 @@ export default function YamsUltimateLegacy() {
         setGlobalXP(prev => prev + valInt);
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
-    if(category==='yams'&&value==='50'){setConfetti('gold');setShakeAnimation('yams');setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); vibrate([100,50,100,50,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);} else if(value==='0') {setConfetti('sad'); setTimeout(()=>setConfetti(null), 4000); } else { setConfetti(null); }
+    if(category==='yams'&&value==='50'){setConfetti('gold');setShakeAnimation('yams');setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);} else if(value==='0') {setConfetti('sad'); setTimeout(()=>setConfetti(null), 4000); } else { setConfetti(null); }
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); vibrate([100,50,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
+    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
-    if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});vibrate([100,100,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
+    if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
     setScores(ns);saveCurrentGame(ns);
     if(editMode){ } else { 
         if(value!==''){
@@ -321,7 +305,6 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      vibrate(50);
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
@@ -365,7 +348,6 @@ export default function YamsUltimateLegacy() {
       if(!showFingerGame) return;
       const touches = Array.from(e.touches).map((t, i) => ({ id: t.identifier, x: t.clientX, y: t.clientY, color: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][i % 5] }));
       setTouchPoints(touches);
-      vibrate(20);
   };
   const handleTouchMove = (e) => {
       if(!showFingerGame) return;
@@ -384,7 +366,6 @@ export default function YamsUltimateLegacy() {
           timer = setTimeout(() => {
               const winnerIndex = Math.floor(Math.random() * touchPoints.length);
               setFingerWinner(touchPoints[winnerIndex]);
-              vibrate([100,50,100]);
           }, 3000);
       }
       return () => clearTimeout(timer);
@@ -553,7 +534,6 @@ export default function YamsUltimateLegacy() {
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Zap size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
 
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
@@ -852,7 +832,7 @@ export default function YamsUltimateLegacy() {
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A */}
+                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -888,7 +868,7 @@ export default function YamsUltimateLegacy() {
                             </div>
                         </div>
 
-                        {/* CARTE JOUEUR B */}
+                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -926,38 +906,62 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
             </div>
-            
-            {/* MINI JEU START MODAL */}
-            {showFingerGame && (
-                <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-                    <div className="absolute top-10 text-white text-center animate-pulse">
-                        <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
-                        <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
-                    </div>
-                    
-                    {touchPoints.map((tp, i) => (
-                        <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
-                            <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
-                        </div>
-                    ))}
 
-                    {fingerWinner && (
-                        <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
-                            <div className="text-center">
-                                <div className="text-6xl mb-4">👑</div>
-                                <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
-                                <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
-                                <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
-                            </div>
+            {/* 6. PROFILS (RADAR) - TOUJOURS VISIBLE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+                {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).slice(0,4).map(name => {
+                    const s = playerStats.find(st => st.name === name) || {};
+                    const luck = Math.min(100, (s.yamsCount * 20) + 20); 
+                    const strategy = Math.min(100, (s.bonusCount || 0) * 20);
+                    const audacity = Math.min(100, (s.maxScore / 375) * 100);
+                    const consistency = Math.min(100, (s.wins / (s.games || 1)) * 100);
+
+                    return (
+                    <div key={name} className={`bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden`}>
+                        <h3 className="font-black uppercase mb-4 flex items-center justify-between z-10 relative">
+                            {name} <span className="text-[10px] bg-blue-500/20 px-2 py-1 rounded text-blue-300">PROFIL</span>
+                        </h3>
+                        <div className="relative h-32 w-full flex items-center justify-center gap-8">
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-blue-500" style={{height:`${luck}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Chance</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-purple-500" style={{height:`${strategy}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Stratégie</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-red-500" style={{height:`${audacity}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Audace</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-green-500" style={{height:`${consistency}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Régularité</span></div>
                         </div>
-                    )}
-                    
-                    <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
-                </div>
-            )}
+                    </div>
+                )})}
+            </div>
           </div>
         )}
       </div>
+
+      {/* MINI JEU START MODAL (FINGER GAME) */}
+      {showFingerGame && (
+          <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+              <div className="absolute top-10 text-white text-center animate-pulse">
+                  <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
+                  <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
+              </div>
+              
+              {touchPoints.map((tp, i) => (
+                  <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
+                      <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
+                  </div>
+              ))}
+
+              {fingerWinner && (
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
+                      <div className="text-center">
+                          <div className="text-6xl mb-4">👑</div>
+                          <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
+                          <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
+                          <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
+                      </div>
+                  </div>
+              )}
+              
+              <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
+          </div>
+      )}
     </div>
   );
 }
