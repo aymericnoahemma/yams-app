@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, Moon, Wand2
+  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
+  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
+  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, TrendingUp, BarChart3, HelpCircle, UserCog, Skull
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -133,8 +133,8 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => { onAvatarClick(index); }} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
-            {avatar || "👤"}
+        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
+            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -196,7 +196,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
+  const [jokersEnabled, setJokersEnabled] = useState(false);
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -209,21 +209,43 @@ export default function YamsUltimateLegacy() {
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
-  
-  // NOUVELLES FONCTIONNALITES (Variables d'état)
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
   
+  // NEW PROBABILITY STATE
+  const [probDice, setProbDice] = useState([true, true, true, true, true]); // true = keep, false = reroll
+  const [probValues, setProbValues] = useState([1,1,1,1,1]);
+
+  // NEW CAMERA STATE
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
+
+  // SWIPE LOGIC
+  const minSwipeDistance = 50;
+  const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEndHandler = () => {
+      if (!touchStart || !touchEnd) return;
+      const distance = touchStart - touchEnd;
+      const isLeftSwipe = distance > minSwipeDistance;
+      const isRightSwipe = distance < -minSwipeDistance;
+      const tabs = ['game', 'stats', 'charts', 'history', 'trophies', 'rules'];
+      const currentIndex = tabs.indexOf(currentTab);
+      if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
+      if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
+  };
 
   // WAKE LOCK LOGIC
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
         if ('wakeLock' in navigator && wakeLockEnabled) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { console.log(err); }
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
         }
     };
     if (wakeLockEnabled) requestWakeLock();
@@ -231,6 +253,28 @@ export default function YamsUltimateLegacy() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
   }, [wakeLockEnabled]);
+
+  // CAMERA LOGIC
+  const startCamera = async () => {
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+          if(videoRef.current) videoRef.current.srcObject = stream;
+      } catch(e) { alert("Erreur caméra : " + e); }
+  };
+  const takePhoto = () => {
+      if(videoRef.current && canvasRef.current) {
+          const context = canvasRef.current.getContext('2d');
+          context.drawImage(videoRef.current, 0, 0, 300, 300);
+          const dataUrl = canvasRef.current.toDataURL('image/png');
+          const p = players[avatarSelectorIndex];
+          setPlayerAvatars({...playerAvatars, [p]: dataUrl});
+          setShowCamera(false);
+          setShowAvatarModal(false);
+          // Stop stream
+          const stream = videoRef.current.srcObject;
+          if(stream) stream.getTracks().forEach(track => track.stop());
+      }
+  };
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
@@ -247,6 +291,9 @@ export default function YamsUltimateLegacy() {
   useEffect(() => { localStorage.setItem('yamsGlobalXP', globalXP.toString()); }, [globalXP]);
   useEffect(() => { let interval; if(speedMode && isGameStarted() && !isGameComplete() && !editMode) { if(timeLeft > 0) { interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000); } } return () => clearInterval(interval); }, [speedMode, timeLeft, scores, editMode]);
   useEffect(() => { setTimeLeft(30); }, [lastPlayerToPlay]);
+  
+  // TRIGGER CAMERA WHEN MODAL OPENS
+  useEffect(() => { if(showCamera) startCamera(); }, [showCamera]);
 
   const isGameStarted=()=>Object.keys(scores).some(p=>scores[p]&&Object.keys(scores[p]).length>0);
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
@@ -368,7 +415,7 @@ export default function YamsUltimateLegacy() {
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getPlayerTotals(p, replayGame.grid).total}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
   return (
-    <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
       {confetti&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(50)].map((_,i)=><div key={i} className="absolute" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',fontSize:'24px',opacity:0.8}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆'][Math.floor(Math.random()*6)]:[ '💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(30)].map((_,i)=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',opacity:0.5}}>🌧️</div>)}</div>}
@@ -376,6 +423,106 @@ export default function YamsUltimateLegacy() {
       {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'bg-gradient-to-r px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+( showAchievementNotif.icon==='🎲'?'from-yellow-500 to-orange-500 border-yellow-300':showAchievementNotif.icon==='🎁'?'from-green-500 to-emerald-500 border-green-300':'from-purple-500 to-pink-500 border-purple-300')}><div className="flex items-center gap-3"><span className="text-5xl animate-bounce">{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{getWinner().join(' & ')}</div></div></div>}
       {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce"><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl">🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
+
+      {/* STUDIO PHOTO MODAL */}
+      {showStudioModal && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[120] p-4">
+              <div className="bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                  <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
+                  <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
+                  
+                  <div className="space-y-3 mb-8">
+                    {players.map(p => (
+                        <div key={p} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                            <span className="font-bold text-gray-300">{p}</span>
+                            <span className="font-black text-white text-xl">{calcTotal(p)} pts</span>
+                        </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-2 mb-6 opacity-50">
+                      <Dices size={16} className="text-white"/>
+                      <span className="text-white font-bold tracking-widest text-xs">YAMS ULTIMATE LEGACY</span>
+                  </div>
+                  
+                  <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
+              </div>
+          </div>
+      )}
+
+      {showAvatarModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
+                  
+                  <button onClick={() => setShowCamera(true)} className="w-full py-3 mb-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                      <Camera size={20} /> Prendre une photo
+                  </button>
+
+                  <div className="grid grid-cols-4 gap-3">
+                      {AVATAR_LIST.map((av, i) => {
+                          const player = players[avatarSelectorIndex];
+                          const stats = playerStats.find(s => s.name === player);
+                          const locked = isAvatarLocked(av.req, stats);
+                          return (
+                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
+                                  {av.icon}
+                                  {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
+                              </button>
+                          );
+                      })}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* CAMERA MODAL */}
+      {showCamera && (
+          <div className="fixed inset-0 bg-black z-[70] flex flex-col items-center justify-center">
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+              <canvas ref={canvasRef} width="300" height="300" className="hidden"></canvas>
+              <div className="absolute bottom-10 flex gap-4">
+                  <button onClick={takePhoto} className="w-16 h-16 bg-white rounded-full border-4 border-gray-300 shadow-lg"></button>
+                  <button onClick={() => { setShowCamera(false); const stream = videoRef.current?.srcObject; if(stream) stream.getTracks().forEach(t=>t.stop()); }} className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full"><X size={24}/></button>
+              </div>
+          </div>
+      )}
+
+      {undoData && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
+            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
+                <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
+            </button>
+        </div>
+      )}
+
+      {showEndGameModal&&(
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
+            <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
+                <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
+                <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
+                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0]}</div>
+                <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+                </div>
+                {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
+                <div className="space-y-2 relative z-10">
+                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
+                        <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
+                    </div>
+                    <button onClick={quickEdit} className="w-full py-3 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-white">Modifier la grille</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto space-y-4">
         {/* HEADER + TABS */}
@@ -394,9 +541,7 @@ export default function YamsUltimateLegacy() {
           {showSettings&&<div className="mt-6 pt-6 border-t border-white/10"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
-
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><Timer size={20}/></div><div><div className="text-white font-bold">Speed Run</div><div className="text-gray-400 text-xs">Chrono 30s par tour</div></div></div><button onClick={()=>setSpeedMode(!speedMode)} className={'relative w-12 h-6 rounded-full transition-all '+(speedMode?'bg-red-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(speedMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
@@ -411,6 +556,7 @@ export default function YamsUltimateLegacy() {
             <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
             <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
             <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+            <button onClick={()=>setCurrentTab('charts')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='charts'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='charts'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📈 Graphiques</button>
           </div>
         </div>
 
@@ -448,13 +594,34 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
-        {/* TAB: RULES & HELP */}
+        {/* TAB: RULES & HELP & PROBA */}
         {currentTab === 'rules' && (
             <div className="space-y-4 tab-enter">
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><HelpCircle/> Assistant Probabilités</h2>
+                    <div className="mb-4 text-sm text-gray-300">Sélectionnez les dés que vous <strong>gardez</strong> (en vert) :</div>
+                    <div className="flex justify-center gap-2 mb-4">
+                        {probDice.map((kept, i) => (
+                            <button key={i} onClick={() => { const n=[...probDice]; n[i]=!n[i]; setProbDice(n); }} className={`w-10 h-10 rounded-lg border-2 font-bold ${kept ? 'bg-green-500 border-green-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-400'}`}>
+                                {kept ? 'G' : 'R'}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="text-center text-xs text-gray-400">
+                        {(() => {
+                            const keptCount = probDice.filter(Boolean).length;
+                            if (keptCount === 5) return "Vous gardez tout ! (100% de ce que vous avez)";
+                            const rerollCount = 5 - keptCount;
+                            // Simple heuristic for demo purposes (real proba is complex)
+                            return `En relançant ${rerollCount} dés, vous avez environ ${(1/Math.pow(6, rerollCount)*100).toFixed(1)}% de chance d'obtenir une combinaison spécifique exacte.`;
+                        })()}
+                    </div>
+                </div>
+
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><BookOpen/> Règles Officielles</h2>
                     <div className="space-y-4 text-gray-300 text-sm">
-                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons. Le perdant de la partie précédente commence la suivante !</p></div>
+                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons.</p></div>
                         <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎁 Bonus 35 points</h3><p>Si la somme de la partie supérieure (As à Six) fait <strong>63 points ou plus</strong>.</p></div>
                     </div>
                 </div>
@@ -488,6 +655,31 @@ export default function YamsUltimateLegacy() {
                             </div>;
                         })}
                     </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: CHARTS (DATA VIZ) */}
+        {currentTab === 'charts' && (
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><TrendingUp/> Progression des Scores</h2>
+                    <div className="h-64 flex items-end gap-2 relative bg-black/20 rounded-xl p-4 border border-white/5">
+                        {players.map((p, i) => {
+                            const total = calcTotal(p);
+                            const maxScore = Math.max(...players.map(pl => calcTotal(pl))) || 1;
+                            const height = (total / maxScore) * 100;
+                            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-red-500'];
+                            return (
+                                <div key={p} className="flex-1 flex flex-col justify-end items-center h-full group">
+                                    <div className="text-xs font-bold text-white mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{total}</div>
+                                    <div className={`w-full rounded-t-lg transition-all duration-1000 ${colors[i % colors.length]}`} style={{height: `${height}%`, opacity: 0.8}}></div>
+                                    <div className="text-[10px] font-bold text-gray-400 mt-2 truncate w-full text-center">{p}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-4">Ce graphique montre le score total actuel de chaque joueur.</p>
                 </div>
             </div>
         )}
@@ -634,7 +826,7 @@ export default function YamsUltimateLegacy() {
                 </div>}
                 </div></div></div>;})}</div></div>}
 
-            {/* 3. RECORDS & STATS (GRILLE DE 4) - RESTAURÉ */}
+            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
               <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -675,7 +867,7 @@ export default function YamsUltimateLegacy() {
                 </div>
             )}
 
-            {/* 5. FACE A FACE (STYLE HALL OF FAME APPLIQUÉ) */}
+            {/* 5. FACE A FACE (CORRIGE & LISIBLE) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                 <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
                 
@@ -715,15 +907,15 @@ export default function YamsUltimateLegacy() {
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
+                                    <div className="text-red-100 font-bold mb-1">Yams</div>
                                     <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
+                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
                                     <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Record</div>
+                                    <div className="text-red-100 font-bold mb-1">Record</div>
                                     <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
                                 </div>
                             </div>
@@ -794,6 +986,35 @@ export default function YamsUltimateLegacy() {
           </div>
         )}
       </div>
+
+      {/* MINI JEU START MODAL */}
+      {showFingerGame && (
+          <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+              <div className="absolute top-10 text-white text-center animate-pulse">
+                  <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
+                  <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
+              </div>
+              
+              {touchPoints.map((tp, i) => (
+                  <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
+                      <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
+                  </div>
+              ))}
+
+              {fingerWinner && (
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
+                      <div className="text-center">
+                          <div className="text-6xl mb-4">👑</div>
+                          <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
+                          <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
+                          <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
+                      </div>
+                  </div>
+              )}
+              
+              <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
+          </div>
+      )}
     </div>
   );
 }
