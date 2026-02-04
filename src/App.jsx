@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, TrendingUp, BarChart3, HelpCircle, UserCog, Skull
+  History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
+  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
+  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, Moon, Wand2
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -196,7 +196,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false);
+  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -210,42 +210,18 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
-  
-  // NEW PROBABILITY STATE
-  const [probDice, setProbDice] = useState([true, true, true, true, true]); // true = keep, false = reroll
-  const [probValues, setProbValues] = useState([1,1,1,1,1]);
-
-  // NEW CAMERA STATE
-  const [showCamera, setShowCamera] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-
-  // SWIPE LOGIC
-  const minSwipeDistance = 50;
-  const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
-  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEndHandler = () => {
-      if (!touchStart || !touchEnd) return;
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > minSwipeDistance;
-      const isRightSwipe = distance < -minSwipeDistance;
-      const tabs = ['game', 'stats', 'charts', 'history', 'trophies', 'rules'];
-      const currentIndex = tabs.indexOf(currentTab);
-      if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
-      if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
-  };
 
   // WAKE LOCK LOGIC
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
         if ('wakeLock' in navigator && wakeLockEnabled) {
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) { console.log(err); }
         }
     };
     if (wakeLockEnabled) requestWakeLock();
@@ -253,28 +229,6 @@ export default function YamsUltimateLegacy() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
   }, [wakeLockEnabled]);
-
-  // CAMERA LOGIC
-  const startCamera = async () => {
-      try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-          if(videoRef.current) videoRef.current.srcObject = stream;
-      } catch(e) { alert("Erreur caméra : " + e); }
-  };
-  const takePhoto = () => {
-      if(videoRef.current && canvasRef.current) {
-          const context = canvasRef.current.getContext('2d');
-          context.drawImage(videoRef.current, 0, 0, 300, 300);
-          const dataUrl = canvasRef.current.toDataURL('image/png');
-          const p = players[avatarSelectorIndex];
-          setPlayerAvatars({...playerAvatars, [p]: dataUrl});
-          setShowCamera(false);
-          setShowAvatarModal(false);
-          // Stop stream
-          const stream = videoRef.current.srcObject;
-          if(stream) stream.getTracks().forEach(track => track.stop());
-      }
-  };
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
@@ -291,9 +245,6 @@ export default function YamsUltimateLegacy() {
   useEffect(() => { localStorage.setItem('yamsGlobalXP', globalXP.toString()); }, [globalXP]);
   useEffect(() => { let interval; if(speedMode && isGameStarted() && !isGameComplete() && !editMode) { if(timeLeft > 0) { interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000); } } return () => clearInterval(interval); }, [speedMode, timeLeft, scores, editMode]);
   useEffect(() => { setTimeLeft(30); }, [lastPlayerToPlay]);
-  
-  // TRIGGER CAMERA WHEN MODAL OPENS
-  useEffect(() => { if(showCamera) startCamera(); }, [showCamera]);
 
   const isGameStarted=()=>Object.keys(scores).some(p=>scores[p]&&Object.keys(scores[p]).length>0);
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
@@ -382,11 +333,13 @@ export default function YamsUltimateLegacy() {
           title: 'Résultat Yams Legacy',
           text: `Partie terminée ! 🏆 ${w[0]} gagne avec ${calcTotal(w[0])} points ! Qui peut faire mieux ?`,
       };
-      if (navigator.share) {
+      if (typeof navigator !== 'undefined' && navigator.share) {
           try { await navigator.share(shareData); } catch (err) { console.log(err); }
       } else {
-          navigator.clipboard.writeText(shareData.text);
-          alert('Score copié dans le presse-papier !');
+          if(typeof navigator !== 'undefined') {
+            navigator.clipboard.writeText(shareData.text);
+            alert('Score copié dans le presse-papier !');
+          }
       }
   };
 
@@ -415,7 +368,7 @@ export default function YamsUltimateLegacy() {
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getPlayerTotals(p, replayGame.grid).total}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
+    <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
       {confetti&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(50)].map((_,i)=><div key={i} className="absolute" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',fontSize:'24px',opacity:0.8}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆'][Math.floor(Math.random()*6)]:[ '💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(30)].map((_,i)=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',opacity:0.5}}>🌧️</div>)}</div>}
@@ -456,11 +409,6 @@ export default function YamsUltimateLegacy() {
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
               <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
                   <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
-                  
-                  <button onClick={() => setShowCamera(true)} className="w-full py-3 mb-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                      <Camera size={20} /> Prendre une photo
-                  </button>
-
                   <div className="grid grid-cols-4 gap-3">
                       {AVATAR_LIST.map((av, i) => {
                           const player = players[avatarSelectorIndex];
@@ -474,18 +422,7 @@ export default function YamsUltimateLegacy() {
                           );
                       })}
                   </div>
-              </div>
-          </div>
-      )}
-
-      {/* CAMERA MODAL */}
-      {showCamera && (
-          <div className="fixed inset-0 bg-black z-[70] flex flex-col items-center justify-center">
-              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
-              <canvas ref={canvasRef} width="300" height="300" className="hidden"></canvas>
-              <div className="absolute bottom-10 flex gap-4">
-                  <button onClick={takePhoto} className="w-16 h-16 bg-white rounded-full border-4 border-gray-300 shadow-lg"></button>
-                  <button onClick={() => { setShowCamera(false); const stream = videoRef.current?.srcObject; if(stream) stream.getTracks().forEach(t=>t.stop()); }} className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full"><X size={24}/></button>
+                  <div className="mt-4 text-xs text-gray-400 text-center">Jouez pour débloquer de nouveaux avatars !</div>
               </div>
           </div>
       )}
@@ -556,7 +493,6 @@ export default function YamsUltimateLegacy() {
             <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
             <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
             <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
-            <button onClick={()=>setCurrentTab('charts')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='charts'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='charts'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📈 Graphiques</button>
           </div>
         </div>
 
@@ -594,34 +530,13 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
-        {/* TAB: RULES & HELP & PROBA */}
+        {/* TAB: RULES & HELP */}
         {currentTab === 'rules' && (
             <div className="space-y-4 tab-enter">
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><HelpCircle/> Assistant Probabilités</h2>
-                    <div className="mb-4 text-sm text-gray-300">Sélectionnez les dés que vous <strong>gardez</strong> (en vert) :</div>
-                    <div className="flex justify-center gap-2 mb-4">
-                        {probDice.map((kept, i) => (
-                            <button key={i} onClick={() => { const n=[...probDice]; n[i]=!n[i]; setProbDice(n); }} className={`w-10 h-10 rounded-lg border-2 font-bold ${kept ? 'bg-green-500 border-green-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-400'}`}>
-                                {kept ? 'G' : 'R'}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="text-center text-xs text-gray-400">
-                        {(() => {
-                            const keptCount = probDice.filter(Boolean).length;
-                            if (keptCount === 5) return "Vous gardez tout ! (100% de ce que vous avez)";
-                            const rerollCount = 5 - keptCount;
-                            // Simple heuristic for demo purposes (real proba is complex)
-                            return `En relançant ${rerollCount} dés, vous avez environ ${(1/Math.pow(6, rerollCount)*100).toFixed(1)}% de chance d'obtenir une combinaison spécifique exacte.`;
-                        })()}
-                    </div>
-                </div>
-
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><BookOpen/> Règles Officielles</h2>
                     <div className="space-y-4 text-gray-300 text-sm">
-                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons.</p></div>
+                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons. Le perdant de la partie précédente commence la suivante !</p></div>
                         <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎁 Bonus 35 points</h3><p>Si la somme de la partie supérieure (As à Six) fait <strong>63 points ou plus</strong>.</p></div>
                     </div>
                 </div>
@@ -655,31 +570,6 @@ export default function YamsUltimateLegacy() {
                             </div>;
                         })}
                     </div>
-                </div>
-            </div>
-        )}
-
-        {/* TAB: CHARTS (DATA VIZ) */}
-        {currentTab === 'charts' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><TrendingUp/> Progression des Scores</h2>
-                    <div className="h-64 flex items-end gap-2 relative bg-black/20 rounded-xl p-4 border border-white/5">
-                        {players.map((p, i) => {
-                            const total = calcTotal(p);
-                            const maxScore = Math.max(...players.map(pl => calcTotal(pl))) || 1;
-                            const height = (total / maxScore) * 100;
-                            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-red-500'];
-                            return (
-                                <div key={p} className="flex-1 flex flex-col justify-end items-center h-full group">
-                                    <div className="text-xs font-bold text-white mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{total}</div>
-                                    <div className={`w-full rounded-t-lg transition-all duration-1000 ${colors[i % colors.length]}`} style={{height: `${height}%`, opacity: 0.8}}></div>
-                                    <div className="text-[10px] font-bold text-gray-400 mt-2 truncate w-full text-center">{p}</div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-4">Ce graphique montre le score total actuel de chaque joueur.</p>
                 </div>
             </div>
         )}
@@ -885,7 +775,7 @@ export default function YamsUltimateLegacy() {
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A */}
+                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -907,21 +797,21 @@ export default function YamsUltimateLegacy() {
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Yams</div>
+                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
                                     <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
+                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
                                     <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Record</div>
+                                    <div className="text-blue-100 font-bold mb-1">Record</div>
                                     <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* CARTE JOUEUR B */}
+                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -986,35 +876,6 @@ export default function YamsUltimateLegacy() {
           </div>
         )}
       </div>
-
-      {/* MINI JEU START MODAL */}
-      {showFingerGame && (
-          <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-              <div className="absolute top-10 text-white text-center animate-pulse">
-                  <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
-                  <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
-              </div>
-              
-              {touchPoints.map((tp, i) => (
-                  <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
-                      <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
-                  </div>
-              ))}
-
-              {fingerWinner && (
-                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
-                      <div className="text-center">
-                          <div className="text-6xl mb-4">👑</div>
-                          <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
-                          <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
-                          <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
-                      </div>
-                  </div>
-              )}
-              
-              <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
-          </div>
-      )}
     </div>
   );
 }
