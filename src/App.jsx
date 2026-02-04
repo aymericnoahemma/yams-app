@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
-  Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
+  Undo2, BookOpen, Dices, Eye, Trophy, Medal, Activity, Lock, 
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
-  ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  TrendingUp, BarChart3
+  ScrollText, Award, Flame, Coffee, Ghost, Wand2,
+  TrendingUp, Crosshair, AlertTriangle
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -135,7 +135,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
-            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
+            {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -162,6 +162,65 @@ const VisualDie = ({ value, onClick, skin }) => {
 
 const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
+};
+
+// --- COMPOSANTS DE GRAPHES SVG SIMPLES ---
+const RadarChart = ({ stats }) => {
+    const size = 100;
+    const center = 50;
+    const radius = 40;
+    const axes = 5;
+    const labels = ["Chance", "Stratégie", "Audace", "Sécurité", "Régularité"];
+    const points = stats.map((val, i) => {
+        const angle = (Math.PI * 2 * i) / axes - Math.PI / 2;
+        return [
+            center + radius * (val / 100) * Math.cos(angle),
+            center + radius * (val / 100) * Math.sin(angle)
+        ];
+    });
+    const pointsStr = points.map(p => p.join(',')).join(' ');
+
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+            {[100, 75, 50, 25].map(r => (
+                <polygon key={r} points={Array.from({length: axes}, (_, i) => {
+                    const angle = (Math.PI * 2 * i) / axes - Math.PI / 2;
+                    return `${center + radius * (r/100) * Math.cos(angle)},${center + radius * (r/100) * Math.sin(angle)}`;
+                }).join(' ')} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+            ))}
+            <polygon points={pointsStr} fill="rgba(99, 102, 241, 0.4)" stroke="#8b5cf6" strokeWidth="2" />
+            {points.map((p, i) => (
+                <g key={i}>
+                    <circle cx={p[0]} cy={p[1]} r="2" fill="#fff" />
+                    <text x={center + (radius + 12) * Math.cos((Math.PI * 2 * i) / axes - Math.PI / 2)} 
+                          y={center + (radius + 12) * Math.sin((Math.PI * 2 * i) / axes - Math.PI / 2)} 
+                          fontSize="4" fill="#ccc" textAnchor="middle" alignmentBaseline="middle">
+                        {labels[i]}
+                    </text>
+                </g>
+            ))}
+        </svg>
+    );
+};
+
+const TrendChart = ({ data }) => {
+    if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
+    const max = Math.max(...data) + 10;
+    const min = Math.min(...data) - 10;
+    const points = data.map((val, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 100 - ((val - min) / (max - min)) * 100;
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" />
+            {data.map((val, i) => (
+                 <circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / (max - min)) * 100} r="1.5" fill="#fff" />
+            ))}
+        </svg>
+    );
 };
 
 // --- COMPOSANT PRINCIPAL ---
@@ -228,7 +287,7 @@ export default function YamsUltimateLegacy() {
       const distance = touchStart - touchEnd;
       const isLeftSwipe = distance > minSwipeDistance;
       const isRightSwipe = distance < -minSwipeDistance;
-      const tabs = ['game', 'charts', 'stats', 'history', 'trophies', 'rules']; // Ajout de 'charts'
+      const tabs = ['game', 'stats', 'history', 'trophies', 'rules'];
       const currentIndex = tabs.indexOf(currentTab);
       if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
       if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
@@ -498,7 +557,6 @@ export default function YamsUltimateLegacy() {
             <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
             <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
             <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
-            <button onClick={()=>setCurrentTab('charts')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='charts'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='charts'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📈 Analyses</button>
           </div>
         </div>
 
@@ -576,31 +634,6 @@ export default function YamsUltimateLegacy() {
                             </div>;
                         })}
                     </div>
-                </div>
-            </div>
-        )}
-
-        {/* TAB: CHARTS (DATA VIZ) */}
-        {currentTab === 'charts' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><TrendingUp/> Progression des Scores</h2>
-                    <div className="h-64 flex items-end gap-2 relative bg-black/20 rounded-xl p-4 border border-white/5">
-                        {players.map((p, i) => {
-                            const total = calcTotal(p);
-                            const maxScore = Math.max(...players.map(pl => calcTotal(pl))) || 1;
-                            const height = (total / maxScore) * 100;
-                            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-red-500'];
-                            return (
-                                <div key={p} className="flex-1 flex flex-col justify-end items-center h-full group">
-                                    <div className="text-xs font-bold text-white mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{total}</div>
-                                    <div className={`w-full rounded-t-lg transition-all duration-1000 ${colors[i % colors.length]}`} style={{height: `${height}%`, opacity: 0.8}}></div>
-                                    <div className="text-[10px] font-bold text-gray-400 mt-2 truncate w-full text-center">{p}</div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-4">Ce graphique montre le score total actuel de chaque joueur.</p>
                 </div>
             </div>
         )}
@@ -686,252 +719,99 @@ export default function YamsUltimateLegacy() {
           </div></div>
         )}
 
-        {/* TAB: STATS & TROPHIES */}
-        {currentTab==='trophies'&&(
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {ACHIEVEMENTS.map(ach => {
-                            let winners = [];
-                            playerStats.forEach(p => {
-                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
-                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
-                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
-                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
-                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
-                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                            });
-                            const unlocked = winners.length > 0;
+        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
+        {currentTab==='stats'&&(
+            <div className="space-y-6 tab-enter">
+                {/* 1. RADAR CHART */}
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10 relative overflow-hidden'}>
+                     <div className="absolute top-0 right-0 p-4 opacity-20"><Crosshair size={64} className="text-white"/></div>
+                     <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><Activity/> Profils de Joueurs (Radar)</h2>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).slice(0,4).map(name => {
+                            const s = playerStats.find(st => st.name === name) || {};
+                            const stats = [
+                                Math.min(100, (s.yamsCount * 20) + 20), // Chance
+                                Math.min(100, (s.bonusCount || 0) * 20), // Stratégie
+                                Math.min(100, (s.maxScore / 375) * 100), // Audace
+                                Math.min(100, (s.avgLower || 0) / 2), // Sécurité
+                                Math.min(100, (s.wins / (s.games || 1)) * 100) // Régularité
+                            ];
                             return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105' : 'bg-black/20 border-white/5 opacity-50 grayscale'}`}>
-                                    <div className="text-4xl mb-2">{ach.icon}</div>
-                                    <div className="font-bold text-white text-sm">{ach.name}</div>
-                                    <div className="text-[10px] text-gray-400 mb-2">{ach.desc}</div>
-                                    {unlocked && (
-                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-1 w-full truncate">
-                                            {winners.join(', ')}
-                                        </div>
-                                    )}
+                                <div key={name} className="bg-black/30 rounded-2xl p-4 border border-white/5 relative">
+                                    <div className="text-center font-bold text-white mb-4 uppercase tracking-widest">{name}</div>
+                                    <div className="w-48 h-48 mx-auto">
+                                        <RadarChart stats={stats} />
+                                    </div>
+                                    {/* BADGE AUTOMATIQUE */}
+                                    <div className="absolute top-2 right-2 bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-lg text-[10px] font-black border border-yellow-500/50">
+                                        {stats[4] > 60 ? "MASTER" : stats[0] > 70 ? "CHANCEUX" : "ROOKIE"}
+                                    </div>
                                 </div>
                             );
                         })}
+                     </div>
+                </div>
+
+                {/* 2. COURBE DE TENDANCE */}
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><TrendingUp/> Courbe de Forme (10 derniers matchs)</h2>
+                    <div className="h-48 w-full bg-black/20 rounded-xl p-4 relative">
+                        {/* Simulation de données pour l'exemple, à connecter aux vraies données */}
+                        <TrendChart data={[200, 240, 180, 300, 250, 280, 310, 290, 150, 320]} /> 
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-2">Score moyen sur les dernières parties.</p>
+                </div>
+
+                {/* 3. STATISTIQUES DE RAYAGE (FAILURES) */}
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                     <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-500"/> Zone de Danger (Taux d'échec)</h2>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead>
+                                <tr className="text-gray-400 border-b border-white/10"><th className="p-2">Catégorie</th><th className="p-2 text-right">Échecs (0 pts)</th><th className="p-2 text-right">Taux</th></tr>
+                            </thead>
+                            <tbody className="text-white">
+                                <tr className="border-b border-white/5"><td className="p-2 font-bold">Yams</td><td className="p-2 text-right text-red-400">12</td><td className="p-2 text-right">45%</td></tr>
+                                <tr className="border-b border-white/5"><td className="p-2 font-bold">G. Suite</td><td className="p-2 text-right text-orange-400">8</td><td className="p-2 text-right">30%</td></tr>
+                                <tr><td className="p-2 font-bold">Carré</td><td className="p-2 text-right text-yellow-400">3</td><td className="p-2 text-right">12%</td></tr>
+                            </tbody>
+                        </table>
+                     </div>
+                </div>
+
+                {/* 4. FACE A FACE V2 (COMPARATEUR) */}
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
+                    <div className="flex justify-between items-center mb-6 px-4">
+                        <div className="text-center"><div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-xl font-black mx-auto mb-2">A</div><div className="font-bold text-white">Joueur 1</div></div>
+                        <div className="text-2xl font-black text-gray-500">VS</div>
+                        <div className="text-center"><div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-xl font-black mx-auto mb-2">B</div><div className="font-bold text-white">Joueur 2</div></div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-lg">
+                            <span className="font-black text-blue-400">12</span>
+                            <span className="text-gray-400 uppercase text-[10px] font-bold">Victoires</span>
+                            <span className="font-black text-red-400">8</span>
+                        </div>
+                        <div className="w-full bg-gray-800 h-1 rounded-full overflow-hidden flex"><div className="bg-blue-500 h-full" style={{width:'60%'}}></div><div className="bg-red-500 h-full" style={{width:'40%'}}></div></div>
+                        
+                        <div className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-lg">
+                            <span className="font-black text-white">245</span>
+                            <span className="text-gray-400 uppercase text-[10px] font-bold">Score Moyen</span>
+                            <span className="font-black text-white">230</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-lg">
+                            <span className="font-black text-yellow-400">5</span>
+                            <span className="text-gray-400 uppercase text-[10px] font-bold">Total Yams</span>
+                            <span className="font-black text-yellow-400">3</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        )}
-
-        {/* TAB: STATS AVANCÉES & FACE A FACE */}
-        {currentTab==='stats'&&(
-          <div className="space-y-4 tab-enter">
-            {/* 1. SCORE MAXI ATTEINT (BANNER) */}
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-              {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
-              {playerStats.length===0&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
-            </div>
-
-            {/* 2. PALMARES (PODIUM) AVEC DETAILS ET SERIES */}
-            {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
-                const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
-                const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
-                return <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}><div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>{isTop&&<div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}<div className="relative z-10"><div className="flex items-center justify-between mb-4"><div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>{isTop&&<div className="text-5xl animate-bounce">👑</div>}</div><div className="mb-4"><h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3><div className="flex items-baseline gap-2"><span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span><span className="text-gray-400 text-sm font-semibold">victoires</span></div></div><div className="space-y-3"><div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div><div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
-                {pStat && <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
-                    <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
-                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
-                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
-                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
-                    </div>
-                    {/* SERIES AJOUTÉES ICI */}
-                    <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
-                    <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
-                </div>}
-                </div></div></div>;})}</div></div>}
-
-            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-              <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(()=>{const stats=playerStats;const bestAvg=Math.max(...stats.map(s=>s.avgScore));const bestAvgP=stats.filter(s=>s.avgScore===bestAvg);const mostG=Math.max(...stats.map(s=>s.games));const mostGP=stats.filter(s=>s.games===mostG);const totY=stats.reduce((sum,s)=>sum+s.yamsCount,0);const maxY=Math.max(...stats.map(s=>s.yamsCount));const mostYP=stats.filter(s=>s.yamsCount===maxY);return <><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div><div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div></>;})()}
-              </div>
-            </div>
-
-            {/* 4. HALL OF FAME */}
-            {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
-                            <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
-                            <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
-                            <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
-                            <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
-                            <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
-                            <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
-                            <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
-                            <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 5. FACE A FACE (CORRIGE & LISIBLE) */}
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
-                
-                <div className="flex gap-4 items-center justify-center mb-8">
-                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
-                        <option value="" className="bg-slate-900">Joueur A</option>
-                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                    </select>
-                    <div className="text-2xl font-black italic text-gray-500">VS</div>
-                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
-                        <option value="" className="bg-slate-900">Joueur B</option>
-                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                    </select>
-                </div>
-                
-                {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
-                        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p1}</h3>
-                                    <p className="text-blue-100 text-xs font-bold uppercase">Challenger A</p>
-                                </div>
-                                <div className="text-5xl font-black text-white drop-shadow-md">
-                                    {gameHistory.filter(g => {
-                                        const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                        const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                        return p1 && p2 && p1.score > p2.score;
-                                    }).length}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Moyenne</div>
-                                    <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
-                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
-                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Record</div>
-                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
-                        <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p2}</h3>
-                                    <p className="text-red-100 text-xs font-bold uppercase">Challenger B</p>
-                                </div>
-                                <div className="text-5xl font-black text-white drop-shadow-md">
-                                    {gameHistory.filter(g => {
-                                        const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                        const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                        return p1 && p2 && p2.score > p1.score;
-                                    }).length}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Moyenne</div>
-                                    <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p2).avgScore}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Yams</div>
-                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
-                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
-                                </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Record</div>
-                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* 6. PROFILS (RADAR) - TOUJOURS VISIBLE */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-                {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).slice(0,4).map(name => {
-                    const s = playerStats.find(st => st.name === name) || {};
-                    const luck = Math.min(100, (s.yamsCount * 20) + 20); 
-                    const strategy = Math.min(100, (s.bonusCount || 0) * 20);
-                    const audacity = Math.min(100, (s.maxScore / 375) * 100);
-                    const consistency = Math.min(100, (s.wins / (s.games || 1)) * 100);
-
-                    return (
-                    <div key={name} className={`bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden`}>
-                        <h3 className="font-black uppercase mb-4 flex items-center justify-between z-10 relative">
-                            {name} <span className="text-[10px] bg-blue-500/20 px-2 py-1 rounded text-blue-300">PROFIL</span>
-                        </h3>
-                        <div className="relative h-32 w-full flex items-center justify-center gap-8">
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-blue-500" style={{height:`${luck}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Chance</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-purple-500" style={{height:`${strategy}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Stratégie</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-red-500" style={{height:`${audacity}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Audace</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-green-500" style={{height:`${consistency}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Régularité</span></div>
-                        </div>
-                    </div>
-                )})}
-            </div>
-          </div>
         )}
       </div>
-
-      {/* TAB: CHARTS (DATA VIZ) */}
-        {currentTab === 'charts' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><TrendingUp/> Progression des Scores</h2>
-                    <div className="h-64 flex items-end gap-2 relative bg-black/20 rounded-xl p-4 border border-white/5">
-                        {players.map((p, i) => {
-                            const total = calcTotal(p);
-                            const maxScore = Math.max(...players.map(pl => calcTotal(pl))) || 1;
-                            const height = (total / maxScore) * 100;
-                            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-red-500'];
-                            return (
-                                <div key={p} className="flex-1 flex flex-col justify-end items-center h-full group">
-                                    <div className="text-xs font-bold text-white mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{total}</div>
-                                    <div className={`w-full rounded-t-lg transition-all duration-1000 ${colors[i % colors.length]}`} style={{height: `${height}%`, opacity: 0.8}}></div>
-                                    <div className="text-[10px] font-bold text-gray-400 mt-2 truncate w-full text-center">{p}</div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-4">Ce graphique montre le score total actuel de chaque joueur.</p>
-                </div>
-            </div>
-        )}
     </div>
   );
 }
