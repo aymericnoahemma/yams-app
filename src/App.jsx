@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { 
-  Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
-  Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, Smartphone 
-} from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -232,7 +226,7 @@ export default function YamsUltimateLegacy() {
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
-        if ('wakeLock' in navigator && wakeLockEnabled) {
+        if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && wakeLockEnabled) {
             try {
                 wakeLock = await navigator.wakeLock.request('screen');
             } catch (err) { console.log(err); }
@@ -527,7 +521,514 @@ export default function YamsUltimateLegacy() {
                         <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
                         <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
                     </div>
-                    <button onClick={quickEdit} className="w-full py-3 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-white">Modifier la grille</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* HEADER + TABS */}
+        <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
+          {isGameStarted() && !isGameComplete() && !hideTotals && !fogMode && <div className={`h-1 w-full rounded-t-3xl ${getTensionColor()}`}></div>}
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-4 mt-2">
+            <div className="flex items-center gap-4"><div className="text-5xl">🎲</div><div><h1 className="text-3xl sm:text-4xl font-black text-white bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">YAMS</h1>
+            <p className="text-sm text-gray-400">Score keeper premium</p>
+            </div></div>
+            <div className="flex gap-2">
+                <button onClick={()=>setShowFingerGame(true)} className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl transition-all shadow-lg text-white font-bold flex items-center gap-2"><Play size={22}/> <span className="hidden sm:inline">Start</span></button>
+                <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><ScrollText size={22} className="text-white"/></button>
+                <button onClick={()=>setShowSettings(!showSettings)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all backdrop-blur-sm border border-white/10 group"><Settings size={22} className="text-white group-hover:rotate-90 transition-transform duration-300"/></button>
+            </div>
+          </div>
+          
+          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
+              <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
+              <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Zap size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
+
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><Timer size={20}/></div><div><div className="text-white font-bold">Speed Run</div><div className="text-gray-400 text-xs">Chrono 30s par tour</div></div></div><button onClick={()=>setSpeedMode(!speedMode)} className={'relative w-12 h-6 rounded-full transition-all '+(speedMode?'bg-red-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(speedMode?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
+              </div></div></div>}
+          
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <button onClick={()=>setCurrentTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='game'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
+            <button onClick={()=>setCurrentTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='rules'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
+            <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
+            <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
+            <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+          </div>
+        </div>
+
+        {/* LOG JOURNAL */}
+        {showLog && (
+            <div className={`bg-black/80 backdrop-blur-xl p-6 rounded-3xl border border-white/20 animate-in slide-in-from-top-4`}>
+                <h2 className="font-black text-white mb-4 flex items-center gap-2 underline">📓 Journal de bord</h2>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                    {moveLog.map((m,i) => (
+                        <div key={i} className="text-sm flex justify-between bg-white/20 p-3 rounded-xl border border-white/10 items-center">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-white text-lg">{m.player}</span>
+                                <span className="text-gray-300 text-xs">➔</span>
+                                <span className="text-yellow-400 font-bold">{m.category}</span>
+                            </div>
+                            <span className="font-black text-green-400 text-xl">+{m.value} pts</span>
+                        </div>
+                    ))}
+                    {moveLog.length === 0 && <p className="opacity-60 text-white italic text-center py-4">Aucune action enregistrée...</p>}
+                </div>
+            </div>
+        )}
+
+        {/* CHAOS CARD DISPLAY */}
+        {chaosMode && activeChaosCard && !isGameComplete() && (
+            <div className="bg-gradient-to-r from-pink-600 to-purple-600 p-4 rounded-3xl shadow-lg border-2 border-pink-400 animate-in slide-in-from-top-2">
+                <div className="flex items-center gap-4">
+                    <div className="text-4xl bg-white/20 p-2 rounded-xl">{activeChaosCard.icon}</div>
+                    <div>
+                        <div className="text-xs font-bold text-pink-200 uppercase tracking-widest">ÉVÉNEMENT CHAOS</div>
+                        <div className="text-xl font-black text-white">{activeChaosCard.title}</div>
+                        <div className="text-sm text-white/90">{activeChaosCard.desc}</div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: RULES & HELP */}
+        {currentTab === 'rules' && (
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><BookOpen/> Règles Officielles</h2>
+                    <div className="space-y-4 text-gray-300 text-sm">
+                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons. Le perdant de la partie précédente commence la suivante !</p></div>
+                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎁 Bonus 35 points</h3><p>Si la somme de la partie supérieure (As à Six) fait <strong>63 points ou plus</strong>.</p></div>
+                    </div>
+                </div>
+
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><Dices/> Simulateur Intelligent</h2>
+                    <div className="mb-4">
+                        <label className="text-gray-400 text-xs font-bold uppercase block mb-2">Simuler pour :</label>
+                        <select value={simPlayer || ''} onChange={(e) => setSimPlayer(e.target.value)} className="w-full bg-[#1e293b] text-white p-3 rounded-xl font-bold border border-white/20">
+                            {players.map(p => <option key={p} value={p} className="bg-[#1e293b] text-white">{p}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex justify-center gap-3 mb-6">
+                        {simDice.map((val, i) => (
+                            <VisualDie key={i} value={val} onClick={() => { const newD = [...simDice]; newD[i] = newD[i] === 6 ? 1 : newD[i] + 1; setSimDice(newD); }} skin={diceSkin} />
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        {Object.entries(calculateSimulatedScores(simDice).scores).map(([key, score]) => {
+                            const cat = categories.find(c => c.id === key);
+                            const difficulty = calculateSimulatedScores(simDice).difficulty[key];
+                            if (!cat) return null;
+                            const isTaken = scores[simPlayer]?.[cat.id] !== undefined;
+                            const existingScore = scores[simPlayer]?.[cat.id];
+                            if(isTaken) return <div key={key} className="p-2 rounded-xl border border-white/5 bg-black/20 opacity-50 flex flex-col items-center justify-center text-center"><div className="font-bold text-gray-500">{cat.name}</div><div className="text-gray-600 font-bold">Déjà fait ({existingScore})</div></div>;
+                            const isGood = score > 0;
+                            return <div key={key} className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center ${isGood ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
+                                <div className="font-bold text-white">{cat.name}</div>
+                                <div className={`text-lg font-black ${isGood ? 'text-green-400' : 'text-gray-500'}`}>{score}</div>
+                                {isGood && difficulty && <div className={`w-full h-1 mt-1 rounded-full ${difficulty==='low'?'bg-green-500':difficulty==='medium'?'bg-yellow-500':difficulty==='hard'?'bg-orange-500':'bg-red-500'}`}></div>}
+                            </div>;
+                        })}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: GAME */}
+        {currentTab==='game'&&(
+          <div className="space-y-4 tab-enter">
+            {speedMode && timeLeft > 0 && <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${timeLeft<10?'bg-red-500':'bg-green-500'}`} style={{width: `${(timeLeft/30)*100}%`}}></div></div>}
+            
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+              <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-black text-white flex items-center gap-3"><span className="text-3xl">👥</span>Joueurs</h2><button onClick={addPlayer} disabled={players.length>=6||isGameStarted()} className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"><Plus size={20}/>Ajouter</button></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{players.map((player,i)=><PlayerCard key={i} player={player} index={i} onRemove={removePlayer} onNameChange={updatePlayerName} canRemove={players.length>1} gameStarted={isGameStarted()} avatar={playerAvatars[player]} onAvatarClick={openAvatarSelector}/>)}</div>
+            </div>
+
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <h2 className="text-2xl font-black text-white flex items-center gap-3"><span className="text-3xl">📝</span>Feuille de score</h2>
+                <div className="flex gap-2 flex-wrap items-center">
+                  {editMode?(<><button onClick={toggleEditMode} className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl font-bold transition-all flex items-center gap-2"><Check size={18}/>Valider</button><button onClick={cancelEdit} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><X size={18}/>Annuler</button></>):(<button onClick={toggleEditMode} className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-bold transition-all flex items-center gap-2"><Edit3 size={18}/>Éditer</button>)}
+                  <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
+                </div>
+              </div>
+              {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
+              {/* PANNEAU INFORMATION JOUEUR */}
+              {!editMode && !isGameComplete() && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-3">
+                              <span className="text-2xl">🎯</span>
+                              <div>
+                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
+                                  {getEmptyCells(getNextPlayer()).length>0 && (
+                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
+                                  )}
+                              </div>
+                          </div>
+                          {lastModifiedCell && (
+                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
+                          )}
+                      </div>
+                  </div>
+              )}
+
+              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-24 sm:w-48"/>{players.map((_,i)=><col key={i} className="w-20 sm:w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
+                <th className="text-left p-1 sm:p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10 text-xs sm:text-base">Catégorie</th>
+                {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
+                    <div className="p-1 sm:p-3 text-white font-bold text-xs sm:text-lg flex flex-col items-center justify-center gap-1">
+                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={16} fill="currentColor" /></div>}
+                        <div className="flex items-center gap-1 sm:gap-2 truncate w-full justify-center">{playerAvatars[p] || "👤"} {p}</div>
+                        {!lastPlayerToPlay && p === starterName && <span className="text-[10px] sm:text-xs bg-yellow-500 text-black px-1 sm:px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
+                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-[10px] sm:text-xs bg-purple-500/30 text-purple-200 px-1 sm:px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
+                    </div>
+                </th>)}</tr></thead><tbody>
+                {categories.map(cat=>{
+                  if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
+                  if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
+                  if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
+                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-1 sm:p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-lg sm:text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block text-xs sm:text-base">{cat.name}</span>{cat.desc&&<span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5 hidden sm:block">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-1 sm:p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
+                  {cat.upperTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
+                  :cat.bonus?<div className="space-y-1"><div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-[10px] font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-[10px] font-semibold text-green-400">✅ OK!</div>:<div className="flex items-center justify-center gap-1 text-[10px] font-bold"><span className="text-orange-400">-{63-calcUpper(p)}</span></div>)}</div>
+                  :cat.upperGrandTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
+                  :cat.lowerTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
+                  :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
+                  </td>)}</tr>;
+                })}
+                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-2 sm:p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-xl sm:text-3xl">🏆</span><span className="text-white font-black text-sm sm:text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-2 sm:p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-lg sm:text-2xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl text-gray-500">???</div>:<div className="text-lg sm:text-4xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
+              </tbody></table></div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: HISTORY */}
+        {currentTab==='history'&&(
+          <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
+            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3"><span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>{g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}</div>
+                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
+                </div>
+                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=><div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span></div>)}</div></div>)}</div>}
+          </div></div>
+        )}
+
+        {/* TAB: STATS & TROPHIES */}
+        {currentTab==='trophies'&&(
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {ACHIEVEMENTS.map(ach => {
+                            let winners = [];
+                            playerStats.forEach(p => {
+                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
+                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
+                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
+                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
+                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
+                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                            });
+                            const unlocked = winners.length > 0;
+                            return (
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105' : 'bg-black/20 border-white/5 opacity-50 grayscale'}`}>
+                                    <div className="text-4xl mb-2">{ach.icon}</div>
+                                    <div className="font-bold text-white text-sm">{ach.name}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2">{ach.desc}</div>
+                                    {unlocked && (
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-1 w-full truncate">
+                                            {winners.join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: STATS AVANCÉES & FACE A FACE */}
+        {currentTab==='stats'&&(
+          <div className="space-y-4 tab-enter">
+            {/* 1. SCORE MAXI ATTEINT (BANNER) */}
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+              {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
+              {playerStats.length===0&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
+            </div>
+
+            {/* 2. PALMARES (PODIUM) AVEC DETAILS ET SERIES */}
+            {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
+                const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
+                const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
+                return <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}><div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>{isTop&&<div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}<div className="relative z-10"><div className="flex items-center justify-between mb-4"><div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>{isTop&&<div className="text-5xl animate-bounce">👑</div>}</div><div className="mb-4"><h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3><div className="flex items-baseline gap-2"><span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span><span className="text-gray-400 text-sm font-semibold">victoires</span></div></div><div className="space-y-3"><div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div><div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
+                {pStat && <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
+                    <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
+                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
+                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
+                        <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
+                    </div>
+                    {/* SERIES AJOUTÉES ICI */}
+                    <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
+                    <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
+                </div>}
+                </div></div></div>;})}</div></div>}
+
+            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+              <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(()=>{const stats=playerStats;const bestAvg=Math.max(...stats.map(s=>s.avgScore));const bestAvgP=stats.filter(s=>s.avgScore===bestAvg);const mostG=Math.max(...stats.map(s=>s.games));const mostGP=stats.filter(s=>s.games===mostG);const totY=stats.reduce((sum,s)=>sum+s.yamsCount,0);const maxY=Math.max(...stats.map(s=>s.yamsCount));const mostYP=stats.filter(s=>s.yamsCount===maxY);return <><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div><div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div></>;})()}
+              </div>
+            </div>
+
+            {/* 4. HALL OF FAME */}
+            {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
+                            <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
+                            <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
+                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
+                            <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
+                            <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
+                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
+                            <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
+                            <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
+                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
+                        </div>
+                        <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
+                            <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
+                            <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
+                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 5. FACE A FACE (CORRIGE & LISIBLE) */}
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
+                
+                <div className="flex gap-4 items-center justify-center mb-8">
+                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
+                        <option value="" className="bg-slate-900">Joueur A</option>
+                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
+                    </select>
+                    <div className="text-2xl font-black italic text-gray-500">VS</div>
+                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
+                        <option value="" className="bg-slate-900">Joueur B</option>
+                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
+                    </select>
+                </div>
+                
+                {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
+                        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <div>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p1}</h3>
+                                    <p className="text-blue-100 text-xs font-bold uppercase">Challenger A</p>
+                                </div>
+                                <div className="text-5xl font-black text-white drop-shadow-md">
+                                    {gameHistory.filter(g => {
+                                        const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
+                                        const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
+                                        return p1 && p2 && p1.score > p2.score;
+                                    }).length}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Moyenne</div>
+                                    <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
+                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
+                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Record</div>
+                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
+                        <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <div>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p2}</h3>
+                                    <p className="text-red-100 text-xs font-bold uppercase">Challenger B</p>
+                                </div>
+                                <div className="text-5xl font-black text-white drop-shadow-md">
+                                    {gameHistory.filter(g => {
+                                        const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
+                                        const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
+                                        return p1 && p2 && p2.score > p1.score;
+                                    }).length}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Moyenne</div>
+                                    <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p2).avgScore}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Yams</div>
+                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
+                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
+                                </div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Record</div>
+                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MINI JEU START MODAL */}
+      {showFingerGame && (
+          <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+              <div className="absolute top-10 text-white text-center animate-pulse">
+                  <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
+                  <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
+              </div>
+              
+              {touchPoints.map((tp, i) => (
+                  <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
+                      <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
+                  </div>
+              ))}
+
+              {fingerWinner && (
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
+                      <div className="text-center">
+                          <div className="text-6xl mb-4">👑</div>
+                          <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
+                          <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
+                          <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
+                      </div>
+                  </div>
+              )}
+              
+              <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
+          </div>
+      )}
+
+      {/* STUDIO PHOTO MODAL */}
+      {showStudioModal && (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[120] p-4">
+              <div className="bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                  <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
+                  <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
+                  
+                  <div className="space-y-3 mb-8">
+                    {players.map(p => (
+                        <div key={p} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                            <span className="font-bold text-gray-300">{p}</span>
+                            <span className="font-black text-white text-xl">{calcTotal(p)} pts</span>
+                        </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-2 mb-6 opacity-50">
+                      <Dices size={16} className="text-white"/>
+                      <span className="text-white font-bold tracking-widest text-xs">YAMS ULTIMATE LEGACY</span>
+                  </div>
+                  
+                  <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
+              </div>
+          </div>
+      )}
+
+      {showAvatarModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
+                  <div className="grid grid-cols-4 gap-3">
+                      {AVATAR_LIST.map((av, i) => {
+                          const player = players[avatarSelectorIndex];
+                          const stats = playerStats.find(s => s.name === player);
+                          const locked = isAvatarLocked(av.req, stats);
+                          return (
+                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
+                                  {av.icon}
+                                  {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
+                              </button>
+                          );
+                      })}
+                  </div>
+                  <div className="mt-4 text-xs text-gray-400 text-center">Jouez pour débloquer de nouveaux avatars !</div>
+              </div>
+          </div>
+      )}
+
+      {undoData && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
+            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
+                <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
+            </button>
+        </div>
+      )}
+
+      {showEndGameModal&&(
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
+            <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
+                <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
+                <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
+                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0]}</div>
+                <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+                </div>
+                {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
+                <div className="space-y-2 relative z-10">
+                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
+                        <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
+                    </div>
                 </div>
             </div>
           </div>
