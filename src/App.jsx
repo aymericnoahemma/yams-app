@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost
+  History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
+  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
+  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, Moon, Wand2
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -133,7 +133,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
+        <button onClick={() => { onAvatarClick(index); }} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
             {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -215,7 +215,6 @@ export default function YamsUltimateLegacy() {
   
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-  // const fileInputRef = useRef(null); // SUPPRIMÉ CAR INUTILISÉ DANS CETTE VERSION
 
   // WAKE LOCK LOGIC
   useEffect(() => {
@@ -706,7 +705,7 @@ export default function YamsUltimateLegacy() {
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                        return p1 && p2 && p2.score > p1.score;
+                                        return p1 && p2 && p1.score > p2.score;
                                     }).length}
                                 </div>
                             </div>
