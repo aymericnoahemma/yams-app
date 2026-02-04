@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, Award, Camera, Sparkles, Flame } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -206,9 +206,6 @@ export default function YamsUltimateLegacy() {
   
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-  const fileInputRef = useRef(null);
-  const currentLevel = Math.floor(Math.sqrt(globalXP / 50)) + 1;
-  const xpProgress = ((globalXP - (Math.pow(currentLevel-1, 2) * 50)) / ((Math.pow(currentLevel, 2) * 50) - (Math.pow(currentLevel-1, 2) * 50))) * 100;
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
@@ -413,7 +410,7 @@ export default function YamsUltimateLegacy() {
                 <div className="space-y-2 relative z-10">
                     <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
+                        <button onClick={quickEdit} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Edit3 size={16}/> MODIFIER</button>
                         <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
                     </div>
                 </div>
@@ -676,7 +673,7 @@ export default function YamsUltimateLegacy() {
                 </div>}
                 </div></div></div>;})}</div></div>}
 
-            {/* 3. RECORDS & STATS (GRILLE DE 4) - RESTAURÉ */}
+            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
               <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -735,7 +732,7 @@ export default function YamsUltimateLegacy() {
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A */}
+                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -757,21 +754,21 @@ export default function YamsUltimateLegacy() {
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Yams</div>
+                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
                                     <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
+                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
                                     <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
                                 </div>
                                 <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Record</div>
+                                    <div className="text-blue-100 font-bold mb-1">Record</div>
                                     <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* CARTE JOUEUR B */}
+                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -808,30 +805,6 @@ export default function YamsUltimateLegacy() {
                         </div>
                     </div>
                 )}
-            </div>
-
-            {/* 6. PROFILS (RADAR) - TOUJOURS VISIBLE */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-                {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).slice(0,4).map(name => {
-                    const s = playerStats.find(st => st.name === name) || {};
-                    const luck = Math.min(100, (s.yamsCount * 20) + 20); 
-                    const strategy = Math.min(100, (s.bonusCount || 0) * 20);
-                    const audacity = Math.min(100, (s.maxScore / 375) * 100);
-                    const consistency = Math.min(100, (s.wins / (s.games || 1)) * 100);
-
-                    return (
-                    <div key={name} className={`bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden`}>
-                        <h3 className="font-black uppercase mb-4 flex items-center justify-between z-10 relative">
-                            {name} <span className="text-[10px] bg-blue-500/20 px-2 py-1 rounded text-blue-300">PROFIL</span>
-                        </h3>
-                        <div className="relative h-32 w-full flex items-center justify-center gap-8">
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-blue-500" style={{height:`${luck}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Chance</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-purple-500" style={{height:`${strategy}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Stratégie</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-red-500" style={{height:`${audacity}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Audace</span></div>
-                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-green-500" style={{height:`${consistency}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Régularité</span></div>
-                        </div>
-                    </div>
-                )})}
             </div>
           </div>
         )}
