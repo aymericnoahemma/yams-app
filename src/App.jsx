@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image, Fingerprint, Smartphone, Vibration } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -104,6 +104,13 @@ const calculateSimulatedScores = (dice) => {
   };
 };
 
+// HAPTIC FEEDBACK HELPER
+const vibrate = (ms = 50) => {
+    if (navigator.vibrate) {
+        navigator.vibrate(ms);
+    }
+};
+
 // --- COMPOSANTS INTERNES ---
 const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
   if(isFoggy && isLocked) return <div className="w-full py-1 sm:py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
@@ -127,7 +134,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
+        <button onClick={() => { vibrate(30); onAvatarClick(index); }} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
             {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -145,7 +152,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
 const VisualDie = ({ value, onClick, skin }) => {
     const [rolling, setRolling] = useState(false);
     const s = DICE_SKINS[skin] || DICE_SKINS.classic;
-    const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
+    const handleClick = () => { vibrate(20); setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
     return (
         <button onClick={handleClick} className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
             {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
@@ -204,16 +211,41 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   
+  // NEW MOBILE FEATURES STATES
+  const [hapticEnabled, setHapticEnabled] = useState(true);
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
+  const [showFingerGame, setShowFingerGame] = useState(false);
+  const [touchPoints, setTouchPoints] = useState([]);
+  const [fingerWinner, setFingerWinner] = useState(null);
+  
   const replayIntervalRef = useRef(null);
+  const touchContainerRef = useRef(null);
   const T = THEMES_CONFIG[theme];
   const fileInputRef = useRef(null);
+
+  // WAKE LOCK LOGIC
+  useEffect(() => {
+    let wakeLock = null;
+    const requestWakeLock = async () => {
+        if ('wakeLock' in navigator && wakeLockEnabled) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) { console.log(err); }
+        }
+    };
+    if (wakeLockEnabled) requestWakeLock();
+    const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
+  }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
-  const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard}));}catch(e){}};
-  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:true); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);}}}catch(e){}};
+  const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, hapticEnabled, wakeLockEnabled}));}catch(e){}};
+  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:true); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
+  setHapticEnabled(d.hapticEnabled !== undefined ? d.hapticEnabled : true); setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
   
   useEffect(() => { if(!isGameStarted()) { const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); } }, [jokerMax, players]);
@@ -244,13 +276,14 @@ export default function YamsUltimateLegacy() {
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
 
-  const useJoker = (player) => { if(jokers[player] > 0) { if(window.confirm(`Utiliser un Joker pour ${player} ? Cela coûtera 10 points à la fin !`)) { setJokers({...jokers, [player]: jokers[player] - 1}); } } };
-  const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); };
+  const useJoker = (player) => { if(jokers[player] > 0) { if(window.confirm(`Utiliser un Joker pour ${player} ? Cela coûtera 10 points à la fin !`)) { if(hapticEnabled) vibrate(50); setJokers({...jokers, [player]: jokers[player] - 1}); } } };
+  const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); if(hapticEnabled) vibrate(30); };
 
   const updateScore=(player,category,value, event)=>{
+    if(hapticEnabled && value !== '') vibrate(40);
     const cellKey=`${player}-${category}`;
-    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
-    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
+    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); if(hapticEnabled) vibrate([50,50,50]); return; } }
+    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); if(hapticEnabled) vibrate([50,50,50]); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); if(hapticEnabled) vibrate([50,50,50]); return; } }
     if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
     const valInt = value === '' ? 0 : parseInt(value);
@@ -261,11 +294,11 @@ export default function YamsUltimateLegacy() {
         setGlobalXP(prev => prev + valInt);
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
-    if(category==='yams'&&value==='50'){setConfetti('gold');setShakeAnimation('yams');setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);} else if(value==='0') {setConfetti('sad'); setTimeout(()=>setConfetti(null), 4000); } else { setConfetti(null); }
+    if(category==='yams'&&value==='50'){setConfetti('gold');setShakeAnimation('yams');setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); if(hapticEnabled) vibrate([100,50,100,50,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);} else if(value==='0') {setConfetti('sad'); setTimeout(()=>setConfetti(null), 4000); } else { setConfetti(null); }
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
+    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); if(hapticEnabled) vibrate([100,50,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
-    if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
+    if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});if(hapticEnabled) vibrate([100,100,100]); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
     setScores(ns);saveCurrentGame(ns);
     if(editMode){ } else { 
         if(value!==''){
@@ -283,6 +316,7 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
+      if(hapticEnabled) vibrate(50);
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
@@ -292,7 +326,7 @@ export default function YamsUltimateLegacy() {
       saveCurrentGame({});
   };
 
-  useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
+  useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold'); if(hapticEnabled) vibrate([200,100,200,100,500]); setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
   useEffect(() => { if (showEndGameModal && !currentGage) { setCurrentGage(gages[Math.floor(Math.random() * gages.length)]); } else if (!showEndGameModal) { setCurrentGage(null); } }, [showEndGameModal]);
   const saveGameFromModal=()=>{ 
       const w=getWinner(); const l=getLoser(); 
@@ -302,9 +336,54 @@ export default function YamsUltimateLegacy() {
       resetGame(l ? l.name : null); 
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
-  const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(navigator.share){try{await navigator.share({text:t});}catch(e){navigator.clipboard.writeText(t);alert('Score copié!');}}else{navigator.clipboard.writeText(t);alert('Score copié!');}};
+  
+  // NATIVE SHARE
+  const shareScore = async () => {
+      const w = getWinner();
+      const shareData = {
+          title: 'Résultat Yams Legacy',
+          text: `Partie terminée ! 🏆 ${w[0]} gagne avec ${calcTotal(w[0])} points ! Qui peut faire mieux ?`,
+      };
+      if (navigator.share) {
+          try { await navigator.share(shareData); } catch (err) { console.log(err); }
+      } else {
+          navigator.clipboard.writeText(shareData.text);
+          alert('Score copié dans le presse-papier !');
+      }
+  };
+
   const exportData=()=>{const b=new Blob([JSON.stringify({gameHistory,exportDate:new Date().toISOString(),version:'1.0'},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
+
+  // FINGER GAME LOGIC
+  const handleTouchStart = (e) => {
+      if(!showFingerGame) return;
+      const touches = Array.from(e.touches).map((t, i) => ({ id: t.identifier, x: t.clientX, y: t.clientY, color: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][i % 5] }));
+      setTouchPoints(touches);
+      if(hapticEnabled) vibrate(20);
+  };
+  const handleTouchMove = (e) => {
+      if(!showFingerGame) return;
+      const touches = Array.from(e.touches).map((t, i) => ({ id: t.identifier, x: t.clientX, y: t.clientY, color: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][i % 5] }));
+      setTouchPoints(touches);
+  };
+  const handleTouchEnd = (e) => {
+      if(!showFingerGame) return;
+      const touches = Array.from(e.touches).map((t, i) => ({ id: t.identifier, x: t.clientX, y: t.clientY, color: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][i % 5] }));
+      setTouchPoints(touches);
+  };
+  
+  useEffect(() => {
+      let timer;
+      if (showFingerGame && touchPoints.length > 1 && !fingerWinner) {
+          timer = setTimeout(() => {
+              const winnerIndex = Math.floor(Math.random() * touchPoints.length);
+              setFingerWinner(touchPoints[winnerIndex]);
+              if(hapticEnabled) vibrate([100,50,100]);
+          }, 3000);
+      }
+      return () => clearTimeout(timer);
+  }, [touchPoints, showFingerGame, fingerWinner]);
 
   const playerStats = useMemo(() => { if (!gameHistory || !Array.isArray(gameHistory)) return []; const stats = {}; const streaks = {}; const isStreaking = {}; const allPlayerNames = new Set(); gameHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); allPlayerNames.forEach(name => { stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0 }; streaks[name] = 0; isStreaking[name] = true; }); gameHistory.forEach((game) => { const participants = game.players || game.results || []; const gameGrid = game.grid || {}; participants.forEach(p => { if(!stats[p.name]) return; const s = stats[p.name]; s.games++; if(p.isWinner) s.wins++; if(p.score > s.maxScore) s.maxScore = p.score; s.totalScore += p.score; s.yamsCount += p.yamsCount || 0; if(gameGrid[p.name]) { s.historyGames++; 
     let currentUpperSum = 0;
@@ -336,6 +415,35 @@ export default function YamsUltimateLegacy() {
       {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'bg-gradient-to-r px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+( showAchievementNotif.icon==='🎲'?'from-yellow-500 to-orange-500 border-yellow-300':showAchievementNotif.icon==='🎁'?'from-green-500 to-emerald-500 border-green-300':'from-purple-500 to-pink-500 border-purple-300')}><div className="flex items-center gap-3"><span className="text-5xl animate-bounce">{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{getWinner().join(' & ')}</div></div></div>}
       {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce"><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl">🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
+
+      {/* MINI JEU START MODAL */}
+      {showFingerGame && (
+          <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center touch-none" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+              <div className="absolute top-10 text-white text-center animate-pulse">
+                  <h2 className="text-2xl font-black">POSEZ VOS DOIGTS</h2>
+                  <p className="text-sm text-gray-400">Maintenez l'écran pour tirer au sort</p>
+              </div>
+              
+              {touchPoints.map((tp, i) => (
+                  <div key={tp.id} className="absolute w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all duration-75" style={{left: tp.x - 48, top: tp.y - 48, borderColor: tp.color, boxShadow: `0 0 30px ${tp.color}`}}>
+                      <div className="w-16 h-16 rounded-full opacity-50 animate-ping" style={{backgroundColor: tp.color}}></div>
+                  </div>
+              ))}
+
+              {fingerWinner && (
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center animate-in zoom-in duration-300">
+                      <div className="text-center">
+                          <div className="text-6xl mb-4">👑</div>
+                          <div className="text-4xl font-black text-white mb-2">LE VAINQUEUR EST</div>
+                          <div className="w-24 h-24 rounded-full mx-auto border-4 animate-bounce" style={{borderColor: fingerWinner.color, backgroundColor: fingerWinner.color}}></div>
+                          <button onClick={() => {setShowFingerGame(false); setTouchPoints([]); setFingerWinner(null);}} className="mt-8 px-8 py-3 bg-white text-black font-bold rounded-full">FERMER</button>
+                      </div>
+                  </div>
+              )}
+              
+              <button onClick={()=>setShowFingerGame(false)} className="absolute bottom-10 px-6 py-2 bg-white/10 text-white rounded-full text-xs">Annuler</button>
+          </div>
+      )}
 
       {/* STUDIO PHOTO MODAL */}
       {showStudioModal && (
@@ -411,9 +519,10 @@ export default function YamsUltimateLegacy() {
                 <div className="space-y-2 relative z-10">
                     <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={quickEdit} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Edit3 size={16}/> MODIFIER</button>
+                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
                         <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
                     </div>
+                    <button onClick={quickEdit} className="w-full py-3 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-white">Modifier la grille</button>
                 </div>
             </div>
           </div>
@@ -429,6 +538,7 @@ export default function YamsUltimateLegacy() {
             <p className="text-sm text-gray-400">Score keeper premium</p>
             </div></div>
             <div className="flex gap-2">
+                <button onClick={()=>setShowFingerGame(true)} className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl transition-all shadow-lg text-white font-bold flex items-center gap-2"><Fingerprint size={22}/> <span className="hidden sm:inline">Start</span></button>
                 <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><ScrollText size={22} className="text-white"/></button>
                 <button onClick={()=>setShowSettings(!showSettings)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all backdrop-blur-sm border border-white/10 group"><Settings size={22} className="text-white group-hover:rotate-90 transition-transform duration-300"/></button>
             </div>
@@ -437,6 +547,10 @@ export default function YamsUltimateLegacy() {
           {showSettings&&<div className="mt-6 pt-6 border-t border-white/10"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Vibration size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Smartphone size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
+
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><Timer size={20}/></div><div><div className="text-white font-bold">Speed Run</div><div className="text-gray-400 text-xs">Chrono 30s par tour</div></div></div><button onClick={()=>setSpeedMode(!speedMode)} className={'relative w-12 h-6 rounded-full transition-all '+(speedMode?'bg-red-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(speedMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
@@ -551,25 +665,7 @@ export default function YamsUltimateLegacy() {
                 </div>
               </div>
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {/* PANNEAU INFORMATION JOUEUR */}
-              {!editMode && !isGameComplete() && (
-                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <div className="flex items-center gap-3">
-                              <span className="text-2xl">🎯</span>
-                              <div>
-                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
-                                  {getEmptyCells(getNextPlayer()).length>0 && (
-                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
-                                  )}
-                              </div>
-                          </div>
-                          {lastModifiedCell && (
-                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
-                          )}
-                      </div>
-                  </div>
-              )}
+              {lastPlayerToPlay&&!editMode&&<div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20"><div className="flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><span className="text-2xl">🎯</span><div><div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>{getEmptyCells(getNextPlayer()).length>0&&<div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>}</div></div>{lastModifiedCell&&(()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()}</div></div>}
 
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-24 sm:w-48"/>{players.map((_,i)=><col key={i} className="w-20 sm:w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-1 sm:p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10 text-xs sm:text-base">Catégorie</th>
@@ -657,7 +753,7 @@ export default function YamsUltimateLegacy() {
               {playerStats.length===0&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
             </div>
 
-            {/* 2. PALMARES (PODIUM) AVEC DETAILS ET SERIES */}
+            {/* 2. PALMARES (PODIUM) AVEC SERIES */}
             {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
                 const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
                 const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
@@ -674,7 +770,7 @@ export default function YamsUltimateLegacy() {
                 </div>}
                 </div></div></div>;})}</div></div>}
 
-            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
+            {/* 3. RECORDS & STATS (GRILLE DE 4) - RESTAURÉ */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
               <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -719,29 +815,29 @@ export default function YamsUltimateLegacy() {
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                 <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
                 
-                <div className="flex gap-4 items-center justify-center mb-8">
-                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
+                <div className="flex gap-4 items-center justify-center mb-8 bg-black/20 p-2 rounded-2xl">
+                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-transparent p-2 outline-none text-white font-bold text-center w-full">
                         <option value="" className="bg-slate-900">Joueur A</option>
                         {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                     </select>
-                    <div className="text-2xl font-black italic text-gray-500">VS</div>
-                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
+                    <div className="text-xl font-black italic text-gray-600">VS</div>
+                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-transparent p-2 outline-none text-white font-bold text-center w-full">
                         <option value="" className="bg-slate-900">Joueur B</option>
                         {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                     </select>
                 </div>
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
-                        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {/* CARTE JOUEUR A */}
+                        <div className="bg-gradient-to-br from-blue-600/80 to-blue-900/80 border border-blue-400/50 p-6 rounded-2xl relative overflow-hidden shadow-[0_0_30px_rgba(37,99,235,0.2)]">
+                            <div className="absolute top-[-20%] right-[-10%] text-9xl opacity-10 rotate-12 text-black pointer-events-none">A</div>
+                            <div className="flex justify-between items-start mb-6 relative z-10">
                                 <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p1}</h3>
-                                    <p className="text-blue-100 text-xs font-bold uppercase">Challenger A</p>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider drop-shadow-md">{versus.p1}</h3>
+                                    <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest opacity-80">Challenger A</p>
                                 </div>
-                                <div className="text-5xl font-black text-white drop-shadow-md">
+                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
@@ -749,35 +845,35 @@ export default function YamsUltimateLegacy() {
                                     }).length}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Moyenne</div>
+                            <div className="grid grid-cols-4 gap-2 text-center relative z-10">
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Moyenne</div>
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
-                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Yams</div>
+                                    <div className="font-black text-yellow-300 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
-                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Bonus</div>
+                                    <div className="font-black text-orange-300 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
-                                    <div className="text-blue-100 font-bold mb-1">Record</div>
-                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Record</div>
+                                    <div className="font-black text-green-300 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
-                        <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
+                        {/* CARTE JOUEUR B */}
+                        <div className="bg-gradient-to-br from-red-600/80 to-red-900/80 border border-red-400/50 p-6 rounded-2xl relative overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+                            <div className="absolute top-[-20%] right-[-10%] text-9xl opacity-10 rotate-12 text-black pointer-events-none">B</div>
+                            <div className="flex justify-between items-start mb-6 relative z-10">
                                 <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p2}</h3>
-                                    <p className="text-red-100 text-xs font-bold uppercase">Challenger B</p>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider drop-shadow-md">{versus.p2}</h3>
+                                    <p className="text-red-200 text-[10px] font-bold uppercase tracking-widest opacity-80">Challenger B</p>
                                 </div>
-                                <div className="text-5xl font-black text-white drop-shadow-md">
+                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
@@ -785,22 +881,22 @@ export default function YamsUltimateLegacy() {
                                     }).length}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Moyenne</div>
+                            <div className="grid grid-cols-4 gap-2 text-center relative z-10">
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Moyenne</div>
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p2).avgScore}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Yams</div>
-                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Yams</div>
+                                    <div className="font-black text-yellow-300 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
-                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Bonus</div>
+                                    <div className="font-black text-orange-300 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
-                                    <div className="text-red-100 font-bold mb-1">Record</div>
-                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
+                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Record</div>
+                                    <div className="font-black text-green-300 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
                                 </div>
                             </div>
                         </div>
