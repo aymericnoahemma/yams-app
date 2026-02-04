@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
-  Undo2, BookOpen, Dices, Eye, Trophy, Medal, Activity, Lock, 
-  History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
-  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost, Wand2
+  Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
+  History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
+  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
+  ScrollText, Award, Camera, Sparkles, Flame, Coffee, Ghost
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -196,7 +196,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DÉSACTIVÉ PAR DÉFAUT
+  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -210,11 +210,12 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   
-  // NOUVELLES FONCTIONNALITES
+  // NOUVELLES FONCTIONNALITES (Variables d'état)
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
+  // const fileInputRef = useRef(null); // SUPPRIMÉ CAR INUTILISÉ DANS CETTE VERSION
 
   // WAKE LOCK LOGIC
   useEffect(() => {
@@ -634,7 +635,7 @@ export default function YamsUltimateLegacy() {
                 </div>}
                 </div></div></div>;})}</div></div>}
 
-            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
+            {/* 3. RECORDS & STATS (GRILLE DE 4) - RESTAURÉ */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
               <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,7 +706,7 @@ export default function YamsUltimateLegacy() {
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                        return p1 && p2 && p1.score > p2.score;
+                                        return p1 && p2 && p2.score > p1.score;
                                     }).length}
                                 </div>
                             </div>
