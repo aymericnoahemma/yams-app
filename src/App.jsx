@@ -4,7 +4,7 @@ import {
   Undo2, BookOpen, Dices, Eye, Trophy, Medal, Activity, Lock, 
   History as HistoryIcon, Timer, EyeOff, Palette, Moon, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, 
-  ScrollText, Award, Camera, Sparkles, Flame, Hand 
+  ScrollText, Award, Camera, Sparkles, Hand
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -133,7 +133,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => { onAvatarClick(index); }} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
+        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
             {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -210,7 +210,7 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   
-  // NEW MOBILE FEATURES STATES
+  // NEW MOBILE FEATURES STATES (Sans Haptic)
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   const [showFingerGame, setShowFingerGame] = useState(false);
   const [touchPoints, setTouchPoints] = useState([]);
@@ -532,7 +532,7 @@ export default function YamsUltimateLegacy() {
             <p className="text-sm text-gray-400">Score keeper premium</p>
             </div></div>
             <div className="flex gap-2">
-                <button onClick={()=>setShowFingerGame(true)} className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl transition-all shadow-lg text-white font-bold flex items-center gap-2"><Play size={22}/> <span className="hidden sm:inline">Start</span></button>
+                <button onClick={()=>setShowFingerGame(true)} className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-2xl transition-all shadow-lg text-white font-bold flex items-center gap-2"><Hand size={22}/> <span className="hidden sm:inline">Start</span></button>
                 <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><ScrollText size={22} className="text-white"/></button>
                 <button onClick={()=>setShowSettings(!showSettings)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all backdrop-blur-sm border border-white/10 group"><Settings size={22} className="text-white group-hover:rotate-90 transition-transform duration-300"/></button>
             </div>
@@ -542,7 +542,7 @@ export default function YamsUltimateLegacy() {
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Activity size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Zap size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
 
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
