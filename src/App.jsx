@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, Star, Flame, Award, Sparkles, Camera, Image } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -13,16 +13,16 @@ const categories = [
   { id:"upperSectionDivider", upperDivider:true },
   { id:"upperTotal", name:"Sous-total", upperTotal:true, icon:"📊", color:"#a855f7" },
   { id:"bonus", name:"Bonus", bonus:true, icon:"🎁", color:"#fbbf24" },
-  { id:"upperGrandTotal", name:"Total Supérieur", upperGrandTotal:true, icon:"🔼", color:"#a855f7" },
+  { id:"upperGrandTotal", name:"Total Sup.", upperGrandTotal:true, icon:"🔼", color:"#a855f7" },
   { id:"sectionDivider", divider:true },
   { id:"threeOfKind", name:"Brelan", values:Array.from({length:31},(_,i)=>i), lower:true, icon:"⚂⚂⚂", color:"#10b981", desc:"3 dés identiques", max:30 },
   { id:"fourOfKind", name:"Carré", values:Array.from({length:31},(_,i)=>i), lower:true, icon:"⚃⚃⚃⚃", color:"#06b6d4", desc:"4 dés identiques", max:30 },
-  { id:"fullHouse", name:"Full", values:[0,25], lower:true, icon:"⚄⚄⚄⚂⚂", color:"#ec4899", desc:"3 dés + 2 autres dés identiques", max:25 },
-  { id:"smallStraight", name:"P. Suite", values:[0,30], lower:true, icon:"⚀⚁⚂⚃", color:"#8b5cf6", desc:"4 dés suivis", max:30 },
-  { id:"largeStraight", name:"G. Suite", values:[0,40], lower:true, icon:"⚀⚁⚂⚃⚄", color:"#3b82f6", desc:"5 dés suivis", max:40 },
-  { id:"yams", name:"Yams", values:[0,50], lower:true, icon:"⚅⚅⚅⚅⚅", color:"#fbbf24", desc:"5 dés identiques", max:50 },
-  { id:"chance", name:"Chance", values:Array.from({length:31},(_,i)=>i), lower:true, icon:"🍀", color:"#10b981", desc:"Somme totale", max:30 },
-  { id:"lowerTotal", name:"Total Inférieur", lowerTotal:true, icon:"🔽", color:"#ec4899" }
+  { id:"fullHouse", name:"Full", values:[0,25], lower:true, icon:"⚄⚄⚄⚂⚂", color:"#ec4899", desc:"3+2 identiques", max:25 },
+  { id:"smallStraight", name:"P. Suite", values:[0,30], lower:true, icon:"⚀⚁⚂⚃", color:"#8b5cf6", desc:"4 suivis", max:30 },
+  { id:"largeStraight", name:"G. Suite", values:[0,40], lower:true, icon:"⚀⚁⚂⚃⚄", color:"#3b82f6", desc:"5 suivis", max:40 },
+  { id:"yams", name:"Yams", values:[0,50], lower:true, icon:"⚅⚅⚅⚅⚅", color:"#fbbf24", desc:"5 identiques", max:50 },
+  { id:"chance", name:"Chance", values:Array.from({length:31},(_,i)=>i), lower:true, icon:"🍀", color:"#10b981", desc:"Total", max:30 },
+  { id:"lowerTotal", name:"Total Inf.", lowerTotal:true, icon:"🔽", color:"#ec4899" }
 ];
 
 const THEMES_CONFIG = {
@@ -106,13 +106,13 @@ const calculateSimulatedScores = (dice) => {
 
 // --- COMPOSANTS INTERNES ---
 const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
-  if(isFoggy && isLocked) return <div className="w-full py-3 text-center text-gray-500 font-black animate-pulse">???</div>;
-  if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed">🔒</div>;
+  if(isFoggy && isLocked) return <div className="w-full py-1 sm:py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
+  if(isImposedDisabled) return <div className="w-full py-1 sm:py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
   const cat = categories.find(c=>c.id===category);
   const vals = cat?.values || Array.from({length:31},(_,i)=>i);
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-lg text-center transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
+      className={`w-full py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-bold text-sm sm:text-lg text-center transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -125,17 +125,17 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   const [name, setName] = useState(player);
   const save = () => { if(name.trim()){onNameChange(index,name.trim());setEditing(false);} };
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
-      <div className="flex items-center justify-between gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
             {avatar || "👤"}
         </button>
-        {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50" autoFocus/>
-          : <span className="flex-1 text-white font-bold text-lg">{player}</span>}
-        <div className="flex gap-2">
-          {editing ? <button onClick={save} className="p-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl"><Check size={18}/></button>
-            : <button onClick={()=>setEditing(true)} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl"><Edit3 size={18}/></button>}
-          {canRemove&&!gameStarted&&<button onClick={()=>onRemove(index)} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl"><Trash2 size={18}/></button>}
+        {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
+          : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
+        <div className="flex gap-1">
+          {editing ? <button onClick={save} className="p-1.5 sm:p-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl"><Check size={16}/></button>
+            : <button onClick={()=>setEditing(true)} className="p-1.5 sm:p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl"><Edit3 size={16}/></button>}
+          {canRemove&&!gameStarted&&<button onClick={()=>onRemove(index)} className="p-1.5 sm:p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl"><Trash2 size={16}/></button>}
         </div>
       </div>
     </div>
@@ -147,7 +147,7 @@ const VisualDie = ({ value, onClick, skin }) => {
     const s = DICE_SKINS[skin] || DICE_SKINS.classic;
     const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
     return (
-        <button onClick={handleClick} className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
+        <button onClick={handleClick} className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center text-xl sm:text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
             {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
         </button>
     );
@@ -207,8 +207,6 @@ export default function YamsUltimateLegacy() {
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
   const fileInputRef = useRef(null);
-  const currentLevel = Math.floor(Math.sqrt(globalXP / 50)) + 1;
-  const xpProgress = ((globalXP - (Math.pow(currentLevel-1, 2) * 50)) / ((Math.pow(currentLevel, 2) * 50) - (Math.pow(currentLevel-1, 2) * 50))) * 100;
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r)setGameHistory(JSON.parse(r));}catch(e){}};
@@ -309,18 +307,9 @@ export default function YamsUltimateLegacy() {
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
 
   const playerStats = useMemo(() => { if (!gameHistory || !Array.isArray(gameHistory)) return []; const stats = {}; const streaks = {}; const isStreaking = {}; const allPlayerNames = new Set(); gameHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); allPlayerNames.forEach(name => { stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0 }; streaks[name] = 0; isStreaking[name] = true; }); gameHistory.forEach((game) => { const participants = game.players || game.results || []; const gameGrid = game.grid || {}; participants.forEach(p => { if(!stats[p.name]) return; const s = stats[p.name]; s.games++; if(p.isWinner) s.wins++; if(p.score > s.maxScore) s.maxScore = p.score; s.totalScore += p.score; s.yamsCount += p.yamsCount || 0; if(gameGrid[p.name]) { s.historyGames++; 
-    // CALCUL CORRECT DES BONUS HISTORIQUES
     let currentUpperSum = 0;
-    categories.filter(c => c.upper).forEach(cat => {
-        const val = gameGrid[p.name][cat.id];
-        if (val !== undefined && val !== "") {
-            currentUpperSum += parseInt(val);
-        }
-    });
-    if (currentUpperSum >= 63) {
-        s.bonusCount++;
-    }
-
+    categories.filter(c => c.upper).forEach(cat => { const val = gameGrid[p.name][cat.id]; if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); } });
+    if (currentUpperSum >= 63) { s.bonusCount++; }
     const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; } if (isStreaking[p.name]) { if (p.isWinner) streaks[p.name]++; else isStreaking[p.name] = false; } }); }); const tempStreaks = {}; allPlayerNames.forEach(n => tempStreaks[n] = 0); for(let i=gameHistory.length-1; i>=0; i--){ const game = gameHistory[i]; const participants = game.players || []; participants.forEach(p => { if(p.isWinner) { tempStreaks[p.name] = (tempStreaks[p.name] || 0) + 1; if(tempStreaks[p.name] > stats[p.name].maxConsecutiveWins) stats[p.name].maxConsecutiveWins = tempStreaks[p.name]; } else { tempStreaks[p.name] = 0; } }); } return Object.entries(stats).map(([name,d])=>({ name, ...d, avgScore: Math.round(d.totalScore/d.games), currentStreak: streaks[name], bonusRate: d.historyGames > 0 ? Math.round((d.bonusCount/d.historyGames)*100) : 0, avgUpper: d.historyGames > 0 ? Math.round(d.upperSum/d.historyGames) : 0, avgLower: d.historyGames > 0 ? Math.round(d.lowerSum/d.historyGames) : 0 })).sort((a,b)=>b.wins-a.wins); }, [gameHistory]);
   const hallOfFame = useMemo(() => { if(gameHistory.length < 2) return null; let biggestWin = { gap: -1 }; let tightestWin = { gap: 9999 }; let lowestWinner = { score: 9999 }; let highestLoser = { score: -1 }; gameHistory.forEach(g => { const parts = (g.players || g.results).sort((a,b) => b.score - a.score); if(parts.length < 2) return; const winner = parts[0]; const second = parts[1]; const gap = winner.score - second.score; if(gap > biggestWin.gap) biggestWin = { gap, winner: winner.name, second: second.name, date: g.date }; if(gap < tightestWin.gap) tightestWin = { gap, winner: winner.name, second: second.name, date: g.date }; if(winner.score < lowestWinner.score) lowestWinner = { score: winner.score, name: winner.name, date: g.date }; if(second.score > highestLoser.score) highestLoser = { score: second.score, name: second.name, date: g.date }; }); return { biggestWin, tightestWin, lowestWinner, highestLoser }; }, [gameHistory]);
   const getPieData = () => playerStats.filter(s=>s.wins>0).map(s=>({name:s.name,value:s.wins}));
@@ -330,36 +319,11 @@ export default function YamsUltimateLegacy() {
   const getTensionColor = () => { if(players.length < 2) return 'bg-gray-800'; const totals = players.map(p => calcTotal(p)).sort((a,b)=>b-a); const diff = totals[0] - totals[1]; if(diff < 20) return 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse'; if(diff < 50) return 'bg-gradient-to-r from-yellow-500 to-orange-500'; return 'bg-gradient-to-r from-blue-500 to-cyan-500'; };
   
   // TIMELAPSE
-  const stopPlayback = () => {
-      if (replayIntervalRef.current) clearInterval(replayIntervalRef.current);
-      setIsReplaying(false);
-      setReplayGame(null);
-  };
-
-  const playTimelapse = () => {
-      if(!replayGame || !replayGame.moveLog) return;
-      setIsReplaying(true);
-      const log = replayGame.moveLog;
-      const tempScores = {};
-      players.forEach(p => tempScores[p] = {});
-      
-      let step = 0;
-      replayIntervalRef.current = setInterval(() => {
-          if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; }
-          const move = log[step];
-          tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) };
-          setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))}));
-          step++;
-      }, 500); 
-  };
+  const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
+  const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
   
   // QUICK EDIT (Fin de partie)
-  const quickEdit = () => {
-      setShowEndGameModal(false);
-      setEditMode(true);
-      setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));
-      setLastPlayerBeforeEdit(lastPlayerToPlay);
-  };
+  const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
 
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getPlayerTotals(p, replayGame.grid).total}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
@@ -448,7 +412,7 @@ export default function YamsUltimateLegacy() {
                     <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
                     <div className="grid grid-cols-2 gap-2">
                         <button onClick={quickEdit} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Edit3 size={16}/> MODIFIER</button>
-                        <button onClick={()=>setShowEndGameModal(false)} className="py-4 bg-white/10 text-white font-bold rounded-2xl">FERMER</button>
+                        <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
                     </div>
                 </div>
             </div>
@@ -587,31 +551,49 @@ export default function YamsUltimateLegacy() {
                 </div>
               </div>
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {lastPlayerToPlay&&!editMode&&<div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20"><div className="flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><span className="text-2xl">🎯</span><div><div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>{getEmptyCells(getNextPlayer()).length>0&&<div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>}</div></div>{lastModifiedCell&&(()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()}</div></div>}
+              {/* PANNEAU INFORMATION JOUEUR */}
+              {!editMode && !isGameComplete() && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-3">
+                              <span className="text-2xl">🎯</span>
+                              <div>
+                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
+                                  {getEmptyCells(getNextPlayer()).length>0 && (
+                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
+                                  )}
+                              </div>
+                          </div>
+                          {lastModifiedCell && (
+                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
+                          )}
+                      </div>
+                  </div>
+              )}
 
-              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
-                <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
+              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-24 sm:w-48"/>{players.map((_,i)=><col key={i} className="w-20 sm:w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
+                <th className="text-left p-1 sm:p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10 text-xs sm:text-base">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1">
-                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={24} fill="currentColor" /></div>}
-                        <div className="flex items-center gap-2">{playerAvatars[p] || "👤"} {p}</div>
-                        {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
-                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
+                    <div className="p-1 sm:p-3 text-white font-bold text-xs sm:text-lg flex flex-col items-center justify-center gap-1">
+                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={16} fill="currentColor" /></div>}
+                        <div className="flex items-center gap-1 sm:gap-2 truncate w-full justify-center">{playerAvatars[p] || "👤"} {p}</div>
+                        {!lastPlayerToPlay && p === starterName && <span className="text-[10px] sm:text-xs bg-yellow-500 text-black px-1 sm:px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
+                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-[10px] sm:text-xs bg-purple-500/30 text-purple-200 px-1 sm:px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
                     </div>
                 </th>)}</tr></thead><tbody>
                 {categories.map(cat=>{
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block">{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                  {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
-                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
-                  :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
-                  :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
+                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-1 sm:p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-lg sm:text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block text-xs sm:text-base">{cat.name}</span>{cat.desc&&<span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5 hidden sm:block">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-1 sm:p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
+                  {cat.upperTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
+                  :cat.bonus?<div className="space-y-1"><div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-[10px] font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-[10px] font-semibold text-green-400">✅ OK!</div>:<div className="flex items-center justify-center gap-1 text-[10px] font-bold"><span className="text-orange-400">-{63-calcUpper(p)}</span></div>)}</div>
+                  :cat.upperGrandTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
+                  :cat.lowerTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
                   :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
                   </td>)}</tr>;
                 })}
-                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
+                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-2 sm:p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-xl sm:text-3xl">🏆</span><span className="text-white font-black text-sm sm:text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-2 sm:p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-lg sm:text-2xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl text-gray-500">???</div>:<div className="text-lg sm:text-4xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
               </tbody></table></div>
             </div>
           </div>
@@ -692,7 +674,7 @@ export default function YamsUltimateLegacy() {
                 </div>}
                 </div></div></div>;})}</div></div>}
 
-            {/* 3. RECORDS & STATS (GRILLE DE 4) - RESTAURÉ */}
+            {/* 3. RECORDS & STATS (GRILLE DE 4) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
               <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -733,7 +715,7 @@ export default function YamsUltimateLegacy() {
                 </div>
             )}
 
-            {/* 5. FACE A FACE (CORRIGE) */}
+            {/* 5. FACE A FACE (CORRIGE & LISIBLE) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                 <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
                 
@@ -751,7 +733,7 @@ export default function YamsUltimateLegacy() {
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {/* CARTE JOUEUR A */}
+                        {/* CARTE JOUEUR A (Bleu Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -787,7 +769,7 @@ export default function YamsUltimateLegacy() {
                             </div>
                         </div>
 
-                        {/* CARTE JOUEUR B */}
+                        {/* CARTE JOUEUR B (Rouge Translucide comme HoF) */}
                         <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
@@ -825,7 +807,6 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
             </div>
-
           </div>
         )}
       </div>
