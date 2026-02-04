@@ -134,8 +134,8 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner" title="Changer l'avatar">
-            {avatar || "👤"}
+        <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
+            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -164,15 +164,21 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
 };
 
-// --- COMPOSANTS DE GRAPHES SVG ---
+// --- COMPOSANTS DE GRAPHES SVG SIMPLES ---
 const RadarChart = ({ stats }) => {
-    const center = 50; const radius = 40; const axes = 5;
+    const center = 50;
+    const radius = 40;
+    const axes = 5;
     const labels = ["Chance", "Stratégie", "Audace", "Sécurité", "Régularité"];
     const points = stats.map((val, i) => {
         const angle = (Math.PI * 2 * i) / axes - Math.PI / 2;
-        return [center + radius * (val / 100) * Math.cos(angle), center + radius * (val / 100) * Math.sin(angle)];
+        return [
+            center + radius * (val / 100) * Math.cos(angle),
+            center + radius * (val / 100) * Math.sin(angle)
+        ];
     });
     const pointsStr = points.map(p => p.join(',')).join(' ');
+
     return (
         <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
             {[100, 75, 50, 25].map(r => (
@@ -182,23 +188,36 @@ const RadarChart = ({ stats }) => {
                 }).join(' ')} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
             ))}
             <polygon points={pointsStr} fill="rgba(99, 102, 241, 0.4)" stroke="#8b5cf6" strokeWidth="2" />
-            {points.map((p, i) => (<g key={i}><circle cx={p[0]} cy={p[1]} r="2" fill="#fff" /><text x={center + (radius + 12) * Math.cos((Math.PI * 2 * i) / axes - Math.PI / 2)} y={center + (radius + 12) * Math.sin((Math.PI * 2 * i) / axes - Math.PI / 2)} fontSize="4" fill="#ccc" textAnchor="middle" alignmentBaseline="middle">{labels[i]}</text></g>))}
+            {points.map((p, i) => (
+                <g key={i}>
+                    <circle cx={p[0]} cy={p[1]} r="2" fill="#fff" />
+                    <text x={center + (radius + 12) * Math.cos((Math.PI * 2 * i) / axes - Math.PI / 2)} 
+                          y={center + (radius + 12) * Math.sin((Math.PI * 2 * i) / axes - Math.PI / 2)} 
+                          fontSize="4" fill="#ccc" textAnchor="middle" alignmentBaseline="middle">
+                        {labels[i]}
+                    </text>
+                </g>
+            ))}
         </svg>
     );
 };
 
 const TrendChart = ({ data }) => {
     if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
-    const max = Math.max(...data) + 10; const min = Math.min(...data) - 10;
+    const max = Math.max(...data) + 10;
+    const min = Math.min(...data) - 10;
     const points = data.map((val, i) => {
         const x = (i / (data.length - 1)) * 100;
         const y = 100 - ((val - min) / (max - min)) * 100;
         return `${x},${y}`;
     }).join(' ');
+
     return (
         <svg viewBox="0 0 100 100" className="w-full h-full">
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" />
-            {data.map((val, i) => (<circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / (max - min)) * 100} r="1.5" fill="#fff" />))}
+            {data.map((val, i) => (
+                 <circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / (max - min)) * 100} r="1.5" fill="#fff" />
+            ))}
         </svg>
     );
 };
@@ -236,7 +255,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
+  const [jokersEnabled, setJokersEnabled] = useState(false);
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -277,10 +296,8 @@ export default function YamsUltimateLegacy() {
   useEffect(() => {
     let wakeLock = null;
     const requestWakeLock = async () => {
-        if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && wakeLockEnabled) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { console.log(err); }
+        if ('wakeLock' in navigator && wakeLockEnabled) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
         }
     };
     if (wakeLockEnabled) requestWakeLock();
@@ -484,9 +501,9 @@ export default function YamsUltimateLegacy() {
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
                 <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
                 <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
-                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0]}</div>
+                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0] || "..."}</div>
                 <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0] || "")}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
                     <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
                 </div>
                 {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
@@ -614,34 +631,6 @@ export default function YamsUltimateLegacy() {
                     </div>
                 </div>
             </div>
-        )}
-
-        {/* TAB: HISTORY */}
-        {currentTab==='history'&&(
-          <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
-            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3"><span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>{g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}</div>
-                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
-                </div>
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{
-                    const hasBonus = g.grid && calcUpper(pl.name, g.grid) >= 63;
-                    return (
-                    <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm">
-                        <span className="text-white font-bold flex items-center gap-3">
-                            {pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}
-                            {!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}
-                            <span className="text-lg">{pl.name}</span>
-                            {pl.yamsCount>0&&<span className="text-yellow-400 text-xs bg-yellow-500/20 px-2 py-0.5 rounded border border-yellow-500/50 flex items-center gap-1">🎲 Yams</span>}
-                            {hasBonus&&<span className="text-blue-400 text-xs bg-blue-500/20 px-2 py-0.5 rounded border border-blue-500/50 flex items-center gap-1">🎁 Bonus</span>}
-                            {pl.score>=300&&<span className="text-purple-400 text-xs bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1">⭐ 300+</span>}
-                        </span>
-                        <span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>
-                    </div>
-                );})}</div></div>)}</div>}
-          </div></div>
         )}
 
         {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
@@ -837,6 +826,41 @@ export default function YamsUltimateLegacy() {
                      </div>
                 </div>
 
+            </div>
+        )}
+
+        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
+        {currentTab==='trophies'&&(
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {ACHIEVEMENTS.map(ach => {
+                            let winners = [];
+                            playerStats.forEach(p => {
+                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
+                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
+                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
+                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
+                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
+                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                            });
+                            const unlocked = winners.length > 0;
+                            return (
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105' : 'bg-black/20 border-white/5 opacity-50 grayscale'}`}>
+                                    <div className="text-4xl mb-2">{ach.icon}</div>
+                                    <div className="font-bold text-white text-sm">{ach.name}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2">{ach.desc}</div>
+                                    {unlocked && (
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-1 w-full truncate">
+                                            {winners.join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         )}
       </div>
