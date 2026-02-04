@@ -312,11 +312,11 @@ export default function YamsUltimateLegacy() {
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
-  const calcUpper= (p, sc=scores) => categories.filter(c=>c.upper).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0);
+  const calcUpper= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.upper).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
   const getBonus= (p, sc=scores) => calcUpper(p, sc)>=63?35:0;
   const calcUpperGrand= (p, sc=scores) => calcUpper(p, sc)+getBonus(p, sc);
-  const calcLower= (p, sc=scores) => categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0);
-  const calcTotal= (p, sc=scores) => { let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
+  const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
+  const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
   // NOUVELLE FONCTION CALCUL BONUS DIFF
