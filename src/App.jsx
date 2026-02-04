@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Skull, Undo2, BookOpen, Dices, HelpCircle, Eye, ArrowLeft, Trophy, Medal, TrendingUp, Activity, Lock, History as HistoryIcon, BarChart3, Wand2, Timer, EyeOff, LockKeyhole, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Image, Fingerprint, Smartphone, Vibration } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, History as HistoryIcon, Timer, EyeOff, Palette, Coffee, Moon, Sun, Monitor, Ghost, Zap, Scale, Swords, ThumbsDown, ThumbsUp, Play, Pause, Crown, ScrollText, UserCog, Star, Flame, Award, Sparkles, Camera, Fingerprint, Smartphone, Waves } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
@@ -219,9 +219,7 @@ export default function YamsUltimateLegacy() {
   const [fingerWinner, setFingerWinner] = useState(null);
   
   const replayIntervalRef = useRef(null);
-  const touchContainerRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-  const fileInputRef = useRef(null);
 
   // WAKE LOCK LOGIC
   useEffect(() => {
@@ -548,7 +546,7 @@ export default function YamsUltimateLegacy() {
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Vibration size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400"><Waves size={20}/></div><div><div className="text-white font-bold">Vibrations</div><div className="text-gray-400 text-xs">Retour haptique</div></div></div><button onClick={()=>setHapticEnabled(!hapticEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(hapticEnabled?'bg-orange-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hapticEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Smartphone size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
 
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
@@ -665,7 +663,25 @@ export default function YamsUltimateLegacy() {
                 </div>
               </div>
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {lastPlayerToPlay&&!editMode&&<div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20"><div className="flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><span className="text-2xl">🎯</span><div><div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>{getEmptyCells(getNextPlayer()).length>0&&<div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>}</div></div>{lastModifiedCell&&(()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()}</div></div>}
+              {/* PANNEAU INFORMATION JOUEUR */}
+              {!editMode && !isGameComplete() && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-3">
+                              <span className="text-2xl">🎯</span>
+                              <div>
+                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
+                                  {getEmptyCells(getNextPlayer()).length>0 && (
+                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
+                                  )}
+                              </div>
+                          </div>
+                          {lastModifiedCell && (
+                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
+                          )}
+                      </div>
+                  </div>
+              )}
 
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-24 sm:w-48"/>{players.map((_,i)=><col key={i} className="w-20 sm:w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-1 sm:p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10 text-xs sm:text-base">Catégorie</th>
@@ -753,7 +769,7 @@ export default function YamsUltimateLegacy() {
               {playerStats.length===0&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
             </div>
 
-            {/* 2. PALMARES (PODIUM) AVEC SERIES */}
+            {/* 2. PALMARES (PODIUM) AVEC DETAILS ET SERIES */}
             {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
                 const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
                 const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
@@ -811,33 +827,33 @@ export default function YamsUltimateLegacy() {
                 </div>
             )}
 
-            {/* 5. FACE A FACE (CORRIGE & LISIBLE) */}
+            {/* 5. FACE A FACE (STYLE HALL OF FAME APPLIQUÉ) */}
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                 <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-red-500"/> Face-à-Face</h2>
                 
-                <div className="flex gap-4 items-center justify-center mb-8 bg-black/20 p-2 rounded-2xl">
-                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-transparent p-2 outline-none text-white font-bold text-center w-full">
+                <div className="flex gap-4 items-center justify-center mb-8">
+                    <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
                         <option value="" className="bg-slate-900">Joueur A</option>
                         {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                     </select>
-                    <div className="text-xl font-black italic text-gray-600">VS</div>
-                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-transparent p-2 outline-none text-white font-bold text-center w-full">
+                    <div className="text-2xl font-black italic text-gray-500">VS</div>
+                    <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30">
                         <option value="" className="bg-slate-900">Joueur B</option>
                         {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                     </select>
                 </div>
                 
                 {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                         {/* CARTE JOUEUR A */}
-                        <div className="bg-gradient-to-br from-blue-600/80 to-blue-900/80 border border-blue-400/50 p-6 rounded-2xl relative overflow-hidden shadow-[0_0_30px_rgba(37,99,235,0.2)]">
-                            <div className="absolute top-[-20%] right-[-10%] text-9xl opacity-10 rotate-12 text-black pointer-events-none">A</div>
-                            <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider drop-shadow-md">{versus.p1}</h3>
-                                    <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest opacity-80">Challenger A</p>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p1}</h3>
+                                    <p className="text-blue-100 text-xs font-bold uppercase">Challenger A</p>
                                 </div>
-                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+                                <div className="text-5xl font-black text-white drop-shadow-md">
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
@@ -845,35 +861,35 @@ export default function YamsUltimateLegacy() {
                                     }).length}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center relative z-10">
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Moyenne</div>
+                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Moyenne</div>
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p1).avgScore}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Yams</div>
-                                    <div className="font-black text-yellow-300 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Yams</div>
+                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p1).yamsCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Bonus</div>
-                                    <div className="font-black text-orange-300 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Bonus</div>
+                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p1).bonusCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-blue-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Record</div>
-                                    <div className="font-black text-green-300 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-blue-500/20">
+                                    <div className="text-blue-100 font-bold mb-1">Record</div>
+                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p1).maxScore}</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* CARTE JOUEUR B */}
-                        <div className="bg-gradient-to-br from-red-600/80 to-red-900/80 border border-red-400/50 p-6 rounded-2xl relative overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.2)]">
-                            <div className="absolute top-[-20%] right-[-10%] text-9xl opacity-10 rotate-12 text-black pointer-events-none">B</div>
-                            <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 border border-red-500/30 p-6 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider drop-shadow-md">{versus.p2}</h3>
-                                    <p className="text-red-200 text-[10px] font-bold uppercase tracking-widest opacity-80">Challenger B</p>
+                                    <h3 className="text-2xl font-black text-white uppercase tracking-wider shadow-black drop-shadow-md">{versus.p2}</h3>
+                                    <p className="text-red-100 text-xs font-bold uppercase">Challenger B</p>
                                 </div>
-                                <div className="text-6xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+                                <div className="text-5xl font-black text-white drop-shadow-md">
                                     {gameHistory.filter(g => {
                                         const p1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                         const p2 = (g.players||g.results).find(p=>p.name===versus.p2);
@@ -881,27 +897,51 @@ export default function YamsUltimateLegacy() {
                                     }).length}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center relative z-10">
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Moyenne</div>
+                            <div className="grid grid-cols-4 gap-2 text-center text-xs mt-4 relative z-10">
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Moyenne</div>
                                     <div className="font-black text-white text-lg">{playerStats.find(s=>s.name===versus.p2).avgScore}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Yams</div>
-                                    <div className="font-black text-yellow-300 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Yams</div>
+                                    <div className="font-black text-yellow-400 text-lg">{playerStats.find(s=>s.name===versus.p2).yamsCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Bonus</div>
-                                    <div className="font-black text-orange-300 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Bonus</div>
+                                    <div className="font-black text-orange-400 text-lg">{playerStats.find(s=>s.name===versus.p2).bonusCount}</div>
                                 </div>
-                                <div className="bg-black/40 p-2 rounded-xl border border-white/10 backdrop-blur-sm">
-                                    <div className="text-red-100/70 font-bold text-[9px] uppercase tracking-wider mb-1">Record</div>
-                                    <div className="font-black text-green-300 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
+                                <div className="bg-black/40 p-2 rounded-lg border border-red-500/20">
+                                    <div className="text-red-100 font-bold mb-1">Record</div>
+                                    <div className="font-black text-green-400 text-lg">{playerStats.find(s=>s.name===versus.p2).maxScore}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* 6. PROFILS (RADAR) - TOUJOURS VISIBLE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+                {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).slice(0,4).map(name => {
+                    const s = playerStats.find(st => st.name === name) || {};
+                    const luck = Math.min(100, (s.yamsCount * 20) + 20); 
+                    const strategy = Math.min(100, (s.bonusCount || 0) * 20);
+                    const audacity = Math.min(100, (s.maxScore / 375) * 100);
+                    const consistency = Math.min(100, (s.wins / (s.games || 1)) * 100);
+
+                    return (
+                    <div key={name} className={`bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden`}>
+                        <h3 className="font-black uppercase mb-4 flex items-center justify-between z-10 relative">
+                            {name} <span className="text-[10px] bg-blue-500/20 px-2 py-1 rounded text-blue-300">PROFIL</span>
+                        </h3>
+                        <div className="relative h-32 w-full flex items-center justify-center gap-8">
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-blue-500" style={{height:`${luck}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Chance</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-purple-500" style={{height:`${strategy}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Stratégie</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-red-500" style={{height:`${audacity}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Audace</span></div>
+                            <div className="flex flex-col items-center gap-2"><div className="w-3 h-16 bg-white/10 rounded-full overflow-hidden relative"><div className="absolute bottom-0 w-full bg-green-500" style={{height:`${consistency}%`}}></div></div><span className="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Régularité</span></div>
+                        </div>
+                    </div>
+                )})}
             </div>
           </div>
         )}
