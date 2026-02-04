@@ -190,15 +190,17 @@ const RadarChart = ({ stats }) => {
 const TrendChart = ({ data }) => {
     if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
     const max = Math.max(...data) + 10; const min = Math.min(...data) - 10;
+    // CORRECTION CRASH: Si max == min (division par zero possible), on ajoute un offset
+    const range = (max - min) === 0 ? 1 : (max - min); 
     const points = data.map((val, i) => {
         const x = (i / (data.length - 1)) * 100;
-        const y = 100 - ((val - min) / (max - min)) * 100;
+        const y = 100 - ((val - min) / range) * 100;
         return `${x},${y}`;
     }).join(' ');
     return (
         <svg viewBox="0 0 100 100" className="w-full h-full">
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" />
-            {data.map((val, i) => (<circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / (max - min)) * 100} r="1.5" fill="#fff" />))}
+            {data.map((val, i) => (<circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / range) * 100} r="1.5" fill="#fff" />))}
         </svg>
     );
 };
@@ -251,6 +253,9 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
+  // FIX CRASH FIN DE PARTIE: Stocker les données de fin dans un état séparé
+  const [endGameData, setEndGameData] = useState(null);
+
   // SWIPE
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -319,7 +324,6 @@ export default function YamsUltimateLegacy() {
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
-  // NOUVELLE FONCTION CALCUL BONUS DIFF
   const calculateBonusDiff = (p) => {
     const targets = { ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 };
     let current = 0;
@@ -379,7 +383,7 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setEndGameData(null);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
@@ -388,19 +392,42 @@ export default function YamsUltimateLegacy() {
       saveCurrentGame({});
   };
 
-  useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
+  // EFFET DE FIN DE PARTIE : ON FIGE LES DONNEES DANS endgameData
+  useEffect(()=>{
+      if(isGameComplete() && !showEndGameModal && !endGameData) {
+          const winners = getWinner();
+          const loser = getLoser();
+          if (winners && winners[0]) {
+             const winnerName = winners[0];
+             // ON SAUVEGARDE UN SNAPSHOT (IMAGE) DES DONNEES
+             setEndGameData({
+                 winner: winnerName,
+                 score: calcTotal(winnerName),
+                 hasYams: scores[winnerName]?.yams === 50,
+                 loser: loser ? loser.name : null
+             });
+             setShowVictoryAnimation(true);
+             setConfetti('gold');
+             setTimeout(()=>{
+                 setShowVictoryAnimation(false);
+                 setShowEndGameModal(true);
+                 setConfetti(null);
+             }, 2000);
+          }
+      }
+  }, [scores, showEndGameModal, endGameData]);
+
   useEffect(() => { if (showEndGameModal && !currentGage) { setCurrentGage(gages[Math.floor(Math.random() * gages.length)]); } else if (!showEndGameModal) { setCurrentGage(null); } }, [showEndGameModal]);
+  
   const saveGameFromModal=()=>{ 
-      const w=getWinner(); 
-      if (!w || !w[0]) return; // Sécurité anti-crash
-      const game={id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
+      if (!endGameData) return;
+      const game={id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:p===endGameData.winner,yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
       setGlobalXP(prev => prev + 100);
-      const l=getLoser();
-      resetGame(l ? l.name : null); 
+      resetGame(endGameData.loser); 
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
-  const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(typeof navigator!=='undefined'&&navigator.share){try{await navigator.share({text:t});}catch(e){if(typeof navigator!=='undefined')navigator.clipboard.writeText(t);alert('Score copié!');}}else{if(typeof navigator!=='undefined')navigator.clipboard.writeText(t);alert('Score copié!');}};
+  const shareScore=async()=>{const t='Partie YAMS terminée ! Gagnant: '+(endGameData?.winner || "?")+' avec '+(endGameData?.score || "?")+' points';if(typeof navigator!=='undefined'&&navigator.share){try{await navigator.share({text:t});}catch(e){if(typeof navigator!=='undefined')navigator.clipboard.writeText(t);alert('Score copié!');}}else{if(typeof navigator!=='undefined')navigator.clipboard.writeText(t);alert('Score copié!');}};
   const exportData=()=>{const b=new Blob([JSON.stringify({gameHistory,exportDate:new Date().toISOString(),version:'1.0'},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
 
@@ -432,7 +459,7 @@ export default function YamsUltimateLegacy() {
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(30)].map((_,i)=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',opacity:0.5}}>🌧️</div>)}</div>}
       <style>{`@keyframes fall{to{transform:translateY(100vh) rotate(360deg);opacity:0;}}@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-10px)}20%,40%,60%,80%{transform:translateX(10px)}}.shake-animation{animation:shake 0.5s ease-in-out;}@keyframes slideInRight{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}.slide-in-right{animation:slideInRight 0.5s ease-out;}@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}.tab-enter{animation:slideIn 0.4s ease-out;} @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }`}</style>
       {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'bg-gradient-to-r px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+( showAchievementNotif.icon==='🎲'?'from-yellow-500 to-orange-500 border-yellow-300':showAchievementNotif.icon==='🎁'?'from-green-500 to-emerald-500 border-green-300':'from-purple-500 to-pink-500 border-purple-300')}><div className="flex items-center gap-3"><span className="text-5xl animate-bounce">{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
-      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{getWinner()?.join(' & ') || "?"}</div></div></div>}
+      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{endGameData?.winner || "?"}</div></div></div>}
       {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce"><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl">🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
 
       {/* STUDIO PHOTO MODAL */}
@@ -493,20 +520,20 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
 
-      {/* END GAME MODAL - SAFE MODE */}
-      {showEndGameModal && getWinner() && getWinner()[0] && (
+      {/* END GAME MODAL - SAFE MODE - UTILISE endGameData FIGÉ */}
+      {showEndGameModal && endGameData && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
             <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
                 <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
                 <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
-                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0]}</div>
+                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{endGameData.winner}</div>
                 <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.score}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.hasYams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
                 </div>
-                {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
+                {players.length > 1 && endGameData.loser && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {endGameData.loser}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
                 <div className="space-y-2 relative z-10">
                     <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
                     <div className="grid grid-cols-2 gap-2">
