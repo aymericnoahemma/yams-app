@@ -135,7 +135,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
-            {avatar || "👤"}
+            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -252,7 +252,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // FIX CRASH FIN DE PARTIE: Stocker les données de fin dans un état séparé
+  // FIX CRASH FIN DE PARTIE: Stocker les données de fin dans un état séparé (SNAPSHOT)
   const [endGameData, setEndGameData] = useState(null);
 
   // SWIPE
@@ -323,7 +323,6 @@ export default function YamsUltimateLegacy() {
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
-  // NOUVELLE FONCTION CALCUL BONUS DIFF
   const calculateBonusDiff = (p) => {
     const targets = { ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 };
     let current = 0;
@@ -392,7 +391,7 @@ export default function YamsUltimateLegacy() {
       saveCurrentGame({});
   };
 
-  // EFFET DE FIN DE PARTIE - SAFE
+  // EFFET DE FIN DE PARTIE - SAFE SNAPSHOT
   useEffect(()=>{
       if(isGameComplete() && !showEndGameModal && !endGameData) {
           const winners = getWinner();
