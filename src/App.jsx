@@ -5,7 +5,7 @@ import {
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
+  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Sigma, MoveVertical
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -135,7 +135,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
-            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
+            {avatar || "👤"}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -187,17 +187,20 @@ const RadarChart = ({ stats }) => {
     );
 };
 
-const TrendChart = ({ data }) => {
+const TrendChart = ({ data, record }) => {
     if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
-    const max = Math.max(...data) + 10; const min = Math.min(...data) - 10;
+    const max = Math.max(...data, record) + 10; const min = Math.min(...data) - 10;
     const range = (max - min) === 0 ? 1 : (max - min); 
     const points = data.map((val, i) => {
         const x = (i / (data.length - 1)) * 100;
         const y = 100 - ((val - min) / range) * 100;
         return `${x},${y}`;
     }).join(' ');
+    const recordY = 100 - ((record - min) / range) * 100;
     return (
-        <svg viewBox="0 0 100 100" className="w-full h-full">
+        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+             <line x1="0" y1={recordY} x2="100" y2={recordY} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4 2" />
+             <text x="100" y={recordY - 2} fontSize="4" fill="#fbbf24" textAnchor="end">Record: {record}</text>
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" />
             {data.map((val, i) => (<circle key={i} cx={(i / (data.length - 1)) * 100} cy={100 - ((val - min) / range) * 100} r="1.5" fill="#fff" />))}
         </svg>
@@ -252,7 +255,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // FIX CRASH FIN DE PARTIE: Données figées
+  // FIX CRASH FIN DE PARTIE: Stocker les données de fin dans un état séparé (SNAPSHOT)
   const [endGameData, setEndGameData] = useState(null);
 
   // SWIPE
@@ -346,15 +349,12 @@ export default function YamsUltimateLegacy() {
     if (!gameHistory || gameHistory.length === 0) return { failures, totalGames: 0 };
 
     gameHistory.forEach(game => {
-        // Support pour les anciennes versions de l'historique
         const participants = game.players || game.results || [];
         const grid = game.grid || {};
-
         participants.forEach(p => {
             const playerGrid = grid[p.name];
             if (playerGrid) {
                 totalGames++;
-                // On vérifie si la case vaut explicitement 0
                 Object.keys(failures).forEach(catId => {
                     if (playerGrid[catId] === 0) {
                         failures[catId]++;
@@ -492,109 +492,27 @@ export default function YamsUltimateLegacy() {
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{endGameData?.winner || "?"}</div></div></div>}
       {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce"><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl">🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
 
-      {/* STUDIO PHOTO MODAL */}
-      {showStudioModal && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[120] p-4">
-              <div className="bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-                  <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
-                  <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
-                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
-                  
-                  <div className="space-y-3 mb-8">
-                    {players.map(p => (
-                        <div key={p} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                            <span className="font-bold text-gray-300">{p}</span>
-                            <span className="font-black text-white text-xl">{calcTotal(p)} pts</span>
-                        </div>
-                    ))}
-                  </div>
-                  
-                  <div className="flex items-center justify-center gap-2 mb-6 opacity-50">
-                      <Dices size={16} className="text-white"/>
-                      <span className="text-white font-bold tracking-widest text-xs">YAMS ULTIMATE LEGACY</span>
-                  </div>
-                  
-                  <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
-              </div>
-          </div>
-      )}
-
-      {showAvatarModal && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
-              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
-                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
-                  <div className="grid grid-cols-4 gap-3">
-                      {AVATAR_LIST.map((av, i) => {
-                          const player = players[avatarSelectorIndex];
-                          const stats = playerStats.find(s => s.name === player);
-                          const locked = isAvatarLocked(av.req, stats);
-                          return (
-                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/10 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
-                                  {av.icon}
-                                  {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
-                              </button>
-                          );
-                      })}
-                  </div>
-                  <div className="mt-4 text-xs text-gray-400 text-center">Jouez pour débloquer de nouveaux avatars !</div>
-              </div>
-          </div>
-      )}
-
-      {undoData && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
-            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
-                <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
-            </button>
-        </div>
-      )}
-
       {/* END GAME MODAL - SAFE MODE - UTILISE endGameData FIGÉ */}
       {showEndGameModal && endGameData && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-sm relative group">
-            {/* EFFET GLOW DORE */}
-            <div className="absolute -inset-0.5 bg-yellow-500 rounded-[30px] opacity-75 blur-lg group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-            
-            <div className="relative bg-slate-900 rounded-[30px] border-2 border-yellow-500 overflow-hidden shadow-2xl">
-                {/* HEAD */}
-                <div className="bg-gradient-to-b from-yellow-500/20 to-transparent p-6 text-center">
-                    <Trophy className="mx-auto text-yellow-500 mb-4 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" size={64} strokeWidth={1.5} />
-                    <h2 className="text-yellow-500 font-bold tracking-[0.2em] text-xs uppercase mb-2">THE WINNER IS</h2>
-                    <div className="text-4xl font-black text-white uppercase tracking-tight drop-shadow-md">{endGameData.winner}</div>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
+            <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
+                <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
+                <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
+                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{endGameData.winner}</div>
+                <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.score}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.hasYams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
                 </div>
-
-                {/* STATS */}
-                <div className="grid grid-cols-2 gap-3 px-6 mb-6">
-                    <div className="bg-slate-800 p-4 rounded-2xl text-center border border-white/5">
-                        <div className="text-3xl font-black text-white mb-1">{endGameData.score}</div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">POINTS</div>
+                {players.length > 1 && endGameData.loser && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {endGameData.loser}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
+                <div className="space-y-2 relative z-10">
+                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
+                        <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
                     </div>
-                    <div className="bg-slate-800 p-4 rounded-2xl text-center border border-white/5">
-                        <div className="text-3xl font-black text-white mb-1">{endGameData.hasYams ? "1" : "0"}</div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">YAMS</div>
-                    </div>
-                </div>
-
-                {/* GAGE */}
-                {players.length > 1 && endGameData.loser && (
-                    <div className="px-6 mb-6">
-                        <div className="bg-red-900/30 border border-red-500/30 p-4 rounded-2xl text-center">
-                            <p className="text-[10px] uppercase font-bold text-red-400 mb-2">Gage pour {endGameData.loser}</p>
-                            <p className="text-sm italic text-white font-medium">"{currentGage}"</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* ACTIONS */}
-                <div className="px-6 pb-6 space-y-3">
-                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg transform transition active:scale-95">ENREGISTRER</button>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button onClick={shareScore} className="py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 border border-white/10"><Share2 size={16}/> PARTAGER</button>
-                        <button onClick={()=>setShowStudioModal(true)} className="py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 border border-white/10"><Camera size={16}/> STUDIO</button>
-                    </div>
-                    <button onClick={quickEdit} className="w-full py-2 text-gray-500 font-bold text-[10px] uppercase tracking-widest hover:text-white transition-colors">Modifier la grille</button>
+                    <button onClick={quickEdit} className="w-full py-3 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-white">Modifier la grille</button>
                 </div>
             </div>
           </div>
