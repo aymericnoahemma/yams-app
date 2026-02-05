@@ -5,7 +5,7 @@ import {
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  HelpCircle, AlertTriangle, Crosshair, Gift, Camera
+  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -197,7 +197,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
+  const [jokersEnabled, setJokersEnabled] = useState(false);
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -797,7 +797,7 @@ export default function YamsUltimateLegacy() {
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
-                {/* 1. SCORE MAXI ATTEINT (BANNER) */}
+                {/* 1. ANCIEN CONTENU (Haut de page) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
                 </div>
@@ -817,7 +817,6 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
-                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -857,7 +856,7 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
 
-                {/* 5. FACE A FACE (CORRIGE & LISIBLE & DESIGN HARMONISÉ) */}
+                {/* 2. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
@@ -966,7 +965,7 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 6. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME ROUGE */}
+                {/* 5. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME ROUGE */}
                 <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
                      <div className="absolute top-4 right-4 opacity-20"><AlertTriangle size={64} className="text-red-400"/></div>
                      <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-400"/> Zone de Danger</h2>
@@ -1033,8 +1032,6 @@ export default function YamsUltimateLegacy() {
                                 if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
                                 if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
                                 if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                                if (ach.id === 'perfect_lose' && p.games > 0) {/* Condition simplifiée pour démo */} ; // À implémenter si besoin
-                                if (ach.id === 'chaos_survivor' && p.games > 0) {/* Idem */};
                             });
                             const unlocked = winners.length > 0;
                             return (
