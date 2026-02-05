@@ -5,7 +5,7 @@ import {
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
+  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -164,6 +164,49 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
 };
 
+// --- COMPOSANTS DE GRAPHES SVG ---
+const TrendChart = ({ data, record }) => {
+    if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
+    // Ajout du record à l'échelle pour qu'il soit visible
+    const allValues = [...data, record];
+    const max = Math.max(...allValues) + 10; 
+    const min = Math.max(0, Math.min(...allValues) - 10);
+    const range = (max - min) === 0 ? 1 : (max - min); 
+    
+    const points = data.map((val, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 100 - ((val - min) / range) * 100;
+        return `${x},${y}`;
+    }).join(' ');
+    
+    // Calcul position ligne record
+    const recordY = 100 - ((record - min) / range) * 100;
+
+    return (
+        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+             {/* Ligne Record en pointillé jaune */}
+             <line x1="0" y1={recordY} x2="100" y2={recordY} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4 2" />
+             <text x="100" y={recordY - 2} fontSize="4" fill="#fbbf24" textAnchor="end">Record: {record}</text>
+            
+            {/* Ligne de tendance */}
+            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            
+            {/* Points de données */}
+            {data.map((val, i) => {
+                 const x = (i / (data.length - 1)) * 100;
+                 const y = 100 - ((val - min) / range) * 100;
+                 return (
+                    <g key={i}>
+                        <circle cx={x} cy={y} r="2" fill="#fff" stroke="#10b981" strokeWidth="0.5" />
+                        {/* Affiche le score au dessus du point */}
+                        <text x={x} y={y - 5} fontSize="4" fill="#fff" textAnchor="middle">{val}</text>
+                    </g>
+                 );
+            })}
+        </svg>
+    );
+};
+
 // --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
@@ -205,7 +248,7 @@ export default function YamsUltimateLegacy() {
   const [showLog, setShowLog] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
-  const [versus, setVersus] = useState({p1: null, p2: null, failPlayer: 'GLOBAL'});
+  const [versus, setVersus] = useState({p1: '', p2: '', trendPlayer: '', failPlayer: 'GLOBAL'});
   const [globalXP, setGlobalXP] = useState(0);
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
