@@ -164,49 +164,6 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
 };
 
-// --- COMPOSANTS DE GRAPHES SVG ---
-const TrendChart = ({ data, record }) => {
-    if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
-    // Ajout du record à l'échelle pour qu'il soit visible
-    const allValues = [...data, record];
-    const max = Math.max(...allValues) + 10; 
-    const min = Math.max(0, Math.min(...allValues) - 10);
-    const range = (max - min) === 0 ? 1 : (max - min); 
-    
-    const points = data.map((val, i) => {
-        const x = (i / (data.length - 1)) * 100;
-        const y = 100 - ((val - min) / range) * 100;
-        return `${x},${y}`;
-    }).join(' ');
-    
-    // Calcul position ligne record
-    const recordY = 100 - ((record - min) / range) * 100;
-
-    return (
-        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-             {/* Ligne Record en pointillé jaune */}
-             <line x1="0" y1={recordY} x2="100" y2={recordY} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4 2" />
-             <text x="100" y={recordY - 2} fontSize="4" fill="#fbbf24" textAnchor="end">Record: {record}</text>
-            
-            {/* Ligne de tendance */}
-            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            
-            {/* Points de données */}
-            {data.map((val, i) => {
-                 const x = (i / (data.length - 1)) * 100;
-                 const y = 100 - ((val - min) / range) * 100;
-                 return (
-                    <g key={i}>
-                        <circle cx={x} cy={y} r="2" fill="#fff" stroke="#10b981" strokeWidth="0.5" />
-                        {/* Affiche le score au dessus du point */}
-                        <text x={x} y={y - 5} fontSize="4" fill="#fff" textAnchor="middle">{val}</text>
-                    </g>
-                 );
-            })}
-        </svg>
-    );
-};
-
 // --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
@@ -246,9 +203,8 @@ export default function YamsUltimateLegacy() {
   const [diceSkin, setDiceSkin] = useState('classic');
   const [moveLog, setMoveLog] = useState([]);
   const [showLog, setShowLog] = useState(false);
-  const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
-  const [versus, setVersus] = useState({p1: '', p2: '', trendPlayer: '', failPlayer: 'GLOBAL'});
+  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL'});
   const [globalXP, setGlobalXP] = useState(0);
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
@@ -1016,43 +972,6 @@ export default function YamsUltimateLegacy() {
                             })()}
                         </div>
                     )}
-                </div>
-
-                {/* 4. COURBE DE TENDANCE */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><TrendingUp/> Courbe de Forme</h2>
-                    <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, trendPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
-                            <option value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    
-                    <div className="h-48 w-full bg-black/20 rounded-xl p-4 relative">
-                        {(() => {
-                            const pName = versus.trendPlayer || players[0];
-                            // Extraire les scores historiques de ce joueur (PAR PARTIE, pas par jour)
-                            const historyScores = gameHistory
-                                .map(g => {
-                                    const p = (g.players||g.results).find(p => p.name === pName);
-                                    return p ? p.score : null;
-                                })
-                                .filter(s => s !== null) // Filtre les nulls si le joueur n'a pas joué cette partie
-                                .reverse() // Remettre dans l'ordre chrono (ancien -> récent)
-                                .slice(-10); // Garder les 10 derniers
-
-                            const pStat = playerStats.find(s => s.name === pName);
-                            const record = pStat ? pStat.maxScore : 0;
-
-                            if (historyScores.length < 2) return <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">Pas assez de données pour {pName}</div>;
-
-                            return <TrendChart data={historyScores} record={record} />;
-                        })()}
-                    </div>
-                    <div className="flex justify-between items-center mt-2 px-2">
-                         <span className="text-[10px] text-gray-300">10 dernières parties jouées</span>
-                         <div className="flex items-center gap-1 text-[10px] text-yellow-400"><div className="w-4 h-0.5 bg-yellow-400 border-dashed border-t"></div> Record Perso</div>
-                    </div>
                 </div>
 
                 {/* 5. STATISTIQUES DE RAYAGE (FAILURES) */}
