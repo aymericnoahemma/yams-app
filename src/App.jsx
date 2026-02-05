@@ -166,7 +166,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - CORRIGÉ V2 (Belle courbe, chiffres lisibles)
+// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -180,6 +180,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
+             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
@@ -254,9 +255,10 @@ const GameFlowChart = ({ moveLog, players }) => {
 
 // Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
+    // Si pas de stats du tout, on affiche le message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
+    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -426,13 +428,28 @@ export default function YamsUltimateLegacy() {
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
-  // REPLAY SAFE CALC (Sans joker, sans risque)
-  const getReplayTotals = (p, grid) => {
-    if(!grid || !grid[p]) return { total: 0 };
-    const upper = categories.filter(c=>c.upper).reduce((s,c)=>s+(grid[p][c.id]||0),0);
-    const bonus = upper >= 63 ? 35 : 0;
-    const lower = categories.filter(c=>c.lower).reduce((s,c)=>s+(grid[p][c.id]||0),0);
-    return { total: upper + bonus + lower };
+  // FIX REPLAY: Completely independent calculation function
+  const getSafeReplayScore = (player, grid) => {
+    if (!grid || !grid[player]) return 0;
+    
+    let upperSum = 0;
+    let lowerSum = 0;
+    
+    categories.forEach(cat => {
+        const val = grid[player][cat.id];
+        // Only count actual numbers (ignore undefined)
+        const num = (val !== undefined && val !== "") ? parseInt(val) : 0;
+        
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) {
+            upperSum += num;
+        }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) {
+            lowerSum += num;
+        }
+    });
+
+    const bonus = upperSum >= 63 ? 35 : 0;
+    return upperSum + bonus + lowerSum;
   };
 
   const calculateBonusDiff = (p) => {
@@ -615,7 +632,7 @@ export default function YamsUltimateLegacy() {
                   let currentUpperSum = 0;
                   categories.filter(c => c.upper).forEach(cat => { const val = gameGrid[p.name][cat.id]; if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); } });
                   if (currentUpperSum >= 63) { s.bonusCount++; }
-                  const totals = getReplayTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
+                  const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
                   // Accumulate dice luck (FIX: Ensure parsing works)
                   s.totalOnes += parseInt(gameGrid[p.name]['ones']||0);
                   s.totalTwos += parseInt(gameGrid[p.name]['twos']||0);
@@ -665,7 +682,7 @@ export default function YamsUltimateLegacy() {
                             if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;
                             return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid?.[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);
                         })}
-                        <tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getReplayTotals(p, replayGame.grid).total}</td>)}</tr>
+                        <tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr>
                     </tbody> 
                 </table> 
             </div> 
@@ -1144,7 +1161,7 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
-                {/* 4. RECORDS & STATS (GRILLE DE 4) */}
+                {/* 4. RECORDS & STATS */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1158,12 +1175,12 @@ export default function YamsUltimateLegacy() {
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
                         <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
+                            <option value="" selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
+                            <option value="" selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
@@ -1207,14 +1224,12 @@ export default function YamsUltimateLegacy() {
                                 return (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
                                                 <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
-                                            {/* P2 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
@@ -1278,7 +1293,7 @@ export default function YamsUltimateLegacy() {
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
                     <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg">
+                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
                             <option value="" className="bg-slate-900">Sélectionner un joueur...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
