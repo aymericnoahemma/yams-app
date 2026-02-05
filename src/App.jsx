@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
-  Timer, EyeOff, Palette, Sun, Monitor, Zap, Scale, Swords, ThumbsDown, 
-  ThumbsUp, Crown, ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
-  TrendingUp, AlertTriangle, Crosshair, Gift, Camera, Calendar
+  History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
+  Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
+  ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
+  TrendingUp, AlertTriangle, Gift, Camera, Calendar
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -163,7 +164,7 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
 };
 
-// --- NOUVEAUX COMPOSANTS STATS ---
+// --- NOUVEAUX COMPOSANTS STATS (SANS CODE MORT) ---
 
 // Graphique : Le Fil du Match (Line Chart)
 const GameFlowChart = ({ moveLog, players }) => {
@@ -267,49 +268,6 @@ const DiceLuckChart = ({ scores, player }) => {
     );
 };
 
-// Graphique : Courbe de Forme (TrendChart) - MODIFIED TO SHOW RECORD
-const TrendChart = ({ data, record }) => {
-    if (!data || data.length < 2) return <div className="text-xs text-gray-500 text-center py-8">Pas assez de données pour la tendance</div>;
-    // Ajout du record à l'échelle pour qu'il soit visible
-    const allValues = [...data, record];
-    const max = Math.max(...allValues) + 10; 
-    const min = Math.max(0, Math.min(...allValues) - 10);
-    const range = (max - min) === 0 ? 1 : (max - min); 
-    
-    const points = data.map((val, i) => {
-        const x = (i / (data.length - 1)) * 100;
-        const y = 100 - ((val - min) / range) * 100;
-        return `${x},${y}`;
-    }).join(' ');
-    
-    // Calcul position ligne record
-    const recordY = 100 - ((record - min) / range) * 100;
-
-    return (
-        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-             {/* Ligne Record en pointillé jaune */}
-             <line x1="0" y1={recordY} x2="100" y2={recordY} stroke="#fbbf24" strokeWidth="0.5" strokeDasharray="4 2" />
-             <text x="100" y={recordY - 2} fontSize="4" fill="#fbbf24" textAnchor="end">Record: {record}</text>
-            
-            {/* Ligne de tendance */}
-            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            
-            {/* Points de données */}
-            {data.map((val, i) => {
-                 const x = (i / (data.length - 1)) * 100;
-                 const y = 100 - ((val - min) / range) * 100;
-                 return (
-                    <g key={i}>
-                        <circle cx={x} cy={y} r="2" fill="#fff" stroke="#10b981" strokeWidth="0.5" />
-                        {/* Affiche le score au dessus du point */}
-                        <text x={x} y={y - 5} fontSize="4" fill="#fff" textAnchor="middle">{val}</text>
-                    </g>
-                 );
-            })}
-        </svg>
-    );
-};
-
 // --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
@@ -351,7 +309,7 @@ export default function YamsUltimateLegacy() {
   const [showLog, setShowLog] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
-  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', luckPlayer: '', trendPlayer: ''});
+  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', luckPlayer: ''});
   const [globalXP, setGlobalXP] = useState(0);
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
@@ -418,6 +376,7 @@ export default function YamsUltimateLegacy() {
   useEffect(() => { setTimeLeft(30); }, [lastPlayerToPlay]);
 
   const createSeason = () => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); } };
+
   const isGameStarted=()=>Object.keys(scores).some(p=>scores[p]&&Object.keys(scores[p]).length>0);
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
@@ -431,7 +390,19 @@ export default function YamsUltimateLegacy() {
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
-  const calculateBonusDiff = (p) => { const targets = { ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 }; let current = 0; let expected = 0; ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'].forEach(id => { if(scores[p]?.[id] !== undefined) { current += scores[p][id]; expected += targets[id]; } }); return current - expected; };
+  
+  const calculateBonusDiff = (p) => {
+    const targets = { ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 };
+    let current = 0;
+    let expected = 0;
+    ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'].forEach(id => {
+        if(scores[p]?.[id] !== undefined) {
+            current += scores[p][id];
+            expected += targets[id];
+        }
+    });
+    return current - expected;
+  };
 
   // CALCUL VRAIES STATS D'ECHEC
   const calculateGlobalFailures = (target) => {
@@ -454,7 +425,10 @@ export default function YamsUltimateLegacy() {
     });
     const sortedFailures = Object.entries(failures)
         .sort(([,a], [,b]) => b - a)
-        .map(([key, value]) => ({ id: key, name: categories.find(c => c.id === key)?.name || key, count: value, rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0 }));
+        .map(([key, value]) => ({ 
+            id: key, name: categories.find(c => c.id === key)?.name || key, count: value,
+            rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0
+        }));
     return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
   };
 
@@ -513,6 +487,7 @@ export default function YamsUltimateLegacy() {
       saveCurrentGame({});
   };
 
+  // EFFET DE FIN DE PARTIE - SAFE SNAPSHOT
   useEffect(()=>{
       if(isGameComplete() && !showEndGameModal && !endGameData) {
           const winners = getWinner();
@@ -551,9 +526,9 @@ export default function YamsUltimateLegacy() {
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
 
   const filteredHistory = useMemo(() => {
-      if(!statsFilterSeason || statsFilterSeason === 'Toutes') return gameHistory;
-      return gameHistory.filter(g => g.season === statsFilterSeason || (!g.season && statsFilterSeason === 'Saison 1')); 
-  }, [gameHistory, statsFilterSeason]);
+      if(!activeSeason || activeSeason === 'Toutes') return gameHistory;
+      return gameHistory.filter(g => g.season === activeSeason || (!g.season && activeSeason === 'Saison 1')); 
+  }, [gameHistory, activeSeason]);
 
   const playerStats = useMemo(() => { if (!filteredHistory || !Array.isArray(filteredHistory)) return []; const stats = {}; const streaks = {}; const isStreaking = {}; const allPlayerNames = new Set(); filteredHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); allPlayerNames.forEach(name => { stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0 }; streaks[name] = 0; isStreaking[name] = true; }); filteredHistory.forEach((game) => { const participants = game.players || game.results || []; const gameGrid = game.grid || {}; participants.forEach(p => { if(!stats[p.name]) return; const s = stats[p.name]; s.games++; if(p.isWinner) s.wins++; if(p.score > s.maxScore) s.maxScore = p.score; s.totalScore += p.score; s.yamsCount += p.yamsCount || 0; if(gameGrid[p.name]) { s.historyGames++; 
     let currentUpperSum = 0;
@@ -892,7 +867,7 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
-                {/* 4. RECORDS & STATS (GRILLE DE 4) */}
+                {/* 4. RECORDS & STATS */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -933,18 +908,18 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
 
-                {/* 6. FACE A FACE V2 (DESIGN BLEU/CYAN) */}
+                {/* 6. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
                 <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
                         <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
+                            <option value="" selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
+                            <option value="" selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
@@ -1071,12 +1046,12 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME ROUGE (MODIFIE) */}
-                <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
+                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
+                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
                      {/* Suppression du panneau attention géant à droite */}
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
-                             <AlertTriangle className="text-red-400" size={32}/>
+                             <AlertTriangle className="text-blue-400" size={32}/>
                              <h2 className="text-3xl font-black text-white">Zone de Danger</h2>
                         </div>
                         
@@ -1096,21 +1071,21 @@ export default function YamsUltimateLegacy() {
                              return (
                                  <table className="w-full text-sm text-left border-collapse">
                                     <thead>
-                                        <tr className="text-red-200 border-b-2 border-red-500/30"><th className="py-3 pl-4 uppercase text-[10px] tracking-widest text-left">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-4 text-center uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
+                                        <tr className="text-blue-200 border-b-2 border-blue-500/30"><th className="py-3 pl-4 uppercase text-[10px] tracking-widest text-left">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-4 text-center uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
                                     </thead>
                                     <tbody className="text-white">
                                         {failures.map(f => (
-                                            <tr key={f.id} className="border-b border-red-500/10 hover:bg-red-500/10 transition-colors">
+                                            <tr key={f.id} className="border-b border-blue-500/10 hover:bg-blue-500/10 transition-colors">
                                                 <td className="py-3 pl-4 font-bold flex items-center justify-start gap-3 text-lg">
                                                     <span className="text-2xl">{categories.find(c=>c.id===f.id)?.icon}</span> 
                                                     {f.name}
                                                 </td>
-                                                <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-red-300' : 'text-gray-500'}`}>{f.count}</td>
+                                                <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-blue-300' : 'text-gray-500'}`}>{f.count}</td>
                                                 <td className="py-3 pr-4 text-center">
                                                     <div className="flex items-center justify-center gap-3">
                                                         <span className="font-bold">{f.rate}%</span>
                                                         <div className="w-16 h-2 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
-                                                            <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-red-500' : f.rate > 20 ? 'bg-orange-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
+                                                            <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-blue-500' : f.rate > 20 ? 'bg-cyan-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1123,6 +1098,41 @@ export default function YamsUltimateLegacy() {
                      </div>
                 </div>
 
+            </div>
+        )}
+
+        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
+        {currentTab==='trophies'&&(
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {ACHIEVEMENTS.map(ach => {
+                            let winners = [];
+                            playerStats.forEach(p => {
+                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
+                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
+                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
+                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
+                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
+                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                            });
+                            const unlocked = winners.length > 0;
+                            return (
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
+                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
+                                    <div className="font-bold text-white text-sm">{ach.name}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
+                                    {unlocked && (
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
+                                            {winners.join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         )}
       </div>
