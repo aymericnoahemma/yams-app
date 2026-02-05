@@ -5,7 +5,7 @@ import {
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift
+  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -135,7 +135,7 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <button onClick={() => onAvatarClick(index)} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-lg sm:text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden" title="Changer l'avatar">
-            {avatar || "👤"}
+            {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
           : <span className="flex-1 text-white font-bold text-sm sm:text-lg truncate">{player}</span>}
@@ -252,7 +252,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // FIX CRASH FIN DE PARTIE: Stocker les données de fin dans un état séparé (SNAPSHOT)
+  // FIX CRASH FIN DE PARTIE: Données figées
   const [endGameData, setEndGameData] = useState(null);
 
   // SWIPE
@@ -339,7 +339,8 @@ export default function YamsUltimateLegacy() {
 
   // CALCUL VRAIES STATS D'ECHEC
   const calculateGlobalFailures = () => {
-    const failures = { yams: 0, largeStraight: 0, fourOfKind: 0 };
+    const failures = {};
+    playableCats.forEach(cat => failures[cat.id] = 0);
     let totalGames = 0;
 
     if (!gameHistory || gameHistory.length === 0) return { failures, totalGames: 0 };
@@ -353,10 +354,12 @@ export default function YamsUltimateLegacy() {
             const playerGrid = grid[p.name];
             if (playerGrid) {
                 totalGames++;
-                // On vérifie si la case vaut explicitement 0 (et n'est pas undefined)
-                if (playerGrid.yams === 0) failures.yams++;
-                if (playerGrid.largeStraight === 0) failures.largeStraight++;
-                if (playerGrid.fourOfKind === 0) failures.fourOfKind++;
+                // On vérifie si la case vaut explicitement 0
+                Object.keys(failures).forEach(catId => {
+                    if (playerGrid[catId] === 0) {
+                        failures[catId]++;
+                    }
+                });
             }
         });
     });
@@ -549,25 +552,49 @@ export default function YamsUltimateLegacy() {
 
       {/* END GAME MODAL - SAFE MODE - UTILISE endGameData FIGÉ */}
       {showEndGameModal && endGameData && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
-            <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
-                <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
-                <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
-                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{endGameData.winner}</div>
-                <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.score}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{endGameData.hasYams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-sm relative group">
+            {/* EFFET GLOW DORE */}
+            <div className="absolute -inset-0.5 bg-yellow-500 rounded-[30px] opacity-75 blur-lg group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+            
+            <div className="relative bg-slate-900 rounded-[30px] border-2 border-yellow-500 overflow-hidden shadow-2xl">
+                {/* HEAD */}
+                <div className="bg-gradient-to-b from-yellow-500/20 to-transparent p-6 text-center">
+                    <Trophy className="mx-auto text-yellow-500 mb-4 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" size={64} strokeWidth={1.5} />
+                    <h2 className="text-yellow-500 font-bold tracking-[0.2em] text-xs uppercase mb-2">THE WINNER IS</h2>
+                    <div className="text-4xl font-black text-white uppercase tracking-tight drop-shadow-md">{endGameData.winner}</div>
                 </div>
-                {players.length > 1 && endGameData.loser && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {endGameData.loser}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
-                <div className="space-y-2 relative z-10">
-                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={shareScore} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Share2 size={16}/> PARTAGER</button>
-                        <button onClick={()=>setShowStudioModal(true)} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Camera size={16}/> STUDIO</button>
+
+                {/* STATS */}
+                <div className="grid grid-cols-2 gap-3 px-6 mb-6">
+                    <div className="bg-slate-800 p-4 rounded-2xl text-center border border-white/5">
+                        <div className="text-3xl font-black text-white mb-1">{endGameData.score}</div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">POINTS</div>
                     </div>
-                    <button onClick={quickEdit} className="w-full py-3 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-white">Modifier la grille</button>
+                    <div className="bg-slate-800 p-4 rounded-2xl text-center border border-white/5">
+                        <div className="text-3xl font-black text-white mb-1">{endGameData.hasYams ? "1" : "0"}</div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">YAMS</div>
+                    </div>
+                </div>
+
+                {/* GAGE */}
+                {players.length > 1 && endGameData.loser && (
+                    <div className="px-6 mb-6">
+                        <div className="bg-red-900/30 border border-red-500/30 p-4 rounded-2xl text-center">
+                            <p className="text-[10px] uppercase font-bold text-red-400 mb-2">Gage pour {endGameData.loser}</p>
+                            <p className="text-sm italic text-white font-medium">"{currentGage}"</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* ACTIONS */}
+                <div className="px-6 pb-6 space-y-3">
+                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg transform transition active:scale-95">ENREGISTRER</button>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={shareScore} className="py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 border border-white/10"><Share2 size={16}/> PARTAGER</button>
+                        <button onClick={()=>setShowStudioModal(true)} className="py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-2 border border-white/10"><Camera size={16}/> STUDIO</button>
+                    </div>
+                    <button onClick={quickEdit} className="w-full py-2 text-gray-500 font-bold text-[10px] uppercase tracking-widest hover:text-white transition-colors">Modifier la grille</button>
                 </div>
             </div>
           </div>
