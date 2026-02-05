@@ -338,24 +338,30 @@ export default function YamsUltimateLegacy() {
   };
 
   // CALCUL VRAIES STATS D'ECHEC
-  const getFailureStats = () => {
-      const failures = { yams: 0, largeStraight: 0, fourOfKind: 0 };
-      let totalGames = 0;
-      if(gameHistory && gameHistory.length > 0) {
-          gameHistory.forEach(g => {
-             const parts = g.players || g.results || [];
-             parts.forEach(p => {
-                 const grid = g.grid ? g.grid[p.name] : {};
-                 if(grid) {
-                     totalGames++;
-                     if(grid.yams === 0) failures.yams++;
-                     if(grid.largeStraight === 0) failures.largeStraight++;
-                     if(grid.fourOfKind === 0) failures.fourOfKind++;
-                 }
-             });
-          });
-      }
-      return { failures, totalGames: Math.max(1, totalGames) };
+  const calculateGlobalFailures = () => {
+    const failures = { yams: 0, largeStraight: 0, fourOfKind: 0 };
+    let totalGames = 0;
+
+    if (!gameHistory || gameHistory.length === 0) return { failures, totalGames: 0 };
+
+    gameHistory.forEach(game => {
+        // Support pour les anciennes versions de l'historique
+        const participants = game.players || game.results || [];
+        const grid = game.grid || {};
+
+        participants.forEach(p => {
+            const playerGrid = grid[p.name];
+            if (playerGrid) {
+                totalGames++;
+                // On vérifie si la case vaut explicitement 0 (et n'est pas undefined)
+                if (playerGrid.yams === 0) failures.yams++;
+                if (playerGrid.largeStraight === 0) failures.largeStraight++;
+                if (playerGrid.fourOfKind === 0) failures.fourOfKind++;
+            }
+        });
+    });
+
+    return { failures, totalGames: Math.max(1, totalGames) };
   };
 
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
@@ -969,16 +975,21 @@ export default function YamsUltimateLegacy() {
                 <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-3xl backdrop-blur-xl">
                      <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-400"/> Zone de Danger</h2>
                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead>
-                                <tr className="text-gray-400 border-b border-white/10"><th className="p-2">Catégorie</th><th className="p-2 text-right">Échecs (0 pts)</th><th className="p-2 text-right">Taux</th></tr>
-                            </thead>
-                            <tbody className="text-white">
-                                <tr className="border-b border-white/5"><td className="p-2 font-bold">Yams</td><td className="p-2 text-right text-red-400">12</td><td className="p-2 text-right">45%</td></tr>
-                                <tr className="border-b border-white/5"><td className="p-2 font-bold">G. Suite</td><td className="p-2 text-right text-orange-400">8</td><td className="p-2 text-right">30%</td></tr>
-                                <tr><td className="p-2 font-bold">Carré</td><td className="p-2 text-right text-yellow-400">3</td><td className="p-2 text-right">12%</td></tr>
-                            </tbody>
-                        </table>
+                         {(() => {
+                             const { failures, totalGames } = calculateGlobalFailures();
+                             return (
+                                 <table className="w-full text-sm text-left">
+                                    <thead>
+                                        <tr className="text-gray-400 border-b border-white/10"><th className="p-2">Catégorie</th><th className="p-2 text-right">Échecs (0 pts)</th><th className="p-2 text-right">Taux</th></tr>
+                                    </thead>
+                                    <tbody className="text-white">
+                                        <tr className="border-b border-white/5"><td className="p-2 font-bold">Yams</td><td className="p-2 text-right text-red-400">{failures.yams}</td><td className="p-2 text-right">{totalGames ? Math.round((failures.yams/totalGames)*100) : 0}%</td></tr>
+                                        <tr className="border-b border-white/5"><td className="p-2 font-bold">G. Suite</td><td className="p-2 text-right text-orange-400">{failures.largeStraight}</td><td className="p-2 text-right">{totalGames ? Math.round((failures.largeStraight/totalGames)*100) : 0}%</td></tr>
+                                        <tr><td className="p-2 font-bold">Carré</td><td className="p-2 text-right text-yellow-400">{failures.fourOfKind}</td><td className="p-2 text-right">{totalGames ? Math.round((failures.fourOfKind/totalGames)*100) : 0}%</td></tr>
+                                    </tbody>
+                                </table>
+                             );
+                         })()}
                         <p className="text-center text-xs text-gray-400 mt-4 italic">Données basées sur l'historique complet</p>
                      </div>
                 </div>
