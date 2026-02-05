@@ -166,7 +166,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - CORRIGÉ
+// Graphique : Le Fil du Match (Line Chart) - CORRIGÉ V2 (Belle courbe, chiffres lisibles)
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -180,33 +180,35 @@ const GameFlowChart = ({ moveLog, players }) => {
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
 
     if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
 
+    // Calculs de scaling
     const maxScore = Math.max(...history.map(h => Math.max(...Object.values(h).filter(v => typeof v === 'number' && v !== h.index))));
-    const width = 100;
-    const height = 100;
-    const padding = 15; // Marge augmentée pour ne pas couper les chiffres
+    const width = 1000;
+    const height = 300;
+    const paddingX = 40;
+    const paddingY = 40;
     
     const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
     return (
-        <div className="relative w-full h-64">
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                {/* Lignes de repère */}
-                {[0, 25, 50, 75, 100].map(p => (
-                    <line key={p} x1="0" y1={p} x2="100" y2={p} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
-                ))}
-                
+        <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                {/* Grille de fond */}
+                {[0, 0.25, 0.5, 0.75, 1].map(p => {
+                    const y = paddingY + p * (height - 2*paddingY);
+                    return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
+                })}
+
                 {players.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
                     const points = history.map((step, i) => {
-                        const x = (i / (history.length - 1)) * (width - 2 * padding) + padding;
-                        const y = (height - padding) - ((step[player] / (maxScore || 1)) * (height - 2 * padding));
+                        const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
+                        const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                         return `${x},${y}`;
                     }).join(' ');
                     
@@ -216,22 +218,24 @@ const GameFlowChart = ({ moveLog, players }) => {
                                 points={points} 
                                 fill="none" 
                                 stroke={color} 
-                                strokeWidth="2" 
+                                strokeWidth="4" 
                                 strokeLinecap="round" 
                                 strokeLinejoin="round"
                             />
                             {/* Points et Chiffres */}
                             {history.map((step, i) => {
-                                const x = (i / (history.length - 1)) * (width - 2 * padding) + padding;
-                                const y = (height - padding) - ((step[player] / (maxScore || 1)) * (height - 2 * padding));
+                                const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
+                                const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                                 
-                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
-                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
+                                // Affiche les chiffres pour le dernier point ou de temps en temps
+                                const showLabel = i === history.length - 1 || (history.length < 15) || (i % Math.ceil(history.length/8) === 0);
                                 
                                 return (
                                     <g key={i}>
-                                        <circle cx={x} cy={y} r="1.5" fill="#fff" stroke={color} strokeWidth="0.5" />
-                                        <text x={x} y={y - 5} fontSize="3" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0px 1px 2px black'}}>{step[player]}</text>
+                                        <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
+                                        {showLabel && (
+                                            <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
+                                        )}
                                     </g>
                                 );
                             })}
@@ -239,11 +243,11 @@ const GameFlowChart = ({ moveLog, players }) => {
                     );
                 })}
             </svg>
-            <div className="flex justify-center gap-4 mt-2 flex-wrap">
+            <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">
                 {players.map((p, i) => (
-                    <div key={p} className="flex items-center gap-1">
+                    <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
                         <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div>
-                        <span className="text-xs text-gray-300 font-bold">{p}</span>
+                        <span className="text-xs text-white font-bold">{p}</span>
                     </div>
                 ))}
             </div>
@@ -251,19 +255,18 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE
+// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats du tout, on affiche le message
-    if(!stats) return <div className="text-center text-gray-500 text-xs py-4">Sélectionnez un joueur pour voir l'analyse</div>;
+    // Si pas de stats, message
+    if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
-        { label: "1 (As)", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5 },
-        { label: "2 (Deux)", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10 },
-        { label: "3 (Trois)", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15 },
-        { label: "4 (Quatre)", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20 },
-        { label: "5 (Cinq)", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25 },
-        { label: "6 (Six)", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30 },
+        { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
+        { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
+        { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" },
+        { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" },
+        { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
+        { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
     ];
     
     const data = upperStats.map(s => ({
@@ -272,20 +275,27 @@ const DiceLuckChart = ({ stats }) => {
     }));
 
     return (
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
              {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-3">
-                    <div className="w-16 text-right font-bold text-gray-400 text-xs">{d.label}</div>
-                    <div className="flex-1 bg-black/30 rounded-full h-4 relative overflow-hidden border border-white/5">
+                <div key={i} className="flex items-center gap-4">
+                    <div className="w-12 text-center">
+                        <div className="font-black text-2xl text-white">{d.label}</div>
+                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
+                    </div>
+                    <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
                         <div 
                             className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
                             style={{ width: `${d.pct}%` }}
                         ></div>
+                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
+                            {d.pct}%
+                        </div>
                     </div>
-                    <div className="w-8 font-black text-white text-xs">{d.pct}%</div>
                 </div>
              ))}
-             <div className="text-center text-[10px] text-gray-500 italic mt-2">Moyenne historique sur la partie supérieure</div>
+             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
+                 Taux de réussite moyen sur la partie supérieure (historique complet)
+            </div>
         </div>
     );
 };
@@ -408,6 +418,7 @@ export default function YamsUltimateLegacy() {
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
   const updatePlayerName=(i,name)=>{const old=players[i];const np=[...players];np[i]=name;setPlayers(np);if(scores[old]){const ns={...scores};ns[name]=ns[old];delete ns[old];setScores(ns);}};
+  // FIX AVATAR: Simply set index and show modal
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
@@ -626,7 +637,36 @@ export default function YamsUltimateLegacy() {
   // QUICK EDIT (Fin de partie)
   const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
 
-  if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid?.[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getPlayerTotals(p, replayGame.grid || {}).total}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
+  // FIX REPLAY RENDER (Prevent Blue Screen)
+  if(replayGame) { 
+      const replayPlayers = Object.keys(replayGame.grid || {}); 
+      return ( 
+      <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> 
+        <div className="max-w-7xl mx-auto space-y-4"> 
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> 
+                <div className="flex items-center gap-4"> 
+                    <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> 
+                    <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> 
+                </div> 
+                {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} 
+            </div> 
+            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> 
+                <table className="w-full table-fixed"> 
+                    <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> 
+                    <tbody>
+                        {categories.map(cat => {
+                            if(cat.upperHeader || cat.upperDivider || cat.divider) return null;
+                            if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;
+                            return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{replayGame.grid?.[p]?.[cat.id] !== undefined ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);
+                        })}
+                        <tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getPlayerTotals(p, replayGame.grid || {}).total}</td>)}</tr>
+                    </tbody> 
+                </table> 
+            </div> 
+        </div> 
+      </div> 
+      ); 
+  }
 
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
@@ -664,6 +704,36 @@ export default function YamsUltimateLegacy() {
                   <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
               </div>
           </div>
+      )}
+
+      {showAvatarModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[150] p-4">
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><X/></button></div>
+                  <div className="grid grid-cols-4 gap-3">
+                      {AVATAR_LIST.map((av, i) => {
+                          const player = players[avatarSelectorIndex];
+                          const stats = playerStats.find(s => s.name === player);
+                          const locked = isAvatarLocked(av.req, stats);
+                          return (
+                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
+                                  {av.icon}
+                                  {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
+                              </button>
+                          );
+                      })}
+                  </div>
+                  <div className="mt-4 text-xs text-gray-400 text-center">Jouez pour débloquer de nouveaux avatars !</div>
+              </div>
+          </div>
+      )}
+
+      {undoData && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
+            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
+                <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
+            </button>
+        </div>
       )}
 
       {/* END GAME MODAL */}
@@ -726,6 +796,7 @@ export default function YamsUltimateLegacy() {
                  </div>
                  
                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    {/* Selecteur / Créateur */}
                     <div className="flex gap-2">
                         {renamingSeason ? (
                             <div className="flex gap-2 items-center">
@@ -759,6 +830,7 @@ export default function YamsUltimateLegacy() {
                             </>
                         )}
                     </div>
+                    
                     {/* Input Description Saison */}
                     {activeSeason !== 'Aucune' && (
                         <div className="flex gap-2 items-center w-full">
@@ -773,6 +845,7 @@ export default function YamsUltimateLegacy() {
                         </div>
                     )}
                     
+                    {/* Ajouter nouvelle */}
                     <div className="flex gap-2 mt-1">
                          <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
                          <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
@@ -1032,7 +1105,7 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
-                {/* 3. RECORDS & STATS */}
+                {/* 4. RECORDS & STATS (GRILLE DE 4) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1130,12 +1203,14 @@ export default function YamsUltimateLegacy() {
                                 return (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
+                                            {/* P1 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
                                                 <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
+                                            {/* P2 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
@@ -1144,6 +1219,7 @@ export default function YamsUltimateLegacy() {
                                             </div>
                                         </div>
 
+                                        {/* STATS COMPARAISON */}
                                         <div className="grid grid-cols-3 gap-3">
                                             <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
                                                 <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
@@ -1159,6 +1235,7 @@ export default function YamsUltimateLegacy() {
                                             </div>
                                         </div>
 
+                                        {/* DETAIL ROWS */}
                                         <div className="space-y-1">
                                             {[
                                                 { label: "Moyenne", v1: p1.avgScore, v2: p2.avgScore },
