@@ -5,7 +5,7 @@ import {
   History as HistoryIcon, Timer, EyeOff, Palette, Sun, Monitor, 
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Sparkles, Flame, Coffee, Ghost, Moon, Wand2,
-  TrendingUp, BarChart3, HelpCircle, AlertTriangle, Crosshair, Gift, Camera
+  HelpCircle, AlertTriangle, Crosshair, Gift, Camera
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -197,12 +197,13 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false);
+  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
   const [moveLog, setMoveLog] = useState([]);
   const [showLog, setShowLog] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
   const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL'});
   const [globalXP, setGlobalXP] = useState(0);
@@ -796,7 +797,7 @@ export default function YamsUltimateLegacy() {
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
-                {/* 1. ANCIEN CONTENU (Haut de page) */}
+                {/* 1. SCORE MAXI ATTEINT (BANNER) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
                 </div>
@@ -816,6 +817,7 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
+                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -854,25 +856,26 @@ export default function YamsUltimateLegacy() {
                         </div>
                     </div>
                 )}
-                
-                {/* 2. FACE A FACE V2 (COMPARATEUR) */}
+
+                {/* 5. FACE A FACE (CORRIGE & LISIBLE & DESIGN HARMONISÉ) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
+                    
                     <div className="flex gap-4 items-center justify-center mb-8">
-                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/10 p-2 rounded-xl text-white font-bold border border-white/20 outline-none w-1/3">
-                            <option value="" disabled selected>Sélectionner...</option>
+                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" className="bg-slate-900">Joueur A</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
-                        <div className="text-xl font-black text-white">VS</div>
-                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/10 p-2 rounded-xl text-white font-bold border border-white/20 outline-none w-1/3">
-                            <option value="" disabled selected>Sélectionner...</option>
+                        <div className="text-2xl font-black italic text-gray-500">VS</div>
+                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" className="bg-slate-900">Joueur B</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
-
+                    
                     {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                        <div className="space-y-4">
-                            {/* Comparison Row Helper */}
+                        <div className="space-y-6">
+                            {/* SCORECARD */}
                             {(() => {
                                 const p1 = playerStats.find(s=>s.name===versus.p1);
                                 const p2 = playerStats.find(s=>s.name===versus.p2);
@@ -887,30 +890,14 @@ export default function YamsUltimateLegacy() {
                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
                                     return pp1 && pp2 && pp2.score > pp1.score;
                                 }).length;
-                                
-                                const totalMatches = p1Wins + p2Wins;
-                                const p1Pct = totalMatches ? (p1Wins/totalMatches)*100 : 50;
 
-                                // Advanced Stats
-                                let p1Total = 0;
-                                let p2Total = 0;
-                                let gapSum = 0;
-                                let streak = 0;
-                                let currentWinner = null;
-                                
+                                let p1Total = 0, p2Total = 0, gapSum = 0, streak = 0, currentWinner = null;
                                 const mutualGames = gameHistory.filter(g => {
                                      const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                      const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     if(pp1 && pp2) {
-                                         p1Total += pp1.score;
-                                         p2Total += pp2.score;
-                                         gapSum += Math.abs(pp1.score - pp2.score);
-                                         return true;
-                                     }
+                                     if(pp1 && pp2) { p1Total += pp1.score; p2Total += pp2.score; gapSum += Math.abs(pp1.score - pp2.score); return true; }
                                      return false;
                                 });
-
-                                // Streak calc (simple version based on history order)
                                 for(let i=0; i<mutualGames.length; i++) {
                                      const g = mutualGames[i];
                                      const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
@@ -920,50 +907,55 @@ export default function YamsUltimateLegacy() {
                                      else if(currentWinner === winner) streak++;
                                      else break;
                                 }
-
-                                const avgGap = totalMatches > 0 ? Math.round(gapSum / totalMatches) : 0;
+                                const avgGap = mutualGames.length > 0 ? Math.round(gapSum / mutualGames.length) : 0;
 
                                 return (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-4 rounded-2xl text-center relative overflow-hidden">
-                                                <div className="text-blue-400 font-bold text-xs uppercase mb-1">{versus.p1}</div>
-                                                <div className="text-white font-black text-4xl">{p1Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase">Victoires</div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {/* P1 CARD STYLE HoF */}
+                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
+                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
+                                                <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
+                                                <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
+                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
-                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl text-center relative overflow-hidden">
-                                                <div className="text-red-400 font-bold text-xs uppercase mb-1">{versus.p2}</div>
-                                                <div className="text-white font-black text-4xl">{p2Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase">Victoires</div>
+                                            {/* P2 CARD STYLE HoF */}
+                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
+                                                <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
+                                                <div className="text-white font-black text-6xl mb-1">{p2Wins}</div>
+                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 mb-4">
+                                        {/* STATS COMPARAISON */}
+                                        <div className="grid grid-cols-3 gap-3">
                                             <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[10px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
+                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
                                                 <div className="text-white font-black text-lg">{avgGap} pts</div>
                                             </div>
                                             <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[10px] uppercase text-gray-400 font-bold mb-1">Série en cours</div>
-                                                <div className="text-white font-black text-lg">{currentWinner || "-"} <span className="text-yellow-400">x{streak}</span></div>
+                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Série en cours</div>
+                                                <div className="text-white font-black text-sm">{currentWinner || "-"} <span className="text-yellow-400">x{streak}</span></div>
                                             </div>
                                             <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[10px] uppercase text-gray-400 font-bold mb-1">Cumul Points</div>
+                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Cumul Points</div>
                                                 <div className="text-xs font-bold"><span className="text-blue-400">{p1Total}</span> / <span className="text-red-400">{p2Total}</span></div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
+                                        {/* DETAIL ROWS */}
+                                        <div className="space-y-1">
                                             {[
                                                 { label: "Moyenne", v1: p1.avgScore, v2: p2.avgScore },
                                                 { label: "Record", v1: p1.maxScore, v2: p2.maxScore },
                                                 { label: "Total Yams", v1: p1.yamsCount, v2: p2.yamsCount },
                                                 { label: "Bonus", v1: p1.bonusCount, v2: p2.bonusCount }
                                             ].map((stat, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-black/20 p-2 rounded-lg border border-white/5">
-                                                    <span className={`font-bold w-12 text-center ${stat.v1 > stat.v2 ? "text-green-400" : "text-white"}`}>{stat.v1}</span>
-                                                    <span className="text-[10px] uppercase text-gray-500 font-bold flex-1 text-center">{stat.label}</span>
-                                                    <span className={`font-bold w-12 text-center ${stat.v2 > stat.v1 ? "text-green-400" : "text-white"}`}>{stat.v2}</span>
+                                                <div key={i} className="flex items-center justify-between bg-black/20 px-4 py-3 rounded-xl border border-white/5">
+                                                    <span className={`font-black w-12 text-center text-lg ${stat.v1 > stat.v2 ? "text-green-400" : "text-white"}`}>{stat.v1}</span>
+                                                    <span className="text-[10px] uppercase text-gray-500 font-bold flex-1 text-center tracking-widest">{stat.label}</span>
+                                                    <span className={`font-black w-12 text-center text-lg ${stat.v2 > stat.v1 ? "text-green-400" : "text-white"}`}>{stat.v2}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -974,39 +966,43 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 5. STATISTIQUES DE RAYAGE (FAILURES) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                     <h2 className="text-xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-400"/> Zone de Danger</h2>
-                     <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
-                            <option value="GLOBAL" className="bg-slate-900">🌍 Global (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
+                {/* 6. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME ROUGE */}
+                <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
+                     <div className="absolute top-4 right-4 opacity-20"><AlertTriangle size={64} className="text-red-400"/></div>
+                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-400"/> Zone de Danger</h2>
+                     
+                     <div className="mb-6 relative z-10">
+                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-white text-black p-3 rounded-xl font-black border-2 border-white outline-none cursor-pointer hover:bg-gray-100 transition-colors text-center text-lg shadow-lg">
+                            <option value="GLOBAL">🌍 GLOBAL (Tous les joueurs)</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n}>{n}</option>)}
                         </select>
                      </div>
-                     <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                     
+                     <div className="overflow-x-auto max-h-96 overflow-y-auto relative z-10 pr-2">
                          {(() => {
                              const pName = versus.failPlayer || 'GLOBAL';
                              const { failures, totalGames } = calculateGlobalFailures(pName);
                              
-                             if (totalGames === 0) return <div className="text-center text-gray-400 text-xs py-4">Aucune donnée pour ce joueur.</div>;
+                             if (totalGames === 0) return <div className="text-center text-gray-300 font-bold text-sm py-8 bg-black/20 rounded-xl">Aucune donnée disponible pour l'instant.</div>;
 
                              return (
-                                 <table className="w-full text-sm text-left">
+                                 <table className="w-full text-sm text-left border-collapse">
                                     <thead>
-                                        <tr className="text-gray-400 border-b border-white/10"><th className="p-2">Catégorie</th><th className="p-2 text-right">Échecs (0 pts)</th><th className="p-2 text-right">Taux</th></tr>
+                                        <tr className="text-red-200 border-b-2 border-red-500/30"><th className="py-3 pl-2 uppercase text-[10px] tracking-widest">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-2 text-right uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
                                     </thead>
                                     <tbody className="text-white">
                                         {failures.map(f => (
-                                            <tr key={f.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                                <td className="p-2 font-bold flex items-center gap-2">
-                                                    {categories.find(c=>c.id===f.id)?.icon} {f.name}
+                                            <tr key={f.id} className="border-b border-red-500/10 hover:bg-red-500/10 transition-colors">
+                                                <td className="py-3 pl-2 font-bold flex items-center gap-3 text-lg">
+                                                    <span className="text-2xl">{categories.find(c=>c.id===f.id)?.icon}</span> 
+                                                    {f.name}
                                                 </td>
-                                                <td className={`p-2 text-right font-bold ${f.count > 0 ? 'text-red-400' : 'text-gray-500'}`}>{f.count}</td>
-                                                <td className="p-2 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <span className="text-xs">{f.rate}%</span>
-                                                        <div className="w-12 h-1 bg-gray-700 rounded-full overflow-hidden">
-                                                            <div className={`h-full ${f.rate > 50 ? 'bg-red-500' : f.rate > 20 ? 'bg-orange-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
+                                                <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-red-300' : 'text-gray-500'}`}>{f.count}</td>
+                                                <td className="py-3 pr-2 text-right">
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <span className="font-bold">{f.rate}%</span>
+                                                        <div className="w-16 h-2 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
+                                                            <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-red-500' : f.rate > 20 ? 'bg-orange-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1037,15 +1033,17 @@ export default function YamsUltimateLegacy() {
                                 if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
                                 if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
                                 if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                                if (ach.id === 'perfect_lose' && p.games > 0) {/* Condition simplifiée pour démo */} ; // À implémenter si besoin
+                                if (ach.id === 'chaos_survivor' && p.games > 0) {/* Idem */};
                             });
                             const unlocked = winners.length > 0;
                             return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105' : 'bg-black/20 border-white/5 opacity-50 grayscale'}`}>
-                                    <div className="text-4xl mb-2">{ach.icon}</div>
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
+                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
                                     <div className="font-bold text-white text-sm">{ach.name}</div>
-                                    <div className="text-[10px] text-gray-400 mb-2">{ach.desc}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
                                     {unlocked && (
-                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-1 w-full truncate">
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
                                             {winners.join(', ')}
                                         </div>
                                     )}
