@@ -797,7 +797,7 @@ export default function YamsUltimateLegacy() {
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
-                {/* 1. ANCIEN CONTENU (Haut de page) */}
+                {/* 1. SCORE MAXI ATTEINT (BANNER) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
                 </div>
@@ -855,19 +855,19 @@ export default function YamsUltimateLegacy() {
                         </div>
                     </div>
                 )}
-
+                
                 {/* 2. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
                         <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" className="bg-slate-900">Joueur A</option>
+                            <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" className="bg-slate-900">Joueur B</option>
+                            <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
@@ -911,14 +911,12 @@ export default function YamsUltimateLegacy() {
                                 return (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
                                                 <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
-                                            {/* P2 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
@@ -927,7 +925,6 @@ export default function YamsUltimateLegacy() {
                                             </div>
                                         </div>
 
-                                        {/* STATS COMPARAISON */}
                                         <div className="grid grid-cols-3 gap-3">
                                             <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
                                                 <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
@@ -943,7 +940,6 @@ export default function YamsUltimateLegacy() {
                                             </div>
                                         </div>
 
-                                        {/* DETAIL ROWS */}
                                         <div className="space-y-1">
                                             {[
                                                 { label: "Moyenne", v1: p1.avgScore, v2: p2.avgScore },
@@ -967,7 +963,6 @@ export default function YamsUltimateLegacy() {
 
                 {/* 5. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME ROUGE */}
                 <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-                     <div className="absolute top-4 right-4 opacity-20"><AlertTriangle size={64} className="text-red-400"/></div>
                      <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><AlertTriangle className="text-red-400"/> Zone de Danger</h2>
                      
                      <div className="mb-6 relative z-10">
@@ -987,18 +982,18 @@ export default function YamsUltimateLegacy() {
                              return (
                                  <table className="w-full text-sm text-left border-collapse">
                                     <thead>
-                                        <tr className="text-red-200 border-b-2 border-red-500/30"><th className="py-3 pl-2 uppercase text-[10px] tracking-widest">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-2 text-right uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
+                                        <tr className="text-red-200 border-b-2 border-red-500/30"><th className="py-3 pl-2 uppercase text-[10px] tracking-widest text-center">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-2 text-center uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
                                     </thead>
                                     <tbody className="text-white">
                                         {failures.map(f => (
                                             <tr key={f.id} className="border-b border-red-500/10 hover:bg-red-500/10 transition-colors">
-                                                <td className="py-3 pl-2 font-bold flex items-center gap-3 text-lg">
+                                                <td className="py-3 pl-2 font-bold flex items-center justify-center gap-3 text-lg">
                                                     <span className="text-2xl">{categories.find(c=>c.id===f.id)?.icon}</span> 
                                                     {f.name}
                                                 </td>
                                                 <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-red-300' : 'text-gray-500'}`}>{f.count}</td>
-                                                <td className="py-3 pr-2 text-right">
-                                                    <div className="flex items-center justify-end gap-3">
+                                                <td className="py-3 pr-2 text-center">
+                                                    <div className="flex items-center justify-center gap-3">
                                                         <span className="font-bold">{f.rate}%</span>
                                                         <div className="w-16 h-2 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
                                                             <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-red-500' : f.rate > 20 ? 'bg-orange-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
