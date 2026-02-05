@@ -166,7 +166,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
+// Graphique : Le Fil du Match (Line Chart) - CORRIGÉ V2 (Belle courbe, chiffres lisibles)
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -180,13 +180,13 @@ const GameFlowChart = ({ moveLog, players }) => {
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
 
     if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
 
+    // Calculs de scaling
     const maxScore = Math.max(...history.map(h => Math.max(...Object.values(h).filter(v => typeof v === 'number' && v !== h.index))));
     const width = 1000;
     const height = 300;
@@ -227,13 +227,15 @@ const GameFlowChart = ({ moveLog, players }) => {
                                 const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
                                 const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                                 
-                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
-                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
+                                // Affiche les chiffres pour le dernier point ou de temps en temps
+                                const showLabel = i === history.length - 1 || (history.length < 15) || (i % Math.ceil(history.length/8) === 0);
                                 
                                 return (
                                     <g key={i}>
                                         <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
-                                        <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
+                                        {showLabel && (
+                                            <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
+                                        )}
                                     </g>
                                 );
                             })}
@@ -255,10 +257,9 @@ const GameFlowChart = ({ moveLog, players }) => {
 
 // Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats du tout, on affiche le message
+    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -347,7 +348,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V8
+  // NOUVELLES FONCTIONNALITES V9
   const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -425,7 +426,17 @@ export default function YamsUltimateLegacy() {
   const getBonus= (p, sc=scores) => calcUpper(p, sc)>=63?35:0;
   const calcUpperGrand= (p, sc=scores) => calcUpper(p, sc)+getBonus(p, sc);
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
-  const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
+  // FIX REPLAY TOTAL: isolate joker calculation for replay
+  const calcTotal = (p, sc = scores) => {
+    if (!p) return 0;
+    let total = calcUpperGrand(p, sc) + calcLower(p, sc);
+    // Only apply joker logic if we are using the live game scores
+    if (jokersEnabled && sc === scores) {
+        const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax);
+        if (usedJokers > 0) total -= (usedJokers * 10);
+    }
+    return total;
+  };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
   const calculateBonusDiff = (p) => {
@@ -609,7 +620,7 @@ export default function YamsUltimateLegacy() {
                   categories.filter(c => c.upper).forEach(cat => { const val = gameGrid[p.name][cat.id]; if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); } });
                   if (currentUpperSum >= 63) { s.bonusCount++; }
                   const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
-                  // Accumulate dice luck
+                  // Accumulate dice luck (FIX: Ensure parsing works)
                   s.totalOnes += parseInt(gameGrid[p.name]['ones']||0);
                   s.totalTwos += parseInt(gameGrid[p.name]['twos']||0);
                   s.totalThrees += parseInt(gameGrid[p.name]['threes']||0);
@@ -1112,7 +1123,7 @@ export default function YamsUltimateLegacy() {
                   </div>
                 </div>
 
-                {/* 5. HALL OF FAME (REINTEGRE) */}
+                {/* 4. HALL OF FAME (REINTEGRE) */}
                 {hallOfFame && (
                     <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                         <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
@@ -1153,12 +1164,12 @@ export default function YamsUltimateLegacy() {
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
                         <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" selected>Sélectionner...</option>
+                            <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" selected>Sélectionner...</option>
+                            <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
@@ -1276,9 +1287,6 @@ export default function YamsUltimateLegacy() {
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
-                    {versus.luckPlayer && (
-                        <DiceLuckChart scores={scores} player={versus.luckPlayer} />
-                    )}
                     {versus.luckPlayer && (
                         /* CORRECTION CHANCE AUX DES : Récupérer les stats historiques du joueur */
                         <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
