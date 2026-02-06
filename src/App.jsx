@@ -433,23 +433,14 @@ export default function YamsUltimateLegacy() {
   // FIX REPLAY: COMPLETELY INDEPENDENT AND SAFE FUNCTION (NO JOKERS HERE)
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
-    
-    let upperSum = 0;
-    let lowerSum = 0;
-    
+    let upperSum = 0; let lowerSum = 0;
     categories.forEach(cat => {
         const val = grid[player][cat.id];
         // Only count actual numbers (ignore undefined or strings that are not numbers)
         const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
-        
-        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) {
-            upperSum += num;
-        }
-        if (cat.lower && !cat.lowerTotal && !cat.divider) {
-            lowerSum += num;
-        }
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
     });
-
     const bonus = upperSum >= 63 ? 35 : 0;
     return upperSum + bonus + lowerSum;
   };
@@ -842,6 +833,7 @@ export default function YamsUltimateLegacy() {
                  </div>
                  
                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    {/* Selecteur / Créateur */}
                     <div className="flex gap-2">
                         {renamingSeason ? (
                             <div className="flex gap-2 items-center">
@@ -875,6 +867,7 @@ export default function YamsUltimateLegacy() {
                             </>
                         )}
                     </div>
+                    
                     {/* Input Description Saison */}
                     {activeSeason !== 'Aucune' && (
                         <div className="flex gap-2 items-center w-full">
@@ -889,6 +882,7 @@ export default function YamsUltimateLegacy() {
                         </div>
                     )}
                     
+                    {/* Ajouter nouvelle */}
                     <div className="flex gap-2 mt-1">
                          <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
                          <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
@@ -1082,20 +1076,21 @@ export default function YamsUltimateLegacy() {
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
                         
                         {editingHistoryId === g.id ? (
-                            <div className="flex gap-2">
-                                <select value={tempHistorySeason} onChange={e => setTempHistorySeason(e.target.value)} className="bg-black/50 text-white text-xs p-1 rounded">
+                            <div className="flex gap-2 animate-in slide-in-from-left-2">
+                                <select value={tempHistorySeason} onChange={e => setTempHistorySeason(e.target.value)} className="bg-black/50 text-white text-xs p-1 rounded border border-white/20">
                                     <option value="Aucune">Aucune</option>
                                     {seasons.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
-                                <button onClick={() => updateGameSeason(g.id, tempHistorySeason)} className="p-1 bg-green-500/20 text-green-400 rounded"><Save size={14}/></button>
-                                <button onClick={() => setEditingHistoryId(null)} className="p-1 bg-red-500/20 text-red-400 rounded"><X size={14}/></button>
+                                <button onClick={() => updateGameSeason(g.id, tempHistorySeason)} className="p-1 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30"><Save size={14}/></button>
+                                <button onClick={() => setEditingHistoryId(null)} className="p-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30"><X size={14}/></button>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
                                 {g.season && g.season !== 'Aucune' && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{g.season}</span>}
-                                <button onClick={() => { setEditingHistoryId(g.id); setTempHistorySeason(g.season || 'Aucune'); }} className="text-gray-500 hover:text-white transition-colors" title="Modifier la saison"><Edit3 size={14}/></button>
+                                <button onClick={() => { setEditingHistoryId(g.id); setTempHistorySeason(g.season || 'Aucune'); }} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier la saison"><Edit3 size={12}/></button>
                             </div>
                         )}
+
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
@@ -1171,7 +1166,7 @@ export default function YamsUltimateLegacy() {
                   </div>
                 </div>
 
-                {/* 4. HALL OF FAME (DÉPLACÉ ICI COMME DEMANDÉ) */}
+                {/* 4. HALL OF FAME (REINTEGRE & ORDRE CORRIGÉ) */}
                 {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
                     <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                         <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
@@ -1204,7 +1199,7 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
 
-                {/* 6. FACE A FACE V2 */}
+                {/* 6. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
                 <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
@@ -1258,7 +1253,7 @@ export default function YamsUltimateLegacy() {
 
                                 return (
                                     <>
-                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total des rencontres : {mutualGames.length}</span></div>
+                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total rencontres : {mutualGames.length}</span></div>
 
                                         <div className="grid grid-cols-2 gap-4">
                                             {/* P1 CARD STYLE HoF */}
@@ -1344,6 +1339,7 @@ export default function YamsUltimateLegacy() {
 
                 {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
+                     {/* Suppression du panneau attention géant à droite */}
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
                              <AlertTriangle className="text-blue-400" size={32}/>
