@@ -6,7 +6,7 @@ import {
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
   TrendingUp, AlertTriangle, Gift, Camera, Calendar, PenLine, Info, Save,
-  Play, Pause // <--- C'était eux les coupables !
+  Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -348,7 +348,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V18
+  // NOUVELLES FONCTIONNALITES V16
   const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -428,16 +428,23 @@ export default function YamsUltimateLegacy() {
   const getBonus= (p, sc=scores) => calcUpper(p, sc)>=63?35:0;
   const calcUpperGrand= (p, sc=scores) => calcUpper(p, sc)+getBonus(p, sc);
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
-  const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
+  // FIX REPLAY TOTAL: isolate joker calculation for replay
+  const calcTotal = (p, sc = scores) => {
+    if (!p) return 0;
+    let total = calcUpperGrand(p, sc) + calcLower(p, sc);
+    // Only apply joker logic if we are using the live game scores
+    if (jokersEnabled && sc === scores) {
+        const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax);
+        if (usedJokers > 0) total -= (usedJokers * 10);
+    }
+    return total;
+  };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
   // FIX REPLAY: COMPLETELY INDEPENDENT AND SAFE FUNCTION (NO JOKERS HERE) - SINGLE DECLARATION
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
-    
-    let upperSum = 0;
-    let lowerSum = 0;
-    
+    let upperSum = 0; let lowerSum = 0;
     categories.forEach(cat => {
         const val = grid[player][cat.id];
         // Only count actual numbers (ignore undefined or strings that are not numbers)
@@ -591,6 +598,7 @@ export default function YamsUltimateLegacy() {
   
   const saveGameFromModal=()=>{ 
       if (!endGameData) return;
+      // SEASON HANDLING: use activeSeason or 'Aucune'
       const seasonToSave = activeSeason || 'Aucune';
       const game={id:Date.now(),season:seasonToSave,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:p===endGameData.winner,yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
       const nh=[game,...(gameHistory || [])]; setGameHistory(nh); saveHistory(nh); 
@@ -670,6 +678,19 @@ export default function YamsUltimateLegacy() {
   const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
 
   // FIX REPLAY RENDER (Prevent Blue Screen) - USES GETSAFEREPLAYSCORE - DEFINITIVELY SAFE (ADDED || {})
+  const getSafeReplayScore = (player, grid) => {
+    if (!grid || !grid[player]) return 0;
+    let upperSum = 0; let lowerSum = 0;
+    categories.forEach(cat => {
+        const val = grid[player][cat.id];
+        const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
+    });
+    const bonus = upperSum >= 63 ? 35 : 0;
+    return upperSum + bonus + lowerSum;
+  };
+
   if(replayGame) { 
       const replayPlayers = Object.keys(replayGame.grid || {}); 
       return ( 
@@ -1051,7 +1072,7 @@ export default function YamsUltimateLegacy() {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
-                        {/* EDIT SEASON BUTTON */}
+                        
                         {editingHistoryId === g.id ? (
                             <div className="flex gap-2 animate-in slide-in-from-left-2">
                                 <select value={tempHistorySeason} onChange={e => setTempHistorySeason(e.target.value)} className="bg-black/50 text-white text-xs p-1 rounded border border-white/20">
