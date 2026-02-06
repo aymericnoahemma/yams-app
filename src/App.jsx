@@ -6,7 +6,7 @@ import {
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
   TrendingUp, AlertTriangle, Gift, Camera, Calendar, PenLine, Info, Save,
-  Skull, HelpCircle, LockKeyhole, Star, Sparkles, Image, Play, Pause
+  Play, Pause // <--- C'était eux les coupables !
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -348,7 +348,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V17
+  // NOUVELLES FONCTIONNALITES V18
   const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -428,23 +428,16 @@ export default function YamsUltimateLegacy() {
   const getBonus= (p, sc=scores) => calcUpper(p, sc)>=63?35:0;
   const calcUpperGrand= (p, sc=scores) => calcUpper(p, sc)+getBonus(p, sc);
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
-  // FIX REPLAY TOTAL: isolate joker calculation for replay
-  const calcTotal = (p, sc = scores) => {
-    if (!p) return 0;
-    let total = calcUpperGrand(p, sc) + calcLower(p, sc);
-    // Only apply joker logic if we are using the live game scores
-    if (jokersEnabled && sc === scores) {
-        const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax);
-        if (usedJokers > 0) total -= (usedJokers * 10);
-    }
-    return total;
-  };
+  const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
   // FIX REPLAY: COMPLETELY INDEPENDENT AND SAFE FUNCTION (NO JOKERS HERE) - SINGLE DECLARATION
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
-    let upperSum = 0; let lowerSum = 0;
+    
+    let upperSum = 0;
+    let lowerSum = 0;
+    
     categories.forEach(cat => {
         const val = grid[player][cat.id];
         // Only count actual numbers (ignore undefined or strings that are not numbers)
@@ -598,7 +591,6 @@ export default function YamsUltimateLegacy() {
   
   const saveGameFromModal=()=>{ 
       if (!endGameData) return;
-      // SEASON HANDLING: use activeSeason or 'Aucune'
       const seasonToSave = activeSeason || 'Aucune';
       const game={id:Date.now(),season:seasonToSave,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:p===endGameData.winner,yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
       const nh=[game,...(gameHistory || [])]; setGameHistory(nh); saveHistory(nh); 
@@ -677,6 +669,7 @@ export default function YamsUltimateLegacy() {
   // QUICK EDIT (Fin de partie)
   const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
 
+  // FIX REPLAY RENDER (Prevent Blue Screen) - USES GETSAFEREPLAYSCORE - DEFINITIVELY SAFE (ADDED || {})
   if(replayGame) { 
       const replayPlayers = Object.keys(replayGame.grid || {}); 
       return ( 
