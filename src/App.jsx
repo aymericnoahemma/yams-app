@@ -166,7 +166,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart)
+// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -180,6 +180,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
+             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
@@ -197,6 +198,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     return (
         <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                {/* Lignes de repère */}
                 {[0, 0.25, 0.5, 0.75, 1].map(p => {
                     const y = paddingY + p * (height - 2*paddingY);
                     return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
@@ -220,10 +222,12 @@ const GameFlowChart = ({ moveLog, players }) => {
                                 strokeLinecap="round" 
                                 strokeLinejoin="round"
                             />
+                            {/* Points et Chiffres */}
                             {history.map((step, i) => {
                                 const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
                                 const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                                 
+                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
                                 if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
                                 
                                 return (
@@ -249,10 +253,12 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation)
+// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
+    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
+    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -341,8 +347,8 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V15
-  const [seasons, setSeasons] = useState([]); 
+  // NOUVELLES FONCTIONNALITES V16
+  const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -413,7 +419,7 @@ export default function YamsUltimateLegacy() {
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
   const updatePlayerName=(i,name)=>{const old=players[i];const np=[...players];np[i]=name;setPlayers(np);if(scores[old]){const ns={...scores};ns[name]=ns[old];delete ns[old];setScores(ns);}};
-  
+  // FIX AVATAR: Simply set index and show modal
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
@@ -575,7 +581,6 @@ export default function YamsUltimateLegacy() {
   
   const saveGameFromModal=()=>{ 
       if (!endGameData) return;
-      // SEASON HANDLING: use activeSeason or 'Aucune'
       const seasonToSave = activeSeason || 'Aucune';
       const game={id:Date.now(),season:seasonToSave,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:p===endGameData.winner,yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
       const nh=[game,...(gameHistory || [])]; setGameHistory(nh); saveHistory(nh); 
@@ -654,7 +659,20 @@ export default function YamsUltimateLegacy() {
   // QUICK EDIT (Fin de partie)
   const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
 
-  // FIX REPLAY RENDER (Prevent Blue Screen) - USES GETSAFEREPLAYSCORE - DEFINITIVELY SAFE
+  // FIX REPLAY RENDER (Prevent Blue Screen) - USES GETSAFEREPLAYSCORE - DEFINITIVELY SAFE (ADDED || {})
+  const getSafeReplayScore = (player, grid) => {
+    if (!grid || !grid[player]) return 0;
+    let upperSum = 0; let lowerSum = 0;
+    categories.forEach(cat => {
+        const val = grid[player][cat.id];
+        const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
+    });
+    const bonus = upperSum >= 63 ? 35 : 0;
+    return upperSum + bonus + lowerSum;
+  };
+
   if(replayGame) { 
       const replayPlayers = Object.keys(replayGame.grid || {}); 
       return ( 
@@ -674,7 +692,8 @@ export default function YamsUltimateLegacy() {
                         {categories.map(cat => {
                             if(cat.upperHeader || cat.upperDivider || cat.divider) return null;
                             if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;
-                            return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{getSafeReplayScore(p, replayGame.grid) ? replayGame.grid?.[p]?.[cat.id] : '-'}</td>))}</tr>);
+                            // Added safety checks (|| {}) to prevent crash on missing data
+                            return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);
                         })}
                         <tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr>
                     </tbody> 
@@ -721,6 +740,36 @@ export default function YamsUltimateLegacy() {
                   <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
               </div>
           </div>
+      )}
+
+      {showAvatarModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[150] p-4">
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><X/></button></div>
+                  <div className="grid grid-cols-4 gap-3">
+                      {AVATAR_LIST.map((av, i) => {
+                          const player = players[avatarSelectorIndex];
+                          const stats = playerStats.find(s => s.name === player);
+                          const locked = isAvatarLocked(av.req, stats);
+                          return (
+                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
+                                  {av.icon}
+                                  {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
+                              </button>
+                          );
+                      })}
+                  </div>
+                  <div className="mt-4 text-xs text-gray-400 text-center">Jouez pour débloquer de nouveaux avatars !</div>
+              </div>
+          </div>
+      )}
+
+      {undoData && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
+            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
+                <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
+            </button>
+        </div>
       )}
 
       {/* END GAME MODAL */}
@@ -783,6 +832,7 @@ export default function YamsUltimateLegacy() {
                  </div>
                  
                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    {/* Selecteur / Créateur */}
                     <div className="flex gap-2">
                         {renamingSeason ? (
                             <div className="flex gap-2 items-center">
@@ -816,6 +866,7 @@ export default function YamsUltimateLegacy() {
                             </>
                         )}
                     </div>
+                    
                     {/* Input Description Saison */}
                     {activeSeason !== 'Aucune' && (
                         <div className="flex gap-2 items-center w-full">
@@ -830,6 +881,7 @@ export default function YamsUltimateLegacy() {
                         </div>
                     )}
                     
+                    {/* Ajouter nouvelle */}
                     <div className="flex gap-2 mt-1">
                          <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
                          <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
@@ -945,58 +997,31 @@ export default function YamsUltimateLegacy() {
                 </div>
               </div>
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {/* PANNEAU INFORMATION JOUEUR */}
-              {!editMode && !isGameComplete() && (
-                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <div className="flex items-center gap-3">
-                              <span className="text-2xl">🎯</span>
-                              <div>
-                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
-                                  {getEmptyCells(getNextPlayer()).length>0 && (
-                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
-                                  )}
-                              </div>
-                          </div>
-                          {lastModifiedCell && (
-                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
-                          )}
-                      </div>
-                  </div>
-              )}
+              {lastPlayerToPlay&&!editMode&&<div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20"><div className="flex items-center justify-between gap-4 flex-wrap"><div className="flex items-center gap-3"><span className="text-2xl">🎯</span><div><div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>{getEmptyCells(getNextPlayer()).length>0&&<div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>}</div></div>{lastModifiedCell&&(()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()}</div></div>}
 
-              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-24 sm:w-48"/>{players.map((_,i)=><col key={i} className="w-20 sm:w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
-                <th className="text-left p-1 sm:p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10 text-xs sm:text-base">Catégorie</th>
+              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
+                <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                    <div className="p-1 sm:p-3 text-white font-bold text-xs sm:text-lg flex flex-col items-center justify-center gap-1">
-                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={16} fill="currentColor" /></div>}
-                        <div className="flex items-center gap-1 sm:gap-2 truncate w-full justify-center">{playerAvatars[p] || "👤"} {p}</div>
-                        {!lastPlayerToPlay && p === starterName && <span className="text-[10px] sm:text-xs bg-yellow-500 text-black px-1 sm:px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
-                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-[10px] sm:text-xs bg-purple-500/30 text-purple-200 px-1 sm:px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
+                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1">
+                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={24} fill="currentColor" /></div>}
+                        <div className="flex items-center gap-2">{playerAvatars[p] || "👤"} {p}</div>
+                        {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
+                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
                     </div>
                 </th>)}</tr></thead><tbody>
                 {categories.map(cat=>{
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-1 sm:p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-lg sm:text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block text-xs sm:text-base">{cat.name}</span>{cat.desc&&<span className="text-[10px] sm:text-xs text-gray-400 block mt-0.5 hidden sm:block">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-1 sm:p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                  {cat.upperTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
-                  :cat.bonus?<div className="flex flex-col items-center justify-center w-full"><div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 w-full mb-1">{isFoggy(p)?"???":getBonus(p)}</div>
-                    {(() => {
-                        const diff = calculateBonusDiff(p);
-                        if (calcUpper(p) >= 63) return <div className="text-[10px] font-bold text-green-400 text-center w-full">Bonus acquis!</div>;
-                        if (diff > 0) return <div className="text-[10px] font-bold text-green-400 text-center w-full">Avance: +{diff}</div>;
-                        if (diff < 0) return <div className="text-[10px] font-bold text-red-400 text-center w-full">Retard: {diff}</div>;
-                        if (diff === 0 && scores[p] && Object.keys(scores[p]).some(k => ['ones','twos','threes','fours','fives','sixes'].includes(k))) return <div className="text-[10px] font-bold text-gray-400 text-center w-full">Sur la cible</div>;
-                        return null;
-                    })()}
-                  </div>
-                  :cat.upperGrandTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
-                  :cat.lowerTotal?<div className="text-center py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-black text-sm sm:text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
+                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block">{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
+                  {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
+                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
+                  :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
+                  :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
                   :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
                   </td>)}</tr>;
                 })}
-                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-2 sm:p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-1 sm:gap-3"><span className="text-xl sm:text-3xl">🏆</span><span className="text-white font-black text-sm sm:text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-2 sm:p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-lg sm:text-2xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl text-gray-500">???</div>:<div className="text-lg sm:text-4xl font-black py-2 sm:py-4 px-1 sm:px-2 rounded-xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
+                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
               </tbody></table></div>
             </div>
           </div>
@@ -1005,23 +1030,13 @@ export default function YamsUltimateLegacy() {
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2>
-                <div className="flex gap-2 items-center">
-                    <select value={historyFilterSeason} onChange={e=>setHistoryFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
-                        <option value="Toutes">Toutes</option>
-                        <option value="Aucune">Hors Saison</option>
-                        {seasons.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label>
-                </div>
-            </div>
-            {filteredGameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
-            {filteredGameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
+            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
-                        
+                        {/* EDIT SEASON BUTTON */}
                         {editingHistoryId === g.id ? (
                             <div className="flex gap-2">
                                 <select value={tempHistorySeason} onChange={e => setTempHistorySeason(e.target.value)} className="bg-black/50 text-white text-xs p-1 rounded">
@@ -1034,34 +1049,14 @@ export default function YamsUltimateLegacy() {
                         ) : (
                             <div className="flex items-center gap-2">
                                 {g.season && g.season !== 'Aucune' && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{g.season}</span>}
-                                <button onClick={() => { setEditingHistoryId(g.id); setTempHistorySeason(g.season || 'Aucune'); }} className="text-gray-500 hover:text-white transition-colors" title="Modifier la saison"><Edit3 size={12}/></button>
+                                <button onClick={() => { setEditingHistoryId(g.id); setTempHistorySeason(g.season || 'Aucune'); }} className="text-gray-500 hover:text-white transition-colors" title="Modifier la saison"><Edit3 size={14}/></button>
                             </div>
                         )}
-
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{
-                    const grid = g.grid || {};
-                    let hasBonus = false;
-                    if(grid[pl.name]) {
-                        const upper = categories.filter(c=>c.upper).reduce((s,c)=>s+(grid[pl.name]?.[c.id]||0),0);
-                        if(upper >= 63) hasBonus = true;
-                    }
-                    return (
-                    <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm">
-                        <span className="text-white font-bold flex items-center gap-3">
-                            {pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}
-                            {!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}
-                            <span className="text-lg">{pl.name}</span>
-                            {pl.yamsCount>0&&<span className="text-yellow-400 text-xs bg-yellow-500/20 px-2 py-0.5 rounded border border-yellow-500/50 flex items-center gap-1">🎲 Yams</span>}
-                            {hasBonus&&<span className="text-blue-400 text-xs bg-blue-500/20 px-2 py-0.5 rounded border border-blue-500/50 flex items-center gap-1"><Gift size={12}/> Bonus</span>}
-                            {pl.score>=300&&<span className="text-purple-400 text-xs bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1">⭐ 300+</span>}
-                        </span>
-                        <span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>
-                    </div>
-                );})}</div></div>)}</div>}
+                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=><div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span></div>)}</div></div>)}</div>}
           </div></div>
         )}
 
@@ -1105,7 +1100,7 @@ export default function YamsUltimateLegacy() {
                     </div>}
                     </div></div></div>;})}</div></div>}
 
-                {/* 4. RECORDS & STATS */}
+                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1113,40 +1108,40 @@ export default function YamsUltimateLegacy() {
                   </div>
                 </div>
 
-                {/* 5. HALL OF FAME (REINTEGRE & ORDRE CORRIGÉ) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
-                    {hallOfFame && hallOfFame.biggestWin.gap > -1 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
-                            <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
-                            <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
-                            <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
-                            <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
-                            <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
-                            <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                            <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
-                            <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
-                            <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
-                            <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
+                {/* 4. HALL OF FAME */}
+                {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
+                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                        <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
+                                <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
+                                <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
+                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
+                                <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
+                                <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
+                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
+                                <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
+                                <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
+                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
+                                <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
+                                <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
+                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
+                            </div>
                         </div>
                     </div>
-                    ) : (<div className="text-center text-gray-500 py-4 italic bg-black/20 rounded-xl">Pas assez de données pour cette saison</div>)}
-                </div>
+                )}
 
-                {/* 6. FACE A FACE V2 (DESIGN BLEU/CYAN) */}
+                {/* 5. FACE A FACE V2 */}
                 <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
@@ -1200,7 +1195,7 @@ export default function YamsUltimateLegacy() {
 
                                 return (
                                     <>
-                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total confrontations : {mutualGames.length}</span></div>
+                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total rencontres : {mutualGames.length}</span></div>
 
                                         <div className="grid grid-cols-2 gap-4">
                                             {/* P1 CARD STYLE HoF */}
