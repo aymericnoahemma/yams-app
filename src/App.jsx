@@ -500,6 +500,22 @@ export default function YamsUltimateLegacy() {
       saveCurrentGame({});
   };
 
+  const updateGameSeason = (id, newSeason) => {
+     const updatedHistory = gameHistory.map(g => {
+         if (g.id !== id) return g;
+         const currentSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season && g.season !== 'Aucune' ? [g.season] : []);
+         let newSeasons;
+         if (currentSeasons.includes(newSeason)) {
+             newSeasons = currentSeasons.filter(s => s !== newSeason);
+         } else {
+             newSeasons = [...currentSeasons, newSeason];
+         }
+         return { ...g, seasons: newSeasons, season: null }; 
+     });
+     setGameHistory(updatedHistory);
+     saveHistory(updatedHistory);
+  };
+
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
   
   // LOGIQUE GAGES MIXTES
@@ -705,7 +721,7 @@ export default function YamsUltimateLegacy() {
 
       {showAvatarModal && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
-              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
                   <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
                   <div className="grid grid-cols-4 gap-3">
                       {AVATAR_LIST.map((av, i) => {
@@ -775,12 +791,83 @@ export default function YamsUltimateLegacy() {
           {showSettings&&<div className="mt-6 pt-6 border-t border-white/10"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><Timer size={20}/></div><div><div className="text-white font-bold">Speed Run</div><div className="text-gray-400 text-xs">Chrono 30s par tour</div></div></div><button onClick={()=>setSpeedMode(!speedMode)} className={'relative w-12 h-6 rounded-full transition-all '+(speedMode?'bg-red-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(speedMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
+              
+              {/* SAISONS DANS LES REGLAGES */}
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
+                 <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400"><Calendar size={20}/></div>
+                   <div>
+                       <div className="text-white font-bold">Gérer les Saisons</div>
+                       <div className="text-gray-400 text-xs">Saison active: <span className="text-cyan-400 font-bold">{activeSeason}</span></div>
+                       <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Info size={10}/>Sert à regrouper vos parties par période ou événement.</p>
+                   </div>
+                 </div>
+                 
+                 <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    {/* Selecteur / Créateur */}
+                    <div className="flex gap-2">
+                        {renamingSeason ? (
+                            <div className="flex gap-2 items-center">
+                                <input type="text" value={tempSeasonName} onChange={e=>setTempSeasonName(e.target.value)} className="bg-black/40 text-white px-2 py-1 rounded-lg text-sm border border-cyan-500/50" autoFocus />
+                                <button onClick={() => { 
+                                    if(tempSeasonName && !seasons.includes(tempSeasonName)) {
+                                        const newSeasons = seasons.map(s => s === activeSeason ? tempSeasonName : s);
+                                        setSeasons(newSeasons);
+                                        setActiveSeason(tempSeasonName);
+                                        setRenamingSeason(null);
+                                    }
+                                }} className="p-1 bg-green-500/20 text-green-400 rounded"><Check size={14}/></button>
+                                <button onClick={()=>setRenamingSeason(null)} className="p-1 bg-red-500/20 text-red-400 rounded"><X size={14}/></button>
+                            </div>
+                        ) : (
+                            <select value={activeSeason} onChange={e=>setActiveSeason(e.target.value)} className="bg-black/30 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none w-full sm:w-40">
+                                <option value="Aucune">Aucune (Hors Saison)</option>
+                                {seasons.map(s=><option key={s} value={s}>{s}</option>)}
+                            </select>
+                        )}
+                        
+                        {activeSeason !== 'Aucune' && !renamingSeason && (
+                            <>
+                                <button onClick={()=>{setTempSeasonName(activeSeason); setRenamingSeason(true);}} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl" title="Renommer"><Edit3 size={16}/></button>
+                                <button onClick={()=>{
+                                    if(window.confirm(`Supprimer la saison "${activeSeason}" ?`)) {
+                                        setSeasons(seasons.filter(s=>s!==activeSeason));
+                                        setActiveSeason('Aucune');
+                                    }
+                                }} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl" title="Supprimer"><Trash2 size={16}/></button>
+                            </>
+                        )}
+                    </div>
+                    
+                    {/* Input Description Saison */}
+                    {activeSeason !== 'Aucune' && (
+                        <div className="flex gap-2 items-center w-full">
+                            <PenLine size={14} className="text-gray-500"/>
+                            <input 
+                                type="text" 
+                                placeholder="Ajouter une description..." 
+                                value={seasonDescriptions[activeSeason] || ''} 
+                                onChange={e => updateSeasonDescription(activeSeason, e.target.value)}
+                                className="bg-transparent text-gray-300 text-xs outline-none border-b border-white/10 focus:border-cyan-400 w-full"
+                            />
+                        </div>
+                    )}
+                    
+                    {/* Ajouter nouvelle */}
+                    <div className="flex gap-2 mt-1">
+                         <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
+                         <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
+                    </div>
+                 </div>
+              </div>
+              
               </div></div></div>}
           
           <div className="flex gap-2 mt-4 flex-wrap">
@@ -983,7 +1070,7 @@ export default function YamsUltimateLegacy() {
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1">
+                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={24} fill="currentColor" /></div>}
                         <div className="flex items-center gap-2">{playerAvatars[p] || "👤"} {p}</div>
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
@@ -991,7 +1078,7 @@ export default function YamsUltimateLegacy() {
                         
                         {/* REAL-TIME RANKING BADGE */}
                         {isGameStarted() && !isGameComplete() && (
-                            <span className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full bg-white text-xs font-black shadow-lg">
+                            <span className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full bg-white text-xs font-black shadow-lg text-black border border-white/20 z-20">
                                 {getRank(p) === 1 ? '🥇' : getRank(p) === 2 ? '🥈' : getRank(p) === 3 ? '🥉' : getRank(p)}
                             </span>
                         )}
@@ -1020,7 +1107,7 @@ export default function YamsUltimateLegacy() {
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
@@ -1054,7 +1141,6 @@ export default function YamsUltimateLegacy() {
                                 <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier les saisons"><Edit3 size={12}/></button>
                             </div>
                         )}
-
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
@@ -1334,6 +1420,76 @@ export default function YamsUltimateLegacy() {
                      </div>
                 </div>
 
+            </div>
+        )}
+
+        {/* TAB: GAGES */}
+        {currentTab === 'gages' && (
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
+                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
+                            <span className="text-sm font-bold text-white">Gages par défaut</span>
+                            <button 
+                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
+                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                            {DEFAULT_GAGES.map((g, i) => (
+                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
+                                    <span className="text-lg">📜</span> {g}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
+                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                value={newGageInput}
+                                onChange={(e) => setNewGageInput(e.target.value)}
+                                placeholder="Inventez une punition..." 
+                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
+                            />
+                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {customGages.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
+                            ) : (
+                                customGages.map(g => (
+                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
+                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                                                {g.active && <Check size={14} className="text-white"/>}
+                                            </div>
+                                            <span className="text-white font-medium">{g.text}</span>
+                                        </div>
+                                        <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                            <Trash2 size={16}/>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         )}
 
