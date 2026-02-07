@@ -6,7 +6,7 @@ import {
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
   TrendingUp, AlertTriangle, Gift, Camera, Calendar, PenLine, Info, Save,
-  Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star
+  Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -81,7 +81,7 @@ const AVATAR_LIST = [
 ];
 
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
-const gages = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
+const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
 
 // --- UTILS ---
 const calculateSimulatedScores = (dice) => {
@@ -114,13 +114,13 @@ const calculateSimulatedScores = (dice) => {
 
 // --- COMPOSANTS INTERNES ---
 const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
-  if(isFoggy && isLocked) return <div className="w-full py-1 sm:py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
-  if(isImposedDisabled) return <div className="w-full py-1 sm:py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
+  if(isFoggy && isLocked) return <div className="w-full py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
+  if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
   const cat = categories.find(c=>c.id===category);
   const vals = cat?.values || Array.from({length:31},(_,i)=>i);
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-1 sm:py-3 px-1 rounded-lg sm:rounded-xl font-bold text-sm sm:text-lg text-center transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -348,8 +348,8 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V20
-  const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
+  // NEW FEATURES V21
+  const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -359,6 +359,11 @@ export default function YamsUltimateLegacy() {
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [tempHistorySeason, setTempHistorySeason] = useState('');
+  
+  // GAGES STATES
+  const [customGages, setCustomGages] = useState([]);
+  const [enableDefaultGages, setEnableDefaultGages] = useState(true);
+  const [newGageInput, setNewGageInput] = useState("");
   
   const [endGameData, setEndGameData] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
@@ -374,7 +379,7 @@ export default function YamsUltimateLegacy() {
       const distance = touchStart - touchEnd;
       const isLeftSwipe = distance > minSwipeDistance;
       const isRightSwipe = distance < -minSwipeDistance;
-      const tabs = ['game', 'stats', 'history', 'trophies', 'rules'];
+      const tabs = ['game', 'stats', 'history', 'trophies', 'gages', 'rules'];
       const currentIndex = tabs.indexOf(currentTab);
       if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
       if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
@@ -395,11 +400,12 @@ export default function YamsUltimateLegacy() {
     return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
   }, [wakeLockEnabled]);
 
-  useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();},[]);
+  useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
   const loadSeasons=()=>{try{const s=localStorage.getItem('yamsSeasons');const a=localStorage.getItem('yamsActiveSeason');const d=localStorage.getItem('yamsSeasonDesc');if(s)setSeasons(JSON.parse(s));if(a)setActiveSeason(a);if(d)setSeasonDescriptions(JSON.parse(d));}catch(e){}};
+  const loadGages=()=>{try{const cg=localStorage.getItem('yamsCustomGages');const edg=localStorage.getItem('yamsEnableDefaultGages');if(cg)setCustomGages(JSON.parse(cg));if(edg)setEnableDefaultGages(JSON.parse(edg));}catch(e){}};
   const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled, activeSeason}));}catch(e){}};
   const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
   setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
@@ -410,11 +416,15 @@ export default function YamsUltimateLegacy() {
   useEffect(() => { localStorage.setItem('yamsPlayerAvatars', JSON.stringify(playerAvatars)); }, [playerAvatars]);
   useEffect(() => { localStorage.setItem('yamsGlobalXP', globalXP.toString()); }, [globalXP]);
   useEffect(() => { localStorage.setItem('yamsSeasons', JSON.stringify(seasons)); localStorage.setItem('yamsActiveSeason', activeSeason); localStorage.setItem('yamsSeasonDesc', JSON.stringify(seasonDescriptions)); }, [seasons, activeSeason, seasonDescriptions]);
+  useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
   useEffect(() => { let interval; if(speedMode && isGameStarted() && !isGameComplete() && !editMode) { if(timeLeft > 0) { interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000); } } return () => clearInterval(interval); }, [speedMode, timeLeft, scores, editMode]);
   useEffect(() => { setTimeLeft(30); }, [lastPlayerToPlay]);
 
   const createSeason = () => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); } };
   const updateSeasonDescription = (season, desc) => { setSeasonDescriptions(prev => ({...prev, [season]: desc})); };
+  const addCustomGage = () => { if (newGageInput.trim()) { setCustomGages([...customGages, { id: Date.now(), text: newGageInput.trim(), active: true }]); setNewGageInput(""); } };
+  const toggleCustomGage = (id) => { setCustomGages(customGages.map(g => g.id === id ? { ...g, active: !g.active } : g)); };
+  const deleteCustomGage = (id) => { setCustomGages(customGages.filter(g => g.id !== id)); };
 
   const isGameStarted=()=>Object.keys(scores).some(p=>scores[p]&&Object.keys(scores[p]).length>0);
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
@@ -428,17 +438,7 @@ export default function YamsUltimateLegacy() {
   const getBonus= (p, sc=scores) => calcUpper(p, sc)>=63?35:0;
   const calcUpperGrand= (p, sc=scores) => calcUpper(p, sc)+getBonus(p, sc);
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
-  // FIX REPLAY TOTAL: isolate joker calculation for replay
-  const calcTotal = (p, sc = scores) => {
-    if (!p) return 0;
-    let total = calcUpperGrand(p, sc) + calcLower(p, sc);
-    // Only apply joker logic if we are using the live game scores
-    if (jokersEnabled && sc === scores) {
-        const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax);
-        if (usedJokers > 0) total -= (usedJokers * 10);
-    }
-    return total;
-  };
+  const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
   // FIX REPLAY: COMPLETELY INDEPENDENT AND SAFE FUNCTION (NO JOKERS HERE) - SINGLE DECLARATION
@@ -594,7 +594,25 @@ export default function YamsUltimateLegacy() {
       }
   }, [scores, showEndGameModal, endGameData]);
 
-  useEffect(() => { if (showEndGameModal && !currentGage) { setCurrentGage(gages[Math.floor(Math.random() * gages.length)]); } else if (!showEndGameModal) { setCurrentGage(null); } }, [showEndGameModal]);
+  // NOUVEAU LOGIQUE GAGES MIXTES
+  useEffect(() => { 
+    if (showEndGameModal && !currentGage) {
+        let pool = [];
+        if (enableDefaultGages) pool = [...pool, ...DEFAULT_GAGES];
+        if (customGages && customGages.length > 0) {
+            const activeCustoms = customGages.filter(g => g.active).map(g => g.text);
+            pool = [...pool, ...activeCustoms];
+        }
+        
+        if (pool.length > 0) {
+            setCurrentGage(pool[Math.floor(Math.random() * pool.length)]);
+        } else {
+            setCurrentGage("Aucun gage disponible !");
+        }
+    } else if (!showEndGameModal) { 
+        setCurrentGage(null); 
+    } 
+  }, [showEndGameModal, customGages, enableDefaultGages]);
   
   const saveGameFromModal=()=>{ 
       if (!endGameData) return;
@@ -683,17 +701,10 @@ export default function YamsUltimateLegacy() {
     let upperSum = 0; let lowerSum = 0;
     categories.forEach(cat => {
         const val = grid[player][cat.id];
-        // Only count actual numbers (ignore undefined or strings that are not numbers)
         const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
-        
-        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) {
-            upperSum += num;
-        }
-        if (cat.lower && !cat.lowerTotal && !cat.divider) {
-            lowerSum += num;
-        }
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
     });
-
     const bonus = upperSum >= 63 ? 35 : 0;
     return upperSum + bonus + lowerSum;
   };
@@ -922,6 +933,7 @@ export default function YamsUltimateLegacy() {
             <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
             <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
             <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+            <button onClick={()=>setCurrentTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='gages'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
           </div>
         </div>
 
@@ -954,6 +966,76 @@ export default function YamsUltimateLegacy() {
                         <div className="text-xs font-bold text-pink-200 uppercase tracking-widest">ÉVÉNEMENT CHAOS</div>
                         <div className="text-xl font-black text-white">{activeChaosCard.title}</div>
                         <div className="text-sm text-white/90">{activeChaosCard.desc}</div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: GAGES */}
+        {currentTab === 'gages' && (
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
+                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
+                            <span className="text-sm font-bold text-white">Gages par défaut</span>
+                            <button 
+                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
+                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                            {DEFAULT_GAGES.map((g, i) => (
+                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
+                                    <span className="text-lg">📜</span> {g}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
+                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                value={newGageInput}
+                                onChange={(e) => setNewGageInput(e.target.value)}
+                                placeholder="Inventez une punition..." 
+                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
+                            />
+                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {customGages.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
+                            ) : (
+                                customGages.map(g => (
+                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
+                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                                                {g.active && <Check size={14} className="text-white"/>}
+                                            </div>
+                                            <span className="text-white font-medium">{g.text}</span>
+                                        </div>
+                                        <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                            <Trash2 size={16}/>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -997,415 +1079,6 @@ export default function YamsUltimateLegacy() {
                                 <div className={`text-lg font-black ${isGood ? 'text-green-400' : 'text-gray-500'}`}>{score}</div>
                                 {isGood && difficulty && <div className={`w-full h-1 mt-1 rounded-full ${difficulty==='low'?'bg-green-500':difficulty==='medium'?'bg-yellow-500':difficulty==='hard'?'bg-orange-500':'bg-red-500'}`}></div>}
                             </div>;
-                        })}
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* TAB: GAME */}
-        {currentTab==='game'&&(
-          <div className="space-y-4 tab-enter">
-            {speedMode && timeLeft > 0 && <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${timeLeft<10?'bg-red-500':'bg-green-500'}`} style={{width: `${(timeLeft/30)*100}%`}}></div></div>}
-            
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-              <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-black text-white flex items-center gap-3"><span className="text-3xl">👥</span>Joueurs</h2><button onClick={addPlayer} disabled={players.length>=6||isGameStarted()} className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"><Plus size={20}/>Ajouter</button></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{players.map((player,i)=><PlayerCard key={i} player={player} index={i} onRemove={removePlayer} onNameChange={updatePlayerName} canRemove={players.length>1} gameStarted={isGameStarted()} avatar={playerAvatars[player]} onAvatarClick={openAvatarSelector}/>)}</div>
-            </div>
-
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h2 className="text-2xl font-black text-white flex items-center gap-3"><span className="text-3xl">📝</span>Feuille de score</h2>
-                <div className="flex gap-2 flex-wrap items-center">
-                  {editMode?(<><button onClick={toggleEditMode} className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl font-bold transition-all flex items-center gap-2"><Check size={18}/>Valider</button><button onClick={cancelEdit} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><X size={18}/>Annuler</button></>):(<button onClick={toggleEditMode} className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-bold transition-all flex items-center gap-2"><Edit3 size={18}/>Éditer</button>)}
-                  <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
-                </div>
-              </div>
-              {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {/* PANNEAU INFORMATION JOUEUR */}
-              {!editMode && !isGameComplete() && (
-                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <div className="flex items-center gap-3">
-                              <span className="text-2xl">🎯</span>
-                              <div>
-                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
-                                  {getEmptyCells(getNextPlayer()).length>0 && (
-                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
-                                  )}
-                              </div>
-                          </div>
-                          {lastModifiedCell && (
-                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
-                          )}
-                      </div>
-                  </div>
-              )}
-
-              <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
-                <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
-                {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1">
-                        {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={24} fill="currentColor" /></div>}
-                        <div className="flex items-center gap-2">{playerAvatars[p] || "👤"} {p}</div>
-                        {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
-                        {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
-                    </div>
-                </th>)}</tr></thead><tbody>
-                {categories.map(cat=>{
-                  if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
-                  if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
-                  if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block">{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                  {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
-                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
-                  :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
-                  :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
-                  :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
-                  </td>)}</tr>;
-                })}
-                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
-              </tbody></table></div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: HISTORY */}
-        {currentTab==='history'&&(
-          <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
-            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
-                        
-                        {editingHistoryId === g.id ? (
-                            <div className="flex gap-2 animate-in slide-in-from-left-2">
-                                <select value={tempHistorySeason} onChange={e => setTempHistorySeason(e.target.value)} className="bg-black/50 text-white text-xs p-1 rounded border border-white/20">
-                                    <option value="Aucune">Aucune</option>
-                                    {seasons.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <button onClick={() => updateGameSeason(g.id, tempHistorySeason)} className="p-1 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30"><Save size={14}/></button>
-                                <button onClick={() => setEditingHistoryId(null)} className="p-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30"><X size={14}/></button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                {g.season && g.season !== 'Aucune' && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{g.season}</span>}
-                                <button onClick={() => { setEditingHistoryId(g.id); setTempHistorySeason(g.season || 'Aucune'); }} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier la saison"><Edit3 size={12}/></button>
-                            </div>
-                        )}
-                        {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
-                    </div>
-                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
-                </div>
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=><div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span></div>)}</div></div>)}</div>}
-          </div></div>
-        )}
-
-        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
-        {currentTab==='stats'&&(
-            <div className="space-y-6 tab-enter">
-                
-                {/* 0. FILTRE SAISONS */}
-                <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/10">
-                    <div>
-                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><Activity className="text-blue-400"/> Statistiques</h2>
-                        {statsFilterSeason !== 'Toutes' && seasonDescriptions[statsFilterSeason] && (
-                            <p className="text-gray-400 text-xs mt-1 italic pl-10">{seasonDescriptions[statsFilterSeason]}</p>
-                        )}
-                    </div>
-                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
-                        <option value="Toutes">Toutes les Saisons</option>
-                        <option value="Aucune">Hors Saison</option>
-                        {seasons.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-
-                {/* 1. SCORE MAXI ATTEINT (BANNER) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                  {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
-                </div>
-
-                {/* 2. PALMARES (PODIUM) */}
-                {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
-                    const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
-                    const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
-                    return <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}><div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>{isTop&&<div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}<div className="relative z-10"><div className="flex items-center justify-between mb-4"><div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>{isTop&&<div className="text-5xl animate-bounce">👑</div>}</div><div className="mb-4"><h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3><div className="flex items-baseline gap-2"><span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span><span className="text-gray-400 text-sm font-semibold">victoires</span></div></div><div className="space-y-3"><div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div><div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
-                    {pStat && <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
-                        <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
-                        </div>
-                        <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
-                        <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
-                    </div>}
-                    </div></div></div>;})}</div></div>}
-
-                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                  <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(()=>{const stats=playerStats;const bestAvg=Math.max(...stats.map(s=>s.avgScore));const bestAvgP=stats.filter(s=>s.avgScore===bestAvg);const mostG=Math.max(...stats.map(s=>s.games));const mostGP=stats.filter(s=>s.games===mostG);const totY=stats.reduce((sum,s)=>sum+s.yamsCount,0);const maxY=Math.max(...stats.map(s=>s.yamsCount));const mostYP=stats.filter(s=>s.yamsCount===maxY);return <><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div><div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div></>;})()}
-                  </div>
-                </div>
-
-                {/* 4. HALL OF FAME (REINTEGRE & ORDRE CORRIGÉ) */}
-                {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
-                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                        <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
-                                <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
-                                <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
-                                <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
-                                <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
-                                <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
-                                <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
-                                <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
-                                <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 5. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
-                <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
-                    
-                    <div className="flex gap-4 items-center justify-center mb-8">
-                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                        <div className="text-2xl font-black italic text-gray-500">VS</div>
-                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    
-                    {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                        <div className="space-y-6">
-                            {/* SCORECARD */}
-                            {(() => {
-                                const p1 = playerStats.find(s=>s.name===versus.p1);
-                                const p2 = playerStats.find(s=>s.name===versus.p2);
-                                
-                                const p1Wins = filteredHistory.filter(g => {
-                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp1.score > pp2.score;
-                                }).length;
-                                const p2Wins = filteredHistory.filter(g => {
-                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp2.score > pp1.score;
-                                }).length;
-
-                                let p1Total = 0, p2Total = 0, gapSum = 0, streak = 0, currentWinner = null;
-                                const mutualGames = filteredHistory.filter(g => {
-                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     if(pp1 && pp2) { p1Total += pp1.score; p2Total += pp2.score; gapSum += Math.abs(pp1.score - pp2.score); return true; }
-                                     return false;
-                                });
-                                for(let i=0; i<mutualGames.length; i++) {
-                                     const g = mutualGames[i];
-                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     const winner = pp1.score > pp2.score ? versus.p1 : versus.p2;
-                                     if(currentWinner === null) { currentWinner = winner; streak = 1; }
-                                     else if(currentWinner === winner) streak++;
-                                     else break;
-                                }
-                                const avgGap = mutualGames.length > 0 ? Math.round(gapSum / mutualGames.length) : 0;
-
-                                return (
-                                    <>
-                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total des rencontres : {mutualGames.length}</span></div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
-                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
-                                                <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
-                                            </div>
-                                            {/* P2 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
-                                                <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p2Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
-                                                <div className="text-white font-black text-lg">{avgGap} pts</div>
-                                            </div>
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Série en cours</div>
-                                                <div className="text-white font-black text-sm">{currentWinner || "-"} <span className="text-yellow-400">x{streak}</span></div>
-                                            </div>
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Cumul Points</div>
-                                                <div className="text-xs font-bold"><span className="text-blue-400">{p1Total}</span> / <span className="text-red-400">{p2Total}</span></div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            {[
-                                                { label: "Moyenne", v1: p1.avgScore, v2: p2.avgScore },
-                                                { label: "Record", v1: p1.maxScore, v2: p2.maxScore },
-                                                { label: "Total Yams", v1: p1.yamsCount, v2: p2.yamsCount },
-                                                { label: "Bonus", v1: p1.bonusCount, v2: p2.bonusCount }
-                                            ].map((stat, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-black/20 px-4 py-3 rounded-xl border border-white/5">
-                                                    <span className={`font-black w-12 text-center text-lg ${stat.v1 > stat.v2 ? "text-green-400" : "text-white"}`}>{stat.v1}</span>
-                                                    <span className="text-[10px] uppercase text-gray-500 font-bold flex-1 text-center tracking-widest">{stat.label}</span>
-                                                    <span className={`font-black w-12 text-center text-lg ${stat.v2 > stat.v1 ? "text-green-400" : "text-white"}`}>{stat.v2}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-                </div>
-
-                {/* 7. LE FIL DU MATCH (GAME FLOW) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><TrendingUp/> Le Fil du Match</h2>
-                        <div className="text-xs text-gray-400 font-bold bg-white/10 px-3 py-1 rounded-full">Dernière Partie</div>
-                    </div>
-                    
-                    <div className="h-64 w-full bg-black/20 rounded-xl p-4 relative">
-                        {(!moveLog || moveLog.length < 2) && (!gameHistory[0]?.moveLog || gameHistory[0]?.moveLog.length < 2) ? 
-                            <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">Pas assez de données pour le moment</div> :
-                            <GameFlowChart moveLog={moveLog.length > 0 ? moveLog : gameHistory[0]?.moveLog} players={players} />
-                        }
-                    </div>
-                </div>
-
-                {/* 8. CHANCE AUX DES */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
-                    <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
-                            <option value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    {versus.luckPlayer && (
-                        <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
-                    )}
-                </div>
-
-                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
-                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-                     {/* Suppression du panneau attention géant à droite */}
-                     <div className="mb-6 relative z-10">
-                        <div className="flex items-center gap-3 mb-6">
-                             <AlertTriangle className="text-blue-400" size={32}/>
-                             <h2 className="text-3xl font-black text-white">Zone de Danger</h2>
-                        </div>
-                        
-                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg">
-                            <option value="GLOBAL" className="bg-slate-900">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                     </div>
-                     
-                     <div className="overflow-x-auto max-h-96 overflow-y-auto relative z-10 pr-2">
-                         {(() => {
-                             const pName = versus.failPlayer || 'GLOBAL';
-                             const { failures, totalGames } = calculateGlobalFailures(pName);
-                             
-                             if (totalGames === 0) return <div className="text-center text-gray-300 font-bold text-sm py-8 bg-black/20 rounded-xl">Aucune donnée disponible pour l'instant.</div>;
-
-                             return (
-                                 <table className="w-full text-sm text-left border-collapse">
-                                    <thead>
-                                        <tr className="text-blue-200 border-b-2 border-blue-500/30"><th className="py-3 pl-4 uppercase text-[10px] tracking-widest text-left">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-4 text-center uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
-                                    </thead>
-                                    <tbody className="text-white">
-                                        {failures.map(f => (
-                                            <tr key={f.id} className="border-b border-blue-500/10 hover:bg-blue-500/10 transition-colors">
-                                                <td className="py-3 pl-4 font-bold flex items-center justify-start gap-3 text-lg">
-                                                    <span className="text-2xl">{categories.find(c=>c.id===f.id)?.icon}</span> 
-                                                    {f.name}
-                                                </td>
-                                                <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-blue-300' : 'text-gray-500'}`}>{f.count} <span className="text-xs text-gray-500 font-normal">/ {totalGames}</span></td>
-                                                <td className="py-3 pr-4 text-center">
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <span className="font-bold">{f.rate}%</span>
-                                                        <div className="w-16 h-2 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
-                                                            <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-blue-500' : f.rate > 20 ? 'bg-cyan-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                             );
-                         })()}
-                     </div>
-                </div>
-
-            </div>
-        )}
-
-        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
-        {currentTab==='trophies'&&(
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {ACHIEVEMENTS.map(ach => {
-                            let winners = [];
-                            playerStats.forEach(p => {
-                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
-                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
-                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
-                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
-                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
-                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                            });
-                            const unlocked = winners.length > 0;
-                            return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
-                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
-                                    <div className="font-bold text-white text-sm">{ach.name}</div>
-                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
-                                    {unlocked && (
-                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
-                                            {winners.join(', ')}
-                                        </div>
-                                    )}
-                                </div>
-                            );
                         })}
                     </div>
                 </div>
