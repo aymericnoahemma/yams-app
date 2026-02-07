@@ -256,10 +256,8 @@ const GameFlowChart = ({ moveLog, players }) => {
 
 // Graphique : Chance aux Dés (Estimation)
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -951,7 +949,10 @@ export default function YamsUltimateLegacy() {
                             ) : (
                                 customGages.map(g => (
                                     <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
-                                        <div className="flex items-center gap-3 flex-1">
+                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                                                {g.active && <Check size={14} className="text-white"/>}
+                                            </div>
                                             <span className="text-white font-medium">{g.text}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -1065,12 +1066,14 @@ export default function YamsUltimateLegacy() {
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {/* REAL-TIME RANKING BADGE - CENTERED AND BIGGER - CROWN FOR FIRST */}
                         {isGameStarted() && !isGameComplete() && (
-                            <div className="absolute -top-6 w-full flex justify-center z-20">
+                            <div className="absolute -top-8 w-full flex justify-center z-20">
                                 {getRank(p) === 1 ? (
-                                    <Crown size={32} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
+                                    <div className="bg-yellow-500/20 p-1.5 rounded-full backdrop-blur-sm border border-yellow-400/50">
+                                        <Crown size={32} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse" fill="currentColor" />
+                                    </div>
                                 ) : (
-                                    getRank(p) === 2 ? <span className="text-3xl drop-shadow-md">🥈</span> :
-                                    getRank(p) === 3 ? <span className="text-3xl drop-shadow-md">🥉</span> : null
+                                    getRank(p) === 2 ? <span className="text-4xl drop-shadow-lg filter grayscale-[0.2]">🥈</span> :
+                                    getRank(p) === 3 ? <span className="text-4xl drop-shadow-lg filter sepia-[0.4]">🥉</span> : null
                                 )}
                             </div>
                         )}
@@ -1164,37 +1167,118 @@ export default function YamsUltimateLegacy() {
                     </select>
                 </div>
 
-                {/* 1. SCORE MAXI ATTEINT (BANNER) */}
+                {/* 1. SCORE MAXI ATTEINT (BANNER) - SAFE MODE */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                  {(()=>{const stats=playerStats;if(!stats || !stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
-                  {(!playerStats || playerStats.length===0)&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
+                  {(()=>{
+                      if(!playerStats || !playerStats.length) return <div className="text-center text-gray-500 py-8">Pas encore de statistiques. Jouez une partie !</div>;
+                      const bestScore = Math.max(...playerStats.map(s=>s.maxScore));
+                      const bestPlayers = playerStats.filter(s=>s.maxScore===bestScore);
+                      const maxPossible = 375;
+                      const pctOfMax = ((bestScore/maxPossible)*100).toFixed(1);
+                      
+                      if (bestScore === 0) return <div className="text-center text-gray-500 py-8">Jouez pour débloquer les stats !</div>;
+
+                      return (
+                      <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20">
+                          <div className="flex items-center justify-between flex-wrap gap-4">
+                              <div className="flex items-center gap-4">
+                                  <span className="text-6xl animate-pulse">🌟</span>
+                                  <div>
+                                      <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div>
+                                      <div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div>
+                                      <div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div>
+                                  </div>
+                              </div>
+                              <div className="text-right">
+                                  <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div>
+                                  <div className="text-white text-5xl font-black">{pctOfMax}%</div>
+                                  <div className="text-gray-300 text-xs">du maximum théorique</div>
+                              </div>
+                          </div>
+                      </div>
+                      );
+                  })()}
                 </div>
 
-                {/* 2. PALMARES (PODIUM) */}
-                {getPieData().length>0&&<div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}><h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
-                    const allStats = playerStats; const pStat = allStats.find(s => s.name === entry.name);
-                    const total = getPieData().reduce((s,item)=>s+item.value,0); const pct = ((entry.value/total)*100).toFixed(0); const isTop=idx===0; const COLORS=['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
-                    return <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}><div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>{isTop&&<div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}<div className="relative z-10"><div className="flex items-center justify-between mb-4"><div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>{isTop&&<div className="text-5xl animate-bounce">👑</div>}</div><div className="mb-4"><h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3><div className="flex items-baseline gap-2"><span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span><span className="text-gray-400 text-sm font-semibold">victoires</span></div></div><div className="space-y-3"><div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div><div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
-                    {pStat && <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
-                        <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
-                            <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
-                        </div>
-                        <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
-                        <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
-                    </div>}
-                    </div></div></div>;})}</div></div>}
+                {/* 2. PALMARES (PODIUM) - SAFE MODE */}
+                {getPieData().length > 0 && (
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
+                            const pStat = playerStats.find(s => s.name === entry.name);
+                            if (!pStat) return null;
+                            const total = getPieData().reduce((s,item)=>s+item.value,0); 
+                            const pct = total > 0 ? ((entry.value/total)*100).toFixed(0) : 0; 
+                            const isTop = idx === 0; 
+                            const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
+                            
+                            return (
+                                <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}>
+                                    <div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>
+                                    {isTop && <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>
+                                            {isTop && <div className="text-5xl animate-bounce">👑</div>}
+                                        </div>
+                                        <div className="mb-4">
+                                            <h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span>
+                                                <span className="text-gray-400 text-sm font-semibold">victoires</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div>
+                                            <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
+                                                <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
+                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
+                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
+                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
+                                                </div>
+                                                <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
+                                                <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                )}
 
-                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
+                {/* 3. RECORDS & STATS (GRILLE DE 4) - SAFE MODE */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(()=>{const stats=playerStats;if(!stats || !stats.length) return null;const bestAvg=Math.max(...stats.map(s=>s.avgScore));const bestAvgP=stats.filter(s=>s.avgScore===bestAvg);const mostG=Math.max(...stats.map(s=>s.games));const mostGP=stats.filter(s=>s.games===mostG);const totY=stats.reduce((sum,s)=>sum+s.yamsCount,0);const maxY=Math.max(...stats.map(s=>s.yamsCount));const mostYP=stats.filter(s=>s.yamsCount===maxY);return <><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div><div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div></>;})()}
+                    {(()=>{
+                        if(!playerStats || playerStats.length === 0) return <div className="text-gray-500 italic">Pas assez de données...</div>;
+                        
+                        const bestAvg = Math.max(...playerStats.map(s=>s.avgScore));
+                        const bestAvgP = playerStats.filter(s=>s.avgScore===bestAvg);
+                        const mostG = Math.max(...playerStats.map(s=>s.games));
+                        const mostGP = playerStats.filter(s=>s.games===mostG);
+                        const totY = playerStats.reduce((sum,s)=>sum+s.yamsCount,0);
+                        const maxY = Math.max(...playerStats.map(s=>s.yamsCount));
+                        const mostYP = playerStats.filter(s=>s.yamsCount===maxY);
+                        
+                        return (
+                            <>
+                                <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div>
+                                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div>
+                                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div>
+                                <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div>
+                            </>
+                        );
+                    })()}
                   </div>
                 </div>
 
-                {/* 4. HALL OF FAME (REINTEGRE & ORDRE CORRIGÉ) */}
+                {/* 4. HALL OF FAME - SAFE MODE */}
                 {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
                     <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                         <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
@@ -1227,7 +1311,7 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
 
-                {/* 5. FACE A FACE V2 (COMPARATEUR STYLE HALL OF FAME) */}
+                {/* 5. FACE A FACE V2 (SAFE MODE) */}
                 <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
@@ -1285,14 +1369,14 @@ export default function YamsUltimateLegacy() {
                                         <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total des rencontres : {mutualGames.length}</span></div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD STYLE HoF */}
+                                            {/* P1 CARD */}
                                             <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
                                                 <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
-                                            {/* P2 CARD STYLE HoF */}
+                                            {/* P2 CARD */}
                                             <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
@@ -1366,9 +1450,8 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
+                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-                     {/* Suppression du panneau attention géant à droite */}
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
                              <AlertTriangle className="text-blue-400" size={32}/>
@@ -1421,36 +1504,81 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
-        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
-        {currentTab==='trophies'&&(
+        {/* TAB: GAGES */}
+        {currentTab === 'gages' && (
             <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {ACHIEVEMENTS.map(ach => {
-                            let winners = [];
-                            playerStats.forEach(p => {
-                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
-                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
-                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
-                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
-                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
-                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                            });
-                            const unlocked = winners.length > 0;
-                            return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
-                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
-                                    <div className="font-bold text-white text-sm">{ach.name}</div>
-                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
-                                    {unlocked && (
-                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
-                                            {winners.join(', ')}
-                                        </div>
-                                    )}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
+                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
+                            <span className="text-sm font-bold text-white">Gages par défaut</span>
+                            <button 
+                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
+                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                            {DEFAULT_GAGES.map((g, i) => (
+                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
+                                    <span className="text-lg">📜</span> {g}
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
+                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                value={newGageInput}
+                                onChange={(e) => setNewGageInput(e.target.value)}
+                                placeholder="Inventez une punition..." 
+                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
+                            />
+                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {customGages.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
+                            ) : (
+                                customGages.map(g => (
+                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
+                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
+                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
+                                                {g.active && <Check size={14} className="text-white"/>}
+                                            </div>
+                                            <span className="text-white font-medium">{g.text}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {/* SWITCH VISUEL */}
+                                            <button 
+                                                onClick={() => toggleCustomGage(g.id)}
+                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
+                                            >
+                                                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
+                                            </button>
+                                            
+                                            <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                                <Trash2 size={16}/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
