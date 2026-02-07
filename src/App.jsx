@@ -167,7 +167,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart)
+// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -254,10 +254,12 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation)
+// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
+    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
     
+    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -1064,16 +1066,14 @@ export default function YamsUltimateLegacy() {
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
-                        {/* REAL-TIME RANKING BADGE - CENTERED AND BIGGER - CROWN FOR FIRST */}
+                        {/* REAL-TIME RANKING BADGE - LEFT AND BIGGER */}
                         {isGameStarted() && !isGameComplete() && (
-                            <div className="absolute -top-8 w-full flex justify-center z-20">
+                            <div className="absolute top-2 left-2 z-20">
                                 {getRank(p) === 1 ? (
-                                    <div className="bg-yellow-500/20 p-1.5 rounded-full backdrop-blur-sm border border-yellow-400/50">
-                                        <Crown size={32} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse" fill="currentColor" />
-                                    </div>
+                                    <Crown size={24} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
                                 ) : (
-                                    getRank(p) === 2 ? <span className="text-4xl drop-shadow-lg filter grayscale-[0.2]">🥈</span> :
-                                    getRank(p) === 3 ? <span className="text-4xl drop-shadow-lg filter sepia-[0.4]">🥉</span> : null
+                                    getRank(p) === 2 ? <span className="text-2xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
+                                    getRank(p) === 3 ? <span className="text-2xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
                                 )}
                             </div>
                         )}
@@ -1148,7 +1148,7 @@ export default function YamsUltimateLegacy() {
           </div></div>
         )}
 
-        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
+        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION - CORRECTIF CRASH */}
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
@@ -1369,14 +1369,14 @@ export default function YamsUltimateLegacy() {
                                         <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total des rencontres : {mutualGames.length}</span></div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD */}
+                                            {/* P1 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
                                                 <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
-                                            {/* P2 CARD */}
+                                            {/* P2 CARD STYLE HoF */}
                                             <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
@@ -1450,7 +1450,7 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) */}
+                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
@@ -1563,7 +1563,7 @@ export default function YamsUltimateLegacy() {
                                             <span className="text-white font-medium">{g.text}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            {/* SWITCH VISUEL */}
+                                            {/* COMMUTATEUR VISUEL POUR GAGE PERSONNALISÉ */}
                                             <button 
                                                 onClick={() => toggleCustomGage(g.id)}
                                                 className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
@@ -1579,6 +1579,41 @@ export default function YamsUltimateLegacy() {
                                 ))
                             )}
                         </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
+        {currentTab==='trophies'&&(
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {ACHIEVEMENTS.map(ach => {
+                            let winners = [];
+                            playerStats.forEach(p => {
+                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
+                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
+                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
+                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
+                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
+                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                            });
+                            const unlocked = winners.length > 0;
+                            return (
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
+                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
+                                    <div className="font-bold text-white text-sm">{ach.name}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
+                                    {unlocked && (
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
+                                            {winners.join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
