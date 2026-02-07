@@ -167,7 +167,7 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
+// Graphique : Le Fil du Match (Line Chart)
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
@@ -175,13 +175,11 @@ const GameFlowChart = ({ moveLog, players }) => {
     const currentScores = {};
     players.forEach(p => currentScores[p] = 0);
     
-    // Initial state
     history.push({ index: -1, ...currentScores });
 
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
@@ -199,12 +197,10 @@ const GameFlowChart = ({ moveLog, players }) => {
     return (
         <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {/* Lignes de repère */}
                 {[0, 0.25, 0.5, 0.75, 1].map(p => {
                     const y = paddingY + p * (height - 2*paddingY);
                     return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
                 })}
-
                 {players.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
                     const points = history.map((step, i) => {
@@ -215,51 +211,18 @@ const GameFlowChart = ({ moveLog, players }) => {
                     
                     return (
                         <g key={player}>
-                            <polyline 
-                                points={points} 
-                                fill="none" 
-                                stroke={color} 
-                                strokeWidth="4" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                            />
-                            {/* Points et Chiffres */}
-                            {history.map((step, i) => {
-                                const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
-                                const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
-                                
-                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
-                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
-                                
-                                return (
-                                    <g key={i}>
-                                        <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
-                                        <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
-                                    </g>
-                                );
-                            })}
+                            <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
                         </g>
                     );
                 })}
             </svg>
-            <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">
-                {players.map((p, i) => (
-                    <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
-                        <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div>
-                        <span className="text-xs text-white font-bold">{p}</span>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 };
 
-// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
+// Graphique : Chance aux Dés (Estimation)
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
-    
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -268,11 +231,7 @@ const DiceLuckChart = ({ stats }) => {
         { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
         { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
     ];
-    
-    const data = upperStats.map(s => ({
-        ...s,
-        pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0
-    }));
+    const data = upperStats.map(s => ({...s, pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0}));
 
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
@@ -280,22 +239,13 @@ const DiceLuckChart = ({ stats }) => {
                 <div key={i} className="flex items-center gap-4">
                     <div className="w-12 text-center">
                         <div className="font-black text-2xl text-white">{d.label}</div>
-                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
                     </div>
                     <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
-                        <div 
-                            className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
-                            style={{ width: `${d.pct}%` }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
-                            {d.pct}%
-                        </div>
+                        <div className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} style={{ width: `${d.pct}%` }}></div>
+                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">{d.pct}%</div>
                     </div>
                 </div>
              ))}
-             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
-                 Taux de réussite moyen sur la partie supérieure (historique complet)
-            </div>
         </div>
     );
 };
@@ -333,7 +283,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(true);
+  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE JOKERS
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -349,7 +299,7 @@ export default function YamsUltimateLegacy() {
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
   // NOUVELLES FONCTIONNALITES V24
-  const [seasons, setSeasons] = useState([]); // Pas de saison par défaut
+  const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -410,7 +360,7 @@ export default function YamsUltimateLegacy() {
   useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
 
   const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled, activeSeason}));}catch(e){}};
-  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:true); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
+  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
   setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
   
@@ -501,6 +451,7 @@ export default function YamsUltimateLegacy() {
   };
 
   const updateGameSeason = (id, newSeason) => {
+     // Multi-season logic: toggle season in array
      const updatedHistory = gameHistory.map(g => {
          if (g.id !== id) return g;
          const currentSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season && g.season !== 'Aucune' ? [g.season] : []);
@@ -510,10 +461,11 @@ export default function YamsUltimateLegacy() {
          } else {
              newSeasons = [...currentSeasons, newSeason];
          }
-         return { ...g, seasons: newSeasons, season: null }; 
+         return { ...g, seasons: newSeasons, season: null }; // remove legacy string
      });
      setGameHistory(updatedHistory);
      saveHistory(updatedHistory);
+     // Don't close modal, allow multiple selections
   };
 
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
@@ -619,15 +571,14 @@ export default function YamsUltimateLegacy() {
   const getLeader = () => { if(isGameComplete() || hideTotals || fogMode) return null; const totals = players.map(p => ({name: p, score: calcTotal(p)})); const max = Math.max(...totals.map(t => t.score)); if(max === 0) return null; const leaders = totals.filter(t => t.score === max); if (leaders.length > 1) return null; return leaders[0].name; };
   const leader = getLeader();
   const getTensionColor = () => { if(players.length < 2) return 'bg-gray-800'; const totals = players.map(p => calcTotal(p)).sort((a,b)=>b-a); const diff = totals[0] - totals[1]; if(diff < 20) return 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse'; if(diff < 50) return 'bg-gradient-to-r from-yellow-500 to-orange-500'; return 'bg-gradient-to-r from-blue-500 to-cyan-500'; };
+  const quickEdit = () => {
+      setShowEndGameModal(false);
+      setEditMode(true);
+      setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));
+      setLastPlayerBeforeEdit(lastPlayerToPlay);
+  };
   
-  // TIMELAPSE
-  const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
-  const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
-  
-  // QUICK EDIT (Fin de partie)
-  const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
-
-  // FIX REPLAY RENDER (Prevent Blue Screen) - USES GETSAFEREPLAYSCORE - DEFINITIVELY SAFE (ADDED || {})
+  // FIX REPLAY: Simple safe display function
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
     let upperSum = 0; let lowerSum = 0;
@@ -640,37 +591,13 @@ export default function YamsUltimateLegacy() {
     const bonus = upperSum >= 63 ? 35 : 0;
     return upperSum + bonus + lowerSum;
   };
+  
+  // TIMELAPSE
+  const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
+  const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
 
-  if(replayGame) { 
-      const replayPlayers = Object.keys(replayGame.grid || {}); 
-      return ( 
-      <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> 
-        <div className="max-w-7xl mx-auto space-y-4"> 
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> 
-                <div className="flex items-center gap-4"> 
-                    <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> 
-                    <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> 
-                </div> 
-                {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} 
-            </div> 
-            <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> 
-                <table className="w-full table-fixed"> 
-                    <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> 
-                    <tbody>
-                        {categories.map(cat => {
-                            if(cat.upperHeader || cat.upperDivider || cat.divider) return null;
-                            if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;
-                            // Added safety checks (|| {}) to prevent crash on missing data
-                            return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);
-                        })}
-                        <tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr>
-                    </tbody> 
-                </table> 
-            </div> 
-        </div> 
-      </div> 
-      ); 
-  }
+  // REPLAY RENDERER
+  if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
   // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles)
   const getRank = (playerName) => {
@@ -685,7 +612,7 @@ export default function YamsUltimateLegacy() {
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
       {confetti&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(50)].map((_,i)=><div key={i} className="absolute" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',fontSize:'24px',opacity:0.8}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆'][Math.floor(Math.random()*6)]:[ '💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
-      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl animate-ping opacity-50">❌</div></div>}
+      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(30)].map((_,i)=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',opacity:0.5}}>🌧️</div>)}</div>}
       <style>{`@keyframes fall{to{transform:translateY(100vh) rotate(360deg);opacity:0;}}@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-10px)}20%,40%,60%,80%{transform:translateX(10px)}}.shake-animation{animation:shake 0.5s ease-in-out;}@keyframes slideInRight{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}.slide-in-right{animation:slideInRight 0.5s ease-out;}@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}.tab-enter{animation:slideIn 0.4s ease-out;} @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }`}</style>
       {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'bg-gradient-to-r px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+( showAchievementNotif.icon==='🎲'?'from-yellow-500 to-orange-500 border-yellow-300':showAchievementNotif.icon==='🎁'?'from-green-500 to-emerald-500 border-green-300':'from-purple-500 to-pink-500 border-purple-300')}><div className="flex items-center gap-3"><span className="text-5xl animate-bounce">{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{getWinner().join(' & ')}</div></div></div>}
@@ -721,7 +648,7 @@ export default function YamsUltimateLegacy() {
 
       {showAvatarModal && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
-              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
+              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full'}>
                   <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
                   <div className="grid grid-cols-4 gap-3">
                       {AVATAR_LIST.map((av, i) => {
@@ -1070,7 +997,7 @@ export default function YamsUltimateLegacy() {
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
-                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
+                    <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1">
                         {leader === p && <div className="mb-1 text-yellow-400 animate-bounce"><Crown size={24} fill="currentColor" /></div>}
                         <div className="flex items-center gap-2">{playerAvatars[p] || "👤"} {p}</div>
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
@@ -1107,7 +1034,7 @@ export default function YamsUltimateLegacy() {
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
@@ -1171,6 +1098,7 @@ export default function YamsUltimateLegacy() {
                 {/* 1. SCORE MAXI ATTEINT (BANNER) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{const stats=playerStats;if(!stats.length)return null;const bestScore=Math.max(...stats.map(s=>s.maxScore));const bestPlayers=stats.filter(s=>s.maxScore===bestScore);const maxPossible=375;const pctOfMax=((bestScore/maxPossible)*100).toFixed(1);return <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20"><div className="flex items-center justify-between flex-wrap gap-4"><div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div><div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div></div></div>;})()}
+                  {playerStats.length===0&&<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">🏆</div><p className="text-gray-500 text-lg">Aucune statistique</p></div>}
                 </div>
 
                 {/* 2. PALMARES (PODIUM) */}
@@ -1364,13 +1292,13 @@ export default function YamsUltimateLegacy() {
                         </select>
                     </div>
                     {versus.luckPlayer && (
+                        /* CORRECTION CHANCE AUX DES : Récupérer les stats historiques du joueur */
                         <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
                     )}
                 </div>
 
                 {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-                     {/* Suppression du panneau attention géant à droite */}
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
                              <AlertTriangle className="text-blue-400" size={32}/>
