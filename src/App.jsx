@@ -254,7 +254,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation)
+// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
     // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
@@ -348,7 +348,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V24
+  // NOUVELLES FONCTIONNALITES V30 (Yams Detail)
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -359,6 +359,9 @@ export default function YamsUltimateLegacy() {
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [tempHistorySeason, setTempHistorySeason] = useState('');
+  
+  // Yams Detail Logic
+  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); // { player: 'Name' }
 
   // GAGES STATES
   const [customGages, setCustomGages] = useState([]);
@@ -469,7 +472,21 @@ export default function YamsUltimateLegacy() {
         setGlobalXP(prev => prev + valInt);
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
-    if(category==='yams'&&value==='50'){setConfetti('gold');setShakeAnimation('yams');setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);} else if(value==='0') {setConfetti('sad'); setTimeout(()=>setConfetti(null), 4000); } else { setConfetti(null); }
+    
+    // NEW: DETECT YAMS 50
+    if(category==='yams' && value==='50'){
+        setPendingYamsDetail({ player });
+        setConfetti('gold');
+        setShakeAnimation('yams');
+        setShowAchievementNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); 
+        setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);setShakeAnimation(null);},4000);
+    } else if(value==='0') {
+        setConfetti('sad'); 
+        setTimeout(()=>setConfetti(null), 4000); 
+    } else { 
+        setConfetti(null); 
+    }
+
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
     if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
@@ -485,6 +502,21 @@ export default function YamsUltimateLegacy() {
             setLastModifiedCell(null);
         } 
     }
+  };
+
+  // NEW FUNCTION: Save detail of Yams
+  const saveYamsDetail = (val) => {
+      if(!pendingYamsDetail) return;
+      const { player } = pendingYamsDetail;
+      const newScores = { ...scores };
+      if(newScores[player]) {
+          // Initialize array if doesn't exist
+          if(!newScores[player].yamsHistory) newScores[player].yamsHistory = [];
+          newScores[player].yamsHistory.push(val);
+      }
+      setScores(newScores);
+      saveCurrentGame(newScores);
+      setPendingYamsDetail(null);
   };
 
   const toggleEditMode=()=>{if(!editMode){setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));setLastPlayerBeforeEdit(lastPlayerToPlay);setEditMode(true);}else{setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);}};
@@ -703,8 +735,50 @@ export default function YamsUltimateLegacy() {
     return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
   };
 
+  // Yams Distribution Calc
+  const getYamsDistribution = () => {
+      const dist = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+      gameHistory.forEach(g => {
+         const grid = g.grid || {};
+         Object.values(grid).forEach(pGrid => {
+             // Checking new structure
+             if(pGrid.yamsHistory && Array.isArray(pGrid.yamsHistory)) {
+                 pGrid.yamsHistory.forEach(val => dist[val] = (dist[val] || 0) + 1);
+             }
+         });
+      });
+      return dist;
+  };
+
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
+      {/* MODAL YAMS DETAIL */}
+      {pendingYamsDetail && (
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-yellow-500/50 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
+                
+                <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">YAMS !</h3>
+                <p className="text-gray-400 text-sm mb-6 font-medium">Quel chiffre as-tu obtenu ?</p>
+                
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[1, 2, 3, 4, 5, 6].map(val => (
+                        <button 
+                            key={val}
+                            onClick={() => saveYamsDetail(val)}
+                            className="aspect-square bg-white/5 hover:bg-white/20 border border-white/10 hover:border-yellow-500/50 rounded-2xl flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 group"
+                        >
+                            <span className="group-hover:animate-spin transition-transform duration-700">
+                                {['','⚀','⚁','⚂','⚃','⚄','⚅'][val]}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                <div className="text-[10px] text-gray-500 italic">Cela servira pour tes statistiques futures !</div>
+            </div>
+        </div>
+      )}
+
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
       {confetti&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(50)].map((_,i)=><div key={i} className="absolute" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',fontSize:'24px',opacity:0.8}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆'][Math.floor(Math.random()*6)]:[ '💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl animate-ping opacity-50">❌</div></div>}
@@ -989,24 +1063,17 @@ export default function YamsUltimateLegacy() {
                                 customGages.map(g => (
                                     <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
                                         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
-                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
-                                                {g.active && <Check size={14} className="text-white"/>}
-                                            </div>
-                                            <span className="text-white font-medium">{g.text}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
                                             {/* SWITCH VISUEL */}
                                             <button 
-                                                onClick={() => toggleCustomGage(g.id)}
                                                 className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
                                             >
                                                 <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
                                             </button>
-                                            
-                                            <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
-                                                <Trash2 size={16}/>
-                                            </button>
+                                            <span className="text-white font-medium">{g.text}</span>
                                         </div>
+                                        <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                            <Trash2 size={16}/>
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -1108,14 +1175,14 @@ export default function YamsUltimateLegacy() {
                              {isGameStarted() && !isGameComplete() && (
                                 <div className="z-20">
                                     {getRank(p) === 1 ? (
-                                        <Crown size={24} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
+                                        <Crown size={32} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
                                     ) : (
-                                        getRank(p) === 2 ? <span className="text-2xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
-                                        getRank(p) === 3 ? <span className="text-2xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
+                                        getRank(p) === 2 ? <span className="text-3xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
+                                        getRank(p) === 3 ? <span className="text-3xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
                                     )}
                                 </div>
                             )}
-                            <div className="text-3xl">{playerAvatars[p] || "👤"}</div>
+                            <div className="text-3xl cursor-pointer hover:scale-110 transition-transform" onClick={() => openAvatarSelector(i)}>{playerAvatars[p] || "👤"}</div>
                         </div>
                         
                         <div className="text-sm mt-1">{p}</div>
@@ -1188,7 +1255,7 @@ export default function YamsUltimateLegacy() {
           </div></div>
         )}
 
-        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
+        {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
@@ -1596,10 +1663,7 @@ export default function YamsUltimateLegacy() {
                             ) : (
                                 customGages.map(g => (
                                     <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
-                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
-                                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${g.active ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}>
-                                                {g.active && <Check size={14} className="text-white"/>}
-                                            </div>
+                                        <div className="flex items-center gap-3 flex-1">
                                             <span className="text-white font-medium">{g.text}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
