@@ -254,7 +254,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
+// Graphique : Chance aux Dés (Estimation)
 const DiceLuckChart = ({ stats }) => {
     // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
@@ -666,6 +666,43 @@ export default function YamsUltimateLegacy() {
     return rank;
   };
 
+  // CALCUL VRAIES STATS D'ECHEC (CORRECTION CRASH & DOUBLON) - DEFINE HERE
+  const calculateGlobalFailures = (target) => {
+    const failures = {};
+    playableCats.forEach(cat => failures[cat.id] = 0);
+    let totalGames = 0;
+    
+    // SAFE ACCESS: on vérifie que gameHistory existe
+    const historyToUse = statsFilterSeason === 'Toutes' ? (gameHistory || []) : (gameHistory || []).filter(g => {
+        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
+        if(statsFilterSeason === 'Aucune') return gSeasons.length === 0;
+        return gSeasons.includes(statsFilterSeason);
+    });
+
+    if (!historyToUse || historyToUse.length === 0) return { failures: [], totalGames: 0 };
+
+    historyToUse.forEach(game => {
+        const participants = game.players || game.results || [];
+        const grid = game.grid || {};
+        participants.forEach(p => {
+            if (target === 'GLOBAL' || p.name === target) {
+                const playerGrid = grid[p.name];
+                if (playerGrid) {
+                    totalGames++;
+                    Object.keys(failures).forEach(catId => { if (playerGrid[catId] === 0) failures[catId]++; });
+                }
+            }
+        });
+    });
+    const sortedFailures = Object.entries(failures)
+        .sort(([,a], [,b]) => b - a)
+        .map(([key, value]) => ({ 
+            id: key, name: categories.find(c => c.id === key)?.name || key, count: value,
+            rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0
+        }));
+    return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
+  };
+
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
@@ -958,7 +995,7 @@ export default function YamsUltimateLegacy() {
                                             <span className="text-white font-medium">{g.text}</span>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            {/* COMMUTATEUR VISUEL POUR GAGE PERSONNALISÉ */}
+                                            {/* SWITCH VISUEL */}
                                             <button 
                                                 onClick={() => toggleCustomGage(g.id)}
                                                 className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
@@ -1066,19 +1103,22 @@ export default function YamsUltimateLegacy() {
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
-                        {/* REAL-TIME RANKING BADGE - LEFT AND BIGGER */}
-                        {isGameStarted() && !isGameComplete() && (
-                            <div className="absolute top-2 left-2 z-20">
-                                {getRank(p) === 1 ? (
-                                    <Crown size={24} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
-                                ) : (
-                                    getRank(p) === 2 ? <span className="text-2xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
-                                    getRank(p) === 3 ? <span className="text-2xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
-                                )}
-                            </div>
-                        )}
+                        {/* REAL-TIME RANKING BADGE - LEFT OF AVATAR */}
+                        <div className="flex items-center justify-center gap-2">
+                             {isGameStarted() && !isGameComplete() && (
+                                <div className="z-20">
+                                    {getRank(p) === 1 ? (
+                                        <Crown size={24} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
+                                    ) : (
+                                        getRank(p) === 2 ? <span className="text-2xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
+                                        getRank(p) === 3 ? <span className="text-2xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
+                                    )}
+                                </div>
+                            )}
+                            <div className="text-3xl">{playerAvatars[p] || "👤"}</div>
+                        </div>
                         
-                        <div className="flex items-center gap-2 mt-2">{playerAvatars[p] || "👤"} {p}</div>
+                        <div className="text-sm mt-1">{p}</div>
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
                         {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
                     </div>
@@ -1148,7 +1188,7 @@ export default function YamsUltimateLegacy() {
           </div></div>
         )}
 
-        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION - CORRECTIF CRASH */}
+        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
