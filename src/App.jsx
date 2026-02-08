@@ -254,31 +254,66 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Répartition des Yams (NOUVEAU)
+// Graphique : Chance aux Dés (Estimation)
+const DiceLuckChart = ({ stats }) => {
+    // Si pas de stats, message
+    if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
+    
+    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
+    const upperStats = [
+        { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
+        { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
+        { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" },
+        { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" },
+        { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
+        { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
+    ];
+    
+    const data = upperStats.map(s => ({
+        ...s,
+        pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0
+    }));
+
+    return (
+        <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
+             {data.map((d, i) => (
+                <div key={i} className="flex items-center gap-4">
+                    <div className="w-12 text-center">
+                        <div className="font-black text-2xl text-white">{d.label}</div>
+                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
+                    </div>
+                    <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
+                        <div 
+                            className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
+                            style={{ width: `${d.pct}%` }}
+                        ></div>
+                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
+                            {d.pct}%
+                        </div>
+                    </div>
+                </div>
+             ))}
+             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
+                 Taux de réussite moyen sur la partie supérieure (historique complet)
+            </div>
+        </div>
+    );
+};
+
+// Graphique : Répartition des Yams
 const YamsDistributionChart = ({ stats }) => {
     if(!stats || !stats.yamsDetails) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
-    // Convert yamsDetails object to array
-    const data = [1,2,3,4,5,6].map(v => ({ 
-        label: v, 
-        count: stats.yamsDetails[v] || 0 
-    }));
-    
-    const maxCount = Math.max(...data.map(d => d.count), 1); // Avoid division by zero
+    const data = [1,2,3,4,5,6].map(v => ({ label: v, count: stats.yamsDetails[v] || 0 }));
+    const maxCount = Math.max(...data.map(d => d.count), 1); 
 
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
              <h4 className="text-white font-bold text-center mb-2 text-sm uppercase">🎯 Répartition des Yams Réussis</h4>
              {data.map((d, i) => (
                 <div key={i} className="flex items-center gap-4">
-                    <div className="w-8 text-center font-black text-xl text-yellow-500">
-                        {['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}
-                    </div>
+                    <div className="w-8 text-center font-black text-xl text-yellow-500">{['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}</div>
                     <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
+                        <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000" style={{ width: `${(d.count / maxCount) * 100}%` }}></div>
                     </div>
                     <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
                 </div>
@@ -287,22 +322,13 @@ const YamsDistributionChart = ({ stats }) => {
     );
 };
 
-// Graphique : Yams Cachés (NOUVEAU)
+// Graphique : Yams Cachés
 const HiddenYamsChart = ({ stats }) => {
     if(!stats || !stats.hiddenYams) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
     const data = [
-        { label: "As", key: 'ones', val: 5 },
-        { label: "Deux", key: 'twos', val: 10 },
-        { label: "Trois", key: 'threes', val: 15 },
-        { label: "Quatre", key: 'fours', val: 20 },
-        { label: "Cinq", key: 'fives', val: 25 },
-        { label: "Six", key: 'sixes', val: 30 }
-    ].map(item => ({
-        ...item,
-        count: stats.hiddenYams[item.key] || 0
-    }));
-
+        { label: "As", key: 'ones', val: 5 }, { label: "Deux", key: 'twos', val: 10 }, { label: "Trois", key: 'threes', val: 15 },
+        { label: "Quatre", key: 'fours', val: 20 }, { label: "Cinq", key: 'fives', val: 25 }, { label: "Six", key: 'sixes', val: 30 }
+    ].map(item => ({ ...item, count: stats.hiddenYams[item.key] || 0 }));
     const maxCount = Math.max(...data.map(d => d.count), 1);
 
     return (
@@ -312,10 +338,7 @@ const HiddenYamsChart = ({ stats }) => {
                 <div key={i} className="flex items-center gap-4">
                     <div className="w-12 text-right text-xs text-gray-400 font-bold uppercase">{d.label}</div>
                     <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
+                        <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-1000" style={{ width: `${(d.count / maxCount) * 100}%` }}></div>
                     </div>
                     <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
                 </div>
@@ -357,7 +380,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE JOKERS
+  const [jokersEnabled, setJokersEnabled] = useState(false); 
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -371,8 +394,6 @@ export default function YamsUltimateLegacy() {
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
-  
-  // NOUVELLES FONCTIONNALITES V24
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -382,19 +403,11 @@ export default function YamsUltimateLegacy() {
   const [renamingSeason, setRenamingSeason] = useState(null);
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
-  const [tempHistorySeason, setTempHistorySeason] = useState('');
-
-  // Yams Detail Logic
-  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); // { player: 'Name' }
-
-  // Tie Breaker Logic (Mort Subite)
-  const [tieBreakerActive, setTieBreakerData] = useState(null); // { players: ['J1', 'J2'], scores: { J1: 0, J2: 0 } }
-
-  // GAGES STATES
+  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); 
+  const [tieBreakerActive, setTieBreakerData] = useState(null); 
   const [customGages, setCustomGages] = useState([]);
   const [enableDefaultGages, setEnableDefaultGages] = useState(true);
   const [newGageInput, setNewGageInput] = useState("");
-  
   const [endGameData, setEndGameData] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -404,31 +417,9 @@ export default function YamsUltimateLegacy() {
   const minSwipeDistance = 50;
   const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
   const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEndHandler = () => {
-      if (!touchStart || !touchEnd) return;
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > minSwipeDistance;
-      const isRightSwipe = distance < -minSwipeDistance;
-      const tabs = ['game', 'stats', 'history', 'trophies', 'gages', 'rules'];
-      const currentIndex = tabs.indexOf(currentTab);
-      if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
-      if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
-  };
+  const onTouchEndHandler = () => { if (!touchStart || !touchEnd) return; const distance = touchStart - touchEnd; const isLeftSwipe = distance > minSwipeDistance; const isRightSwipe = distance < -minSwipeDistance; const tabs = ['game', 'stats', 'history', 'trophies', 'gages', 'rules']; const currentIndex = tabs.indexOf(currentTab); if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]); if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]); };
 
-  useEffect(() => {
-    let wakeLock = null;
-    const requestWakeLock = async () => {
-        if ('wakeLock' in navigator && wakeLockEnabled) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { console.log(err); }
-        }
-    };
-    if (wakeLockEnabled) requestWakeLock();
-    const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
-  }, [wakeLockEnabled]);
+  useEffect(() => { let wakeLock = null; const requestWakeLock = async () => { if ('wakeLock' in navigator && wakeLockEnabled) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); } } }; if (wakeLockEnabled) requestWakeLock(); const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); }; document.addEventListener('visibilitychange', handleVisibilityChange); return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); }; }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
@@ -436,14 +427,10 @@ export default function YamsUltimateLegacy() {
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
   const loadSeasons=()=>{try{const s=localStorage.getItem('yamsSeasons');const a=localStorage.getItem('yamsActiveSeason');const d=localStorage.getItem('yamsSeasonDesc');if(s)setSeasons(JSON.parse(s));if(a)setActiveSeason(a);if(d)setSeasonDescriptions(JSON.parse(d));}catch(e){}};
   const loadGages=()=>{try{const cg=localStorage.getItem('yamsCustomGages');const edg=localStorage.getItem('yamsEnableDefaultGages');if(cg)setCustomGages(JSON.parse(cg));if(edg)setEnableDefaultGages(JSON.parse(edg));}catch(e){}};
-
   useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
-
   const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled, activeSeason}));}catch(e){}};
-  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
-  setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
+  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null); setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
-  
   useEffect(() => { if(!isGameStarted()) { const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); } }, [jokerMax, players]);
   useEffect(() => { if(players.length > 0) { localStorage.setItem('yamsSavedPlayers', JSON.stringify(players)); if (!starterName) setStarterName(players[0]); if(!simPlayer) setSimPlayer(players[0]); const newJokers = {...jokers}; let changed = false; players.forEach(p => { if(newJokers[p] === undefined) { newJokers[p] = jokerMax; changed=true; } }); if(changed) setJokers(newJokers); } }, [players, jokerMax]);
   useEffect(() => { localStorage.setItem('yamsPlayerAvatars', JSON.stringify(playerAvatars)); }, [playerAvatars]);
@@ -459,11 +446,9 @@ export default function YamsUltimateLegacy() {
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
   const updatePlayerName=(i,name)=>{const old=players[i];const np=[...players];np[i]=name;setPlayers(np);if(scores[old]){const ns={...scores};ns[name]=ns[old];delete ns[old];setScores(ns);}};
-  // FIX AVATAR: Simply set index and show modal
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
-  // GAGES FUNCTIONS
   const addCustomGage = () => { if (newGageInput.trim()) { setCustomGages([...customGages, { id: Date.now(), text: newGageInput.trim(), active: true }]); setNewGageInput(""); } };
   const toggleCustomGage = (id) => { setCustomGages(customGages.map(g => g.id === id ? { ...g, active: !g.active } : g)); };
   const deleteCustomGage = (id) => { setCustomGages(customGages.filter(g => g.id !== id)); };
@@ -490,6 +475,12 @@ export default function YamsUltimateLegacy() {
     if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
+    
+    // CALCUL ETAT PRECEDENT POUR BONUS
+    const upperCats = categories.filter(c=>c.upper);
+    const countUpperBefore = upperCats.filter(c => scores[player]?.[c.id] !== undefined).length;
+    const oldUpperTotal = calcUpper(player);
+
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
     const valInt = value === '' ? 0 : parseInt(value);
     
@@ -513,22 +504,28 @@ export default function YamsUltimateLegacy() {
     } else { 
         setConfetti(null); 
     }
-
-    const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
     
-    // NEW: DETECT FAILED BONUS (Upper full but < 63)
-    const upperIds = categories.filter(c=>c.upper).map(c=>c.id);
-    const allUpperFilled = upperIds.every(id => ns[player][id] !== undefined);
-    if(allUpperFilled && newUp < 63 && oldUp < 63) { // Only trigger if it wasn't already triggered (though logic holds)
-         setShowAchievementNotif({icon:'🌧️', title:'Bonus Raté...', description:`Il manquait ${63-newUp} points !`});
-         setConfetti('sad');
+    // CALCUL ETAT NOUVEAU POUR BONUS
+    const countUpperAfter = upperCats.filter(c => ns[player]?.[c.id] !== undefined).length;
+    const newUpperTotal = categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
+
+    // NEW: DETECT FAILED BONUS (Unique trigger on filling last cell)
+    if (countUpperBefore < upperCats.length && countUpperAfter === upperCats.length && newUpperTotal < 63) {
+         setShowAchievementNotif({icon:'🌧️', title:'Dommage...', description:`Bonus raté ! (${newUpperTotal}/63)`});
+         setConfetti('rain');
          setTimeout(()=>setConfetti(null), 3000);
          setTimeout(()=>setShowAchievementNotif(null), 3000);
     }
+    
+    if(oldUpperTotal<63 && newUpperTotal>=63){
+        setConfetti('bonus');
+        setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); 
+        setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);
+    }
 
-    const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
+    const newTotal=newUpperTotal + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUpperTotal>=63?35:0);
     if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
+    
     setScores(ns);saveCurrentGame(ns);
     if(editMode){ } else { 
         if(value!==''){
@@ -542,7 +539,6 @@ export default function YamsUltimateLegacy() {
     }
   };
 
-  // NEW FUNCTION: Save detail of Yams
   const saveYamsDetail = (val) => {
       if(!pendingYamsDetail) return;
       const { player } = pendingYamsDetail;
@@ -560,7 +556,7 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setTieBreakerData(null);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setTieBreakerData(null); setEndGameData(null);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
@@ -584,26 +580,20 @@ export default function YamsUltimateLegacy() {
      saveHistory(updatedHistory);
   };
 
-  // CHECK END GAME & TIES
   useEffect(()=>{
       if(isGameComplete() && !showEndGameModal && !endGameData && !tieBreakerActive) {
-          // Check for ties in TOP 3
           const ranked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
           
           let needsTieBreak = false;
           let tiedPlayers = [];
           
-          // Ties for 1st
           if(ranked.length > 1 && ranked[0].score === ranked[1].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[0].score).map(r => r.name); }
-          // Ties for 2nd
           else if(ranked.length > 2 && ranked[1].score === ranked[2].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[1].score).map(r => r.name); }
-          // Ties for 3rd
           else if(ranked.length > 3 && ranked[2].score === ranked[3].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[2].score).map(r => r.name); }
           
           if(needsTieBreak) {
               setTieBreakerData({ players: tiedPlayers, scores: {} });
           } else {
-              // No tie breaker needed
               const winners = getWinner();
               const loser = getLoser();
               if (winners && winners.length > 0) {
@@ -627,11 +617,8 @@ export default function YamsUltimateLegacy() {
   }, [scores, showEndGameModal, endGameData, tieBreakerActive]); 
 
   const resolveTieBreaker = () => {
-      // Find winner of tie break
       const tbScores = tieBreakerActive.scores;
-      
       const realRanked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
-      // Re-sort realRanked based on tie breaker result if score is equal
       realRanked.sort((a,b) => {
           if (a.score === b.score) {
               const scoreA = tbScores[a.name] || 0;
@@ -640,17 +627,14 @@ export default function YamsUltimateLegacy() {
           }
           return b.score - a.score;
       });
-      
       const winnerName = realRanked[0].name;
       const loserName = realRanked[realRanked.length-1].name;
-      
       setEndGameData({
           winner: winnerName,
           score: calcTotal(winnerName),
           hasYams: scores[winnerName]?.yams === 50,
           loser: loserName
       });
-      
       setTieBreakerData(null);
       setShowVictoryAnimation(true);
       setConfetti('gold');
@@ -661,27 +645,6 @@ export default function YamsUltimateLegacy() {
       }, 2000);
   };
 
-  // LOGIQUE GAGES MIXTES
-  useEffect(() => { 
-    if (showEndGameModal && !currentGage) {
-        let pool = [];
-        if (enableDefaultGages) pool = [...pool, ...DEFAULT_GAGES];
-        if (customGages && customGages.length > 0) {
-            const activeCustoms = customGages.filter(g => g.active).map(g => g.text);
-            pool = [...pool, ...activeCustoms];
-        }
-        
-        if (pool.length > 0) {
-            setCurrentGage(pool[Math.floor(Math.random() * pool.length)]);
-        } else {
-            setCurrentGage("Aucun gage sélectionné !");
-        }
-    } else if (!showEndGameModal) { 
-        setCurrentGage(null); 
-    } 
-  }, [showEndGameModal, customGages, enableDefaultGages]);
-
-  // Filtrer l'historique par saison active (POUR STATS)
   const filteredHistory = useMemo(() => {
       if(!gameHistory || !Array.isArray(gameHistory)) return [];
       if(!statsFilterSeason || statsFilterSeason === 'Toutes') return gameHistory;
@@ -692,7 +655,6 @@ export default function YamsUltimateLegacy() {
       }); 
   }, [gameHistory, statsFilterSeason]);
   
-  // Filtrer historique pour l'onglet historique
   const filteredGameHistory = useMemo(() => {
       if(!gameHistory || !Array.isArray(gameHistory)) return [];
       if(!historyFilterSeason || historyFilterSeason === 'Toutes') return gameHistory;
@@ -708,11 +670,8 @@ export default function YamsUltimateLegacy() {
       filteredHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); 
       allPlayerNames.forEach(name => { 
           stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0,
-          // Stats pour la chance aux dés
           totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0,
-          // Yams Details
           yamsDetails: {1:0, 2:0, 3:0, 4:0, 5:0, 6:0},
-          // Hidden Yams (Max Upper)
           hiddenYams: {ones:0, twos:0, threes:0, fours:0, fives:0, sixes:0}
           }; 
           streaks[name] = 0; isStreaking[name] = true; 
@@ -735,7 +694,6 @@ export default function YamsUltimateLegacy() {
                       const val = parseInt(gameGrid[p.name][cat.id]); 
                       if (!isNaN(val)) { 
                           currentUpperSum += val; 
-                          // Hidden Yams Logic
                           if(cat.id === 'ones' && val === 5) s.hiddenYams.ones++;
                           if(cat.id === 'twos' && val === 10) s.hiddenYams.twos++;
                           if(cat.id === 'threes' && val === 15) s.hiddenYams.threes++;
@@ -746,14 +704,12 @@ export default function YamsUltimateLegacy() {
                   });
                   if (currentUpperSum >= 63) { s.bonusCount++; }
                   const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
-                  // Accumulate dice luck
                   s.totalOnes += parseInt(gameGrid[p.name]['ones']||0);
                   s.totalTwos += parseInt(gameGrid[p.name]['twos']||0);
                   s.totalThrees += parseInt(gameGrid[p.name]['threes']||0);
                   s.totalFours += parseInt(gameGrid[p.name]['fours']||0);
                   s.totalFives += parseInt(gameGrid[p.name]['fives']||0);
                   s.totalSixes += parseInt(gameGrid[p.name]['sixes']||0);
-                  // Yams Detail
                   if(gameGrid[p.name].yamsHistory && Array.isArray(gameGrid[p.name].yamsHistory)) {
                       gameGrid[p.name].yamsHistory.forEach(v => s.yamsDetails[v] = (s.yamsDetails[v] || 0) + 1);
                   }
@@ -776,7 +732,6 @@ export default function YamsUltimateLegacy() {
       setLastPlayerBeforeEdit(lastPlayerToPlay);
   };
   
-  // FIX REPLAY
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
     let upperSum = 0; let lowerSum = 0;
@@ -790,14 +745,11 @@ export default function YamsUltimateLegacy() {
     return upperSum + bonus + lowerSum;
   };
   
-  // TIMELAPSE
   const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
   const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
 
-  // REPLAY RENDERER
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
-  // CALCULER LE CLASSEMENT
   const getRank = (playerName) => {
     const scoresList = players.map(p => ({ name: p, score: calcTotal(p) }));
     scoresList.sort((a, b) => b.score - a.score);
@@ -805,7 +757,6 @@ export default function YamsUltimateLegacy() {
     return scoresList.filter(s => s.score > myScore).length + 1;
   };
 
-  // CALCUL VRAIES STATS D'ECHEC
   const calculateGlobalFailures = (target) => {
     const failures = {};
     playableCats.forEach(cat => failures[cat.id] = 0);
@@ -903,6 +854,46 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
+              
+              {/* SAISONS DANS LES REGLAGES */}
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
+                 <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400"><Calendar size={20}/></div>
+                   <div>
+                       <div className="text-white font-bold">Gérer les Saisons</div>
+                       <div className="text-gray-400 text-xs">Saison active: <span className="text-cyan-400 font-bold">{activeSeason}</span></div>
+                       <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Info size={10}/>Sert à regrouper vos parties par période ou événement.</p>
+                   </div>
+                 </div>
+                 
+                 <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    <div className="flex gap-2">
+                        {renamingSeason ? (
+                            <div className="flex gap-2 items-center">
+                                <input type="text" value={tempSeasonName} onChange={e=>setTempSeasonName(e.target.value)} className="bg-black/40 text-white px-2 py-1 rounded-lg text-sm border border-cyan-500/50" autoFocus />
+                                <button onClick={() => { if(tempSeasonName && !seasons.includes(tempSeasonName)) { const newSeasons = seasons.map(s => s === activeSeason ? tempSeasonName : s); setSeasons(newSeasons); setActiveSeason(tempSeasonName); setRenamingSeason(null); } }} className="p-1 bg-green-500/20 text-green-400 rounded"><Check size={14}/></button>
+                                <button onClick={()=>setRenamingSeason(null)} className="p-1 bg-red-500/20 text-red-400 rounded"><X size={14}/></button>
+                            </div>
+                        ) : (
+                            <select value={activeSeason} onChange={e=>setActiveSeason(e.target.value)} className="bg-black/30 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none w-full sm:w-40">
+                                <option value="Aucune">Aucune (Hors Saison)</option>
+                                {seasons.map(s=><option key={s} value={s}>{s}</option>)}
+                            </select>
+                        )}
+                        {activeSeason !== 'Aucune' && !renamingSeason && (
+                            <><button onClick={()=>{setTempSeasonName(activeSeason); setRenamingSeason(true);}} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl" title="Renommer"><Edit3 size={16}/></button><button onClick={()=>{ if(window.confirm(`Supprimer la saison "${activeSeason}" ?`)) { setSeasons(seasons.filter(s=>s!==activeSeason)); setActiveSeason('Aucune'); } }} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl" title="Supprimer"><Trash2 size={16}/></button></>
+                        )}
+                    </div>
+                    {activeSeason !== 'Aucune' && (
+                        <div className="flex gap-2 items-center w-full"><PenLine size={14} className="text-gray-500"/><input type="text" placeholder="Ajouter une description..." value={seasonDescriptions[activeSeason] || ''} onChange={e => updateSeasonDescription(activeSeason, e.target.value)} className="bg-transparent text-gray-300 text-xs outline-none border-b border-white/10 focus:border-cyan-400 w-full"/></div>
+                    )}
+                    <div className="flex gap-2 mt-1">
+                         <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
+                         <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
+                    </div>
+                 </div>
+              </div>
+              
               </div></div></div>}
           
           <div className="flex gap-2 mt-4 flex-wrap">
@@ -1002,7 +993,10 @@ export default function YamsUltimateLegacy() {
                                 customGages.map(g => (
                                     <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
                                         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
-                                            <button className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}>
+                                            {/* SWITCH VISUEL */}
+                                            <button 
+                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
+                                            >
                                                 <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
                                             </button>
                                             <span className="text-white font-medium">{g.text}</span>
@@ -1149,7 +1143,7 @@ export default function YamsUltimateLegacy() {
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
