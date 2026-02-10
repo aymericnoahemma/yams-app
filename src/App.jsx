@@ -165,46 +165,27 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
 };
 
-// --- NOUVEAUX COMPOSANTS STATS ---
+// --- NOUVEAUX COMPOSANTS STATS (SÉCURISÉS) ---
 
-// Graphique : Le Fil du Match (Line Chart)
+// Graphique : Le Fil du Match
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || !Array.isArray(moveLog) || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
-
-    const history = [];
-    const currentScores = {};
-    players.forEach(p => currentScores[p] = 0);
-    
-    // Initial state
+    const history = []; const currentScores = {}; players.forEach(p => currentScores[p] = 0);
     history.push({ index: -1, ...currentScores });
-
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
-
     if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
-
     const maxScore = Math.max(...history.map(h => Math.max(...Object.values(h).filter(v => typeof v === 'number' && v !== h.index))));
-    const width = 1000;
-    const height = 300;
-    const paddingX = 40;
-    const paddingY = 40;
-    
+    const width = 1000; const height = 300; const paddingX = 40; const paddingY = 40;
     const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
-
     return (
         <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {/* Lignes de repère */}
-                {[0, 0.25, 0.5, 0.75, 1].map(p => {
-                    const y = paddingY + p * (height - 2*paddingY);
-                    return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
-                })}
-
+                {[0, 0.25, 0.5, 0.75, 1].map(p => { const y = paddingY + p * (height - 2*paddingY); return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />; })}
                 {players.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
                     const points = history.map((step, i) => {
@@ -212,108 +193,36 @@ const GameFlowChart = ({ moveLog, players }) => {
                         const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                         return `${x},${y}`;
                     }).join(' ');
-                    
-                    return (
-                        <g key={player}>
-                            <polyline 
-                                points={points} 
-                                fill="none" 
-                                stroke={color} 
-                                strokeWidth="4" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                            />
-                        </g>
-                    );
+                    return ( <g key={player}><polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></g> );
                 })}
             </svg>
-            <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">
-                {players.map((p, i) => (
-                    <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
-                        <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div>
-                        <span className="text-xs text-white font-bold">{p}</span>
-                    </div>
-                ))}
-            </div>
+            <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">{players.map((p, i) => (<div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full"><div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div><span className="text-xs text-white font-bold">{p}</span></div>))}</div>
         </div>
     );
 };
 
-// Graphique : Chance aux Dés (Estimation)
+// Graphique : Chance aux Dés
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
-    
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
-    const upperStats = [
-        { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
-        { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
-        { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" },
-        { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" },
-        { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
-        { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
-    ];
-    
-    const data = upperStats.map(s => ({
-        ...s,
-        pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0
-    }));
-
+    const upperStats = [ { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" }, { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" }, { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" }, { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" }, { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" }, { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" }, ];
+    const data = upperStats.map(s => ({...s, pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0}));
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 text-center">
-                        <div className="font-black text-2xl text-white">{d.label}</div>
-                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
-                        <div 
-                            className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
-                            style={{ width: `${d.pct}%` }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
-                            {d.pct}%
-                        </div>
-                    </div>
-                </div>
-             ))}
-             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
-                 Taux de réussite moyen sur la partie supérieure (historique complet)
-            </div>
+             {data.map((d, i) => (<div key={i} className="flex items-center gap-4"><div className="w-12 text-center"><div className="font-black text-2xl text-white">{d.label}</div><div className="text-[10px] text-gray-400 uppercase">{d.desc}</div></div><div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10"><div className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} style={{ width: `${d.pct}%` }}></div><div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">{d.pct}%</div></div></div>))}
         </div>
     );
 };
 
 // Graphique : Répartition des Yams (NOUVEAU)
 const YamsDistributionChart = ({ stats }) => {
-    // PROTEGE: if stats undefined return null
     if(!stats || !stats.yamsDetails) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
-    // Convert yamsDetails object to array
-    const data = [1,2,3,4,5,6].map(v => ({ 
-        label: v, 
-        count: stats.yamsDetails[v] || 0 
-    }));
-    
+    const data = [1,2,3,4,5,6].map(v => ({ label: v, count: stats.yamsDetails[v] || 0 }));
     const maxCount = Math.max(...data.map(d => d.count), 1); 
-
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
              <h4 className="text-white font-bold text-center mb-2 text-sm uppercase">🎯 Répartition des Yams Réussis</h4>
              {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-8 text-center font-black text-xl text-yellow-500">
-                        {['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
-                    </div>
-                    <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
-                </div>
+                <div key={i} className="flex items-center gap-4"><div className="w-8 text-center font-black text-xl text-yellow-500">{['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}</div><div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden"><div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000" style={{ width: `${(d.count / maxCount) * 100}%` }}></div></div><div className="w-6 text-right font-bold text-white text-sm">{d.count}</div></div>
              ))}
         </div>
     );
@@ -321,38 +230,13 @@ const YamsDistributionChart = ({ stats }) => {
 
 // Graphique : Yams Cachés (NOUVEAU)
 const HiddenYamsChart = ({ stats }) => {
-    // PROTEGE: if stats undefined return null
     if(!stats || !stats.hiddenYams) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
-    const data = [
-        { label: "As", key: 'ones', val: 5 },
-        { label: "Deux", key: 'twos', val: 10 },
-        { label: "Trois", key: 'threes', val: 15 },
-        { label: "Quatre", key: 'fours', val: 20 },
-        { label: "Cinq", key: 'fives', val: 25 },
-        { label: "Six", key: 'sixes', val: 30 }
-    ].map(item => ({
-        ...item,
-        count: stats.hiddenYams[item.key] || 0
-    }));
-
+    const data = [ { label: "As", key: 'ones' }, { label: "Deux", key: 'twos' }, { label: "Trois", key: 'threes' }, { label: "Quatre", key: 'fours' }, { label: "Cinq", key: 'fives' }, { label: "Six", key: 'sixes' } ].map(item => ({ ...item, count: stats.hiddenYams[item.key] || 0 }));
     const maxCount = Math.max(...data.map(d => d.count), 1);
-
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
              <h4 className="text-white font-bold text-center mb-2 text-sm uppercase">🕵️ Yams Cachés (Max Supérieur)</h4>
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 text-right text-xs text-gray-400 font-bold uppercase">{d.label}</div>
-                    <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
-                    </div>
-                    <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
-                </div>
-             ))}
+             {data.map((d, i) => (<div key={i} className="flex items-center gap-4"><div className="w-12 text-right text-xs text-gray-400 font-bold uppercase">{d.label}</div><div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden"><div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-1000" style={{ width: `${(d.count / maxCount) * 100}%` }}></div></div><div className="w-6 text-right font-bold text-white text-sm">{d.count}</div></div>))}
         </div>
     );
 };
@@ -390,7 +274,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE JOKERS
+  const [jokersEnabled, setJokersEnabled] = useState(false); 
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -405,7 +289,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V24+
+  // V30+ features
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -415,12 +299,9 @@ export default function YamsUltimateLegacy() {
   const [renamingSeason, setRenamingSeason] = useState(null);
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
-  const [tempHistorySeason, setTempHistorySeason] = useState('');
-
-  // NOUVEAU STATES (V35 - Yams Detail & Tie Breaker)
   const [pendingYamsDetail, setPendingYamsDetail] = useState(null); 
   const [tieBreakerActive, setTieBreakerData] = useState(null); 
-
+  
   // GAGES STATES
   const [customGages, setCustomGages] = useState([]);
   const [enableDefaultGages, setEnableDefaultGages] = useState(true);
@@ -432,34 +313,13 @@ export default function YamsUltimateLegacy() {
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
 
+  // SWIPE
   const minSwipeDistance = 50;
   const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
   const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEndHandler = () => {
-      if (!touchStart || !touchEnd) return;
-      const distance = touchStart - touchEnd;
-      const isLeftSwipe = distance > minSwipeDistance;
-      const isRightSwipe = distance < -minSwipeDistance;
-      const tabs = ['game', 'stats', 'history', 'trophies', 'gages', 'rules'];
-      const currentIndex = tabs.indexOf(currentTab);
-      if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]);
-      if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]);
-  };
+  const onTouchEndHandler = () => { if (!touchStart || !touchEnd) return; const distance = touchStart - touchEnd; const isLeftSwipe = distance > minSwipeDistance; const isRightSwipe = distance < -minSwipeDistance; const tabs = ['game', 'stats', 'history', 'trophies', 'gages', 'rules']; const currentIndex = tabs.indexOf(currentTab); if (isLeftSwipe && currentIndex < tabs.length - 1) setCurrentTab(tabs[currentIndex + 1]); if (isRightSwipe && currentIndex > 0) setCurrentTab(tabs[currentIndex - 1]); };
 
-  useEffect(() => {
-    let wakeLock = null;
-    const requestWakeLock = async () => {
-        if ('wakeLock' in navigator && wakeLockEnabled) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { console.log(err); }
-        }
-    };
-    if (wakeLockEnabled) requestWakeLock();
-    const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); };
-  }, [wakeLockEnabled]);
+  useEffect(() => { let wakeLock = null; const requestWakeLock = async () => { if ('wakeLock' in navigator && wakeLockEnabled) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); } } }; if (wakeLockEnabled) requestWakeLock(); const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); }; document.addEventListener('visibilitychange', handleVisibilityChange); return () => { if (wakeLock !== null) wakeLock.release(); document.removeEventListener('visibilitychange', handleVisibilityChange); }; }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();},[]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
@@ -467,14 +327,10 @@ export default function YamsUltimateLegacy() {
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
   const loadSeasons=()=>{try{const s=localStorage.getItem('yamsSeasons');const a=localStorage.getItem('yamsActiveSeason');const d=localStorage.getItem('yamsSeasonDesc');if(s)setSeasons(JSON.parse(s));if(a)setActiveSeason(a);if(d)setSeasonDescriptions(JSON.parse(d));}catch(e){}};
   const loadGages=()=>{try{const cg=localStorage.getItem('yamsCustomGages');const edg=localStorage.getItem('yamsEnableDefaultGages');if(cg)setCustomGages(JSON.parse(cg));if(edg)setEnableDefaultGages(JSON.parse(edg));}catch(e){}};
-
   useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
-
   const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, jokers, jokerMax, jokersEnabled, diceSkin, moveLog, chaosMode, activeChaosCard, wakeLockEnabled, activeSeason}));}catch(e){}};
-  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null);
-  setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
+  const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setJokers(d.jokers||{}); setJokerMax(d.jokerMax!==undefined?d.jokerMax:2); setJokersEnabled(d.jokersEnabled!==undefined?d.jokersEnabled:false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]); setChaosMode(d.chaosMode||false); setActiveChaosCard(d.activeChaosCard||null); setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
-  
   useEffect(() => { if(!isGameStarted()) { const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); } }, [jokerMax, players]);
   useEffect(() => { if(players.length > 0) { localStorage.setItem('yamsSavedPlayers', JSON.stringify(players)); if (!starterName) setStarterName(players[0]); if(!simPlayer) setSimPlayer(players[0]); const newJokers = {...jokers}; let changed = false; players.forEach(p => { if(newJokers[p] === undefined) { newJokers[p] = jokerMax; changed=true; } }); if(changed) setJokers(newJokers); } }, [players, jokerMax]);
   useEffect(() => { localStorage.setItem('yamsPlayerAvatars', JSON.stringify(playerAvatars)); }, [playerAvatars]);
@@ -490,11 +346,10 @@ export default function YamsUltimateLegacy() {
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
   const updatePlayerName=(i,name)=>{const old=players[i];const np=[...players];np[i]=name;setPlayers(np);if(scores[old]){const ns={...scores};ns[name]=ns[old];delete ns[old];setScores(ns);}};
-  // FIX AVATAR: Simply set index and show modal
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
-  // GAGES FUNCTIONS
+  // GAGES
   const addCustomGage = () => { if (newGageInput.trim()) { setCustomGages([...customGages, { id: Date.now(), text: newGageInput.trim(), active: true }]); setNewGageInput(""); } };
   const toggleCustomGage = (id) => { setCustomGages(customGages.map(g => g.id === id ? { ...g, active: !g.active } : g)); };
   const deleteCustomGage = (id) => { setCustomGages(customGages.filter(g => g.id !== id)); };
@@ -507,6 +362,7 @@ export default function YamsUltimateLegacy() {
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   const getBonusProgress=p=>{ const filled=categories.filter(c=>c.upper&&scores[p]?.[c.id]!==undefined).length; if(!filled)return{status:'neutral',message:''}; const targets=[{id:'ones',t:3},{id:'twos',t:6},{id:'threes',t:9},{id:'fours',t:12},{id:'fives',t:15},{id:'sixes',t:18}]; let exp=0;targets.forEach(c=>{if(scores[p]?.[c.id]!==undefined)exp+=c.t;}); const diff=calcUpper(p)-exp; if(diff>0)return{status:'ahead',message:`Avance: +${diff}`,color:'text-green-400'}; if(diff<0)return{status:'behind',message:`Retard: ${diff}`,color:'text-red-400'}; return{status:'ontrack',message:'Sur la cible',color:'text-blue-400'}; };
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
+  // FIX TIES IN GETWINNER
   const getWinner=()=>{if(!players.length)return[];const max=Math.max(...players.map(p=>calcTotal(p)));return players.filter(p=>calcTotal(p)===max);};
   const getLoser=()=>{if(!players.length)return null;const totals=players.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
@@ -522,11 +378,11 @@ export default function YamsUltimateLegacy() {
     if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
     
-    // SNAPSHOT POUR BONUS RATE
+    // CALCUL PREALABLE POUR DETECTION BONUS RATÉ
     const upperCats = categories.filter(c => c.upper);
     const countUpperBefore = upperCats.filter(c => scores[player]?.[c.id] !== undefined).length;
     const oldUp = calcUpper(player);
-    
+
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
     const valInt = value === '' ? 0 : parseInt(value);
     
@@ -537,7 +393,7 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // DETECTION YAMS
+    // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
         setPendingYamsDetail({ player });
         setConfetti('gold');
@@ -550,8 +406,7 @@ export default function YamsUltimateLegacy() {
     } else { 
         setConfetti(null); 
     }
-    
-    // DETECTION BONUS & BONUS RATÉ
+
     const newUp = categories.filter(c => c.upper).reduce((s, c) => s + (ns[player]?.[c.id] || 0), 0);
     const countUpperAfter = upperCats.filter(c => ns[player]?.[c.id] !== undefined).length;
 
@@ -562,7 +417,7 @@ export default function YamsUltimateLegacy() {
         setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);
     }
 
-    // NEW: BONUS RATÉ ALERT
+    // BONUS RATÉ (Nouveau) - Uniquement si on vient de remplir la dernière case ET score < 63
     if (countUpperBefore < upperCats.length && countUpperAfter === upperCats.length && newUp < 63) {
          setShowAchievementNotif({icon:'🌧️', title:'Dommage...', description:`Il manquait ${63-newUp} points pour le bonus !`});
          setConfetti('rain');
@@ -603,7 +458,7 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setEndGameData(null); setTieBreakerData(null);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setTieBreakerData(null); setEndGameData(null);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
@@ -668,10 +523,8 @@ export default function YamsUltimateLegacy() {
   }, [scores, showEndGameModal, endGameData, tieBreakerActive]); 
 
   const resolveTieBreaker = () => {
-      // Find winner of tie break
       const tbScores = tieBreakerActive.scores;
       const realRanked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
-      
       // Re-sort based on tie breaker if scores equal
       realRanked.sort((a,b) => {
           if (a.score === b.score) {
@@ -681,10 +534,8 @@ export default function YamsUltimateLegacy() {
           }
           return b.score - a.score;
       });
-      
       const winnerName = realRanked[0].name;
       const loserName = realRanked[realRanked.length-1].name;
-      
       setEndGameData({
           winner: winnerName,
           score: calcTotal(winnerName),
@@ -700,6 +551,26 @@ export default function YamsUltimateLegacy() {
          setConfetti(null);
       }, 2000);
   };
+
+  // LOGIQUE GAGES MIXTES
+  useEffect(() => { 
+    if (showEndGameModal && !currentGage) {
+        let pool = [];
+        if (enableDefaultGages) pool = [...pool, ...DEFAULT_GAGES];
+        if (customGages && customGages.length > 0) {
+            const activeCustoms = customGages.filter(g => g.active).map(g => g.text);
+            pool = [...pool, ...activeCustoms];
+        }
+        
+        if (pool.length > 0) {
+            setCurrentGage(pool[Math.floor(Math.random() * pool.length)]);
+        } else {
+            setCurrentGage("Aucun gage sélectionné !");
+        }
+    } else if (!showEndGameModal) { 
+        setCurrentGage(null); 
+    } 
+  }, [showEndGameModal, customGages, enableDefaultGages]);
 
   const saveGameFromModal=()=>{ 
       const w=getWinner(); const l=getLoser(); 
@@ -776,16 +647,17 @@ export default function YamsUltimateLegacy() {
                   });
                   if (currentUpperSum >= 63) { s.bonusCount++; }
                   const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
-                  // Accumulate dice luck (FIX: Ensure parsing works)
+                  // Accumulate dice luck
                   s.totalOnes += parseInt(gameGrid[p.name]['ones']||0);
                   s.totalTwos += parseInt(gameGrid[p.name]['twos']||0);
                   s.totalThrees += parseInt(gameGrid[p.name]['threes']||0);
                   s.totalFours += parseInt(gameGrid[p.name]['fours']||0);
                   s.totalFives += parseInt(gameGrid[p.name]['fives']||0);
                   s.totalSixes += parseInt(gameGrid[p.name]['sixes']||0);
-                  // Yams Detail
-                  if(gameGrid[p.name].yamsHistory && Array.isArray(gameGrid[p.name].yamsHistory)) {
-                      gameGrid[p.name].yamsHistory.forEach(v => s.yamsDetails[v] = (s.yamsDetails[v] || 0) + 1);
+                  // Yams Detail - SAFE
+                  const yH = gameGrid[p.name]?.yamsHistory;
+                  if(yH && Array.isArray(yH)) {
+                      yH.forEach(v => { if(s.yamsDetails[v] !== undefined) s.yamsDetails[v]++; });
                   }
               } 
               if (isStreaking[p.name]) { if (p.isWinner) streaks[p.name]++; else isStreaking[p.name] = false; } 
@@ -806,7 +678,7 @@ export default function YamsUltimateLegacy() {
       if(!stats || !stats.yamsDetails) return null;
       const data = [1,2,3,4,5,6].map(v => ({ label:v, count: stats.yamsDetails[v]||0 }));
       const max = Math.max(...data.map(d=>d.count), 1);
-      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🎯 Yams Réussis</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-yellow-500 font-bold">{d.label}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-yellow-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
+      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🎯 Yams Réussis</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-yellow-500 font-bold">{['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-yellow-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
   };
   
   const HiddenYamsChart = ({stats}) => {
@@ -859,7 +731,7 @@ export default function YamsUltimateLegacy() {
                              <input 
                                 type="number" 
                                 placeholder="?" 
-                                className="w-20 py-3 px-2 rounded-xl font-bold text-lg text-center bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                className="w-24 py-3 px-2 rounded-xl font-bold text-lg text-center bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
                                 onChange={(e) => setTieBreakerData(prev => ({
                                     ...prev,
                                     scores: { ...prev.scores, [p]: parseInt(e.target.value) || 0 }
@@ -993,7 +865,7 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-900">1</option><option value="2" className="bg-slate-900">2</option><option value="3" className="bg-slate-900">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
               {/* SAISONS DANS LES REGLAGES */}
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
@@ -1771,8 +1643,6 @@ export default function YamsUltimateLegacy() {
                                 if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
                                 if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
                                 if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                                if (ach.id === 'perfect_lose' && p.minScore <= 150 && p.games > 0) winners.push(p.name);
-                                if (ach.id === 'chaos_survivor' && p.chaosWins > 0) winners.push(p.name);
                             });
                             const unlocked = winners.length > 0;
                             return (
