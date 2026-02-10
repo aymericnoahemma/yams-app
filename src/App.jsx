@@ -763,6 +763,27 @@ export default function YamsUltimateLegacy() {
   .slide-down{animation:slide-down 0.4s ease-out}
   @keyframes subtle-pulse{0%,100%{opacity:0.7}50%{opacity:1}}
   .subtle-pulse{animation:subtle-pulse 2s ease-in-out infinite}
+  @keyframes slide-up-fade{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes scale-in{from{transform:scale(0.85);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes rotate-in{from{transform:rotate(-5deg) scale(0.9);opacity:0}to{transform:rotate(0) scale(1);opacity:1}}
+  @keyframes elastic-in{0%{transform:scale(0)}43%{transform:scale(1.1)}65%{transform:scale(0.97)}82%{transform:scale(1.01)}100%{transform:scale(1)}}
+  @keyframes ripple{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.15)}100%{box-shadow:0 0 0 15px rgba(255,255,255,0)}}
+  @keyframes text-glow{0%,100%{text-shadow:0 0 10px currentColor}50%{text-shadow:0 0 25px currentColor,0 0 50px currentColor}}
+  @keyframes border-dance{0%{border-color:rgba(255,255,255,0.1)}50%{border-color:rgba(255,255,255,0.25)}100%{border-color:rgba(255,255,255,0.1)}}
+  @keyframes count-up{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes flip-in{0%{transform:perspective(400px) rotateX(30deg);opacity:0}100%{transform:perspective(400px) rotateX(0);opacity:1}}
+  @keyframes progress-fill{from{width:0}to{width:var(--target-width)}}
+  @keyframes hover-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .hover-float:hover{animation:hover-float 1s ease-in-out infinite}
+  .animate-ripple:active{animation:ripple 0.6s ease-out}
+  .flip-in{animation:flip-in 0.5s cubic-bezier(0.25,0.46,0.45,0.94)}
+  .elastic-in{animation:elastic-in 0.6s ease-out}
+  .rotate-in{animation:rotate-in 0.4s ease-out}
+  .scale-in{animation:scale-in 0.35s ease-out}
+  @keyframes tab-indicator{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes number-tick{0%{transform:translateY(-100%);opacity:0}60%{transform:translateY(5%)}100%{transform:translateY(0);opacity:1}}
+  @keyframes card-appear{0%{transform:translateY(20px) scale(0.95);opacity:0;filter:blur(4px)}100%{transform:translateY(0) scale(1);opacity:1;filter:blur(0)}}
+  .card-appear{animation:card-appear 0.5s cubic-bezier(0.22,1,0.36,1) backwards}
   .tab-enter{animation:stagger-in 0.45s cubic-bezier(0.22,1,0.36,1);}
   @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
   @keyframes bounce-in{0%{transform:scale(0)}40%{transform:scale(1.15)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
@@ -960,12 +981,12 @@ export default function YamsUltimateLegacy() {
             <p className="text-sm text-gray-400 font-medium tracking-wider">Score keeper premium</p>
             </div></div>
             <div className="flex gap-2">
-                <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><ScrollText size={22} className="text-white"/></button>
-                <button onClick={()=>setShowSettings(!showSettings)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all backdrop-blur-sm border border-white/10 group"><Settings size={22} className="text-white group-hover:rotate-90 transition-transform duration-300"/></button>
+                <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-lg"><ScrollText size={22} className="text-white"/></button>
+                <button onClick={()=>setShowSettings(!showSettings)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all duration-300 backdrop-blur-sm border border-white/10 group hover:scale-110 active:scale-95 hover:shadow-lg"><Settings size={22} className="text-white group-hover:rotate-90 transition-transform duration-300"/></button>
             </div>
           </div>
           
-          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
+          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
@@ -1048,18 +1069,18 @@ export default function YamsUltimateLegacy() {
               </div></div></div>}
           
           <div className="flex gap-2 mt-4 flex-wrap">
-            <button onClick={()=>setCurrentTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='game'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
-            <button onClick={()=>setCurrentTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='rules'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
-            <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='trophies'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
-            <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='history'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
-            <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='stats'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
-            <button onClick={()=>setCurrentTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all '+(currentTab==='gages'?'text-white shadow-xl '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
+            <button onClick={()=>setCurrentTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='game'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
+            <button onClick={()=>setCurrentTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='rules'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
+            <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='trophies'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
+            <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='history'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
+            <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='stats'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+            <button onClick={()=>setCurrentTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='gages'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
           </div>
         </div>
 
         {/* LOG JOURNAL */}
         {showLog && (
-            <div className={`bg-black/80 backdrop-blur-xl p-6 rounded-3xl border border-white/20 animate-in slide-in-from-top-4`}>
+            <div className={"bg-black/80 backdrop-blur-xl p-6 rounded-3xl border border-white/20 card-appear"}>
                 <h2 className="font-black text-white mb-4 flex items-center gap-2 underline">📓 Journal de bord</h2>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                     {moveLog.map((m,i) => (
@@ -1337,7 +1358,7 @@ export default function YamsUltimateLegacy() {
 
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
-                {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
+                {players.map((p,i)=><th key={i} className={`p-0 transition-all duration-500 ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50 shadow-lg shadow-yellow-400/10':''}`}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {/* REAL-TIME RANKING BADGE - LEFT OF AVATAR */}
                         <div className="flex items-center justify-center gap-2">
@@ -1459,7 +1480,7 @@ export default function YamsUltimateLegacy() {
                       <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20">
                           <div className="flex items-center justify-between flex-wrap gap-4">
                               <div className="flex items-center gap-4">
-                                  <span className="text-6xl animate-pulse">🌟</span>
+                                  <span className="text-6xl" style={{animation:"float 3s ease-in-out infinite"}}>🌟</span>
                                   <div>
                                       <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div>
                                       <div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div>
@@ -1491,7 +1512,7 @@ export default function YamsUltimateLegacy() {
                             const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
                             
                             return (
-                                <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}>
+                                <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30 hover:shadow-xl')}>
                                     <div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>
                                     {isTop && <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}
                                     <div className="relative z-10">
@@ -1545,10 +1566,10 @@ export default function YamsUltimateLegacy() {
                         
                         return (
                             <>
-                                <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div>
-                                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div>
-                                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div>
-                                <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div>
+                                <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.1s backwards"}}><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div>
+                                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.2s backwards"}}><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div>
+                                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.3s backwards"}}><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div>
+                                <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.4s backwards"}}><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div>
                             </>
                         );
                     })()}
@@ -1676,25 +1697,25 @@ export default function YamsUltimateLegacy() {
                     <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                         <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 hover:shadow-lg" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.1s backwards"}}>
                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
                                 <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
                                 <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
                                 <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
                             </div>
-                            <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 hover:shadow-lg" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.2s backwards"}}>
                                 <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
                                 <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
                                 <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
                                 <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 hover:shadow-lg" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.3s backwards"}}>
                                 <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
                                 <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
                                 <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
                                 <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
                             </div>
-                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 hover:shadow-lg" style={{animation:"card-appear 0.4s cubic-bezier(0.22,1,0.36,1) 0.4s backwards"}}>
                                 <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
                                 <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
                                 <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
@@ -1713,7 +1734,7 @@ export default function YamsUltimateLegacy() {
                             <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
-                        <div className="text-2xl font-black italic text-gray-500">VS</div>
+                        <div className="text-2xl font-black italic text-gray-500" style={{animation:"float 2s ease-in-out infinite",textShadow:"0 0 20px rgba(255,255,255,0.1)"}}>VS</div>
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
                             <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
@@ -1731,12 +1752,12 @@ export default function YamsUltimateLegacy() {
                                 const p1Wins = filteredHistory.filter(g => {
                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp1.score > pp2.score;
+                                    return pp1 && pp2 && pp1.isWinner;
                                 }).length;
                                 const p2Wins = filteredHistory.filter(g => {
                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp2.score > pp1.score;
+                                    return pp1 && pp2 && pp2.isWinner;
                                 }).length;
 
                                 let p1Total = 0, p2Total = 0, gapSum = 0, streak = 0, currentWinner = null;
@@ -1750,7 +1771,8 @@ export default function YamsUltimateLegacy() {
                                      const g = mutualGames[i];
                                      const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
                                      const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     const winner = pp1.score > pp2.score ? versus.p1 : versus.p2;
+                                     const winner = pp1.isWinner ? versus.p1 : pp2.isWinner ? versus.p2 : null;
+                                     if(!winner) continue;
                                      if(currentWinner === null) { currentWinner = winner; streak = 1; }
                                      else if(currentWinner === winner) streak++;
                                      else break;
@@ -1763,17 +1785,17 @@ export default function YamsUltimateLegacy() {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             {/* P1 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
+                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10" style={{animation:"card-appear 0.5s cubic-bezier(0.22,1,0.36,1) 0.1s backwards"}}>
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
                                                 <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
+                                                <div className="text-white font-black text-6xl mb-1" style={{animation:"count-up 0.6s ease-out 0.3s backwards"}}>{p1Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
                                             {/* P2 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10" style={{animation:"card-appear 0.5s cubic-bezier(0.22,1,0.36,1) 0.2s backwards"}}>
                                                 <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
                                                 <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p2Wins}</div>
+                                                <div className="text-white font-black text-6xl mb-1" style={{animation:"count-up 0.6s ease-out 0.4s backwards"}}>{p2Wins}</div>
                                                 <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
                                             </div>
                                         </div>
@@ -1817,7 +1839,7 @@ export default function YamsUltimateLegacy() {
                 
                 
                 {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
-                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group card-appear">
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
                              <AlertTriangle className="text-blue-400" size={32}/>
