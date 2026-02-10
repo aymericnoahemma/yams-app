@@ -9,13 +9,10 @@ import {
   Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel, Frown
 } from "lucide-react";
 
-/* ==========================================================================
-   CONFIGURATION & CONSTANTES
-   ========================================================================== */
-
+// --- CONFIGURATION ---
 const categories = [
   { id:"upperHeader", upperHeader:true },
-  // Ajout de la propriété 'max' pour le calcul des Yams Cachés
+  // 'max' ajouté pour calculer les Yams Cachés
   { id:"ones", name:"As", values:[0,1,2,3,4,5], upper:true, icon:"⚀", color:"#3b82f6", max:5 },
   { id:"twos", name:"Deux", values:[0,2,4,6,8,10], upper:true, icon:"⚁", color:"#8b5cf6", max:10 },
   { id:"threes", name:"Trois", values:[0,3,6,9,12,15], upper:true, icon:"⚂", color:"#ec4899", max:15 },
@@ -88,15 +85,10 @@ const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!
 const upperCats = categories.filter(c => c.upper && !c.upperHeader && !c.upperDivider && !c.upperTotal && !c.upperGrandTotal);
 const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
 
-/* ==========================================================================
-   UTILITAIRES
-   ========================================================================== */
-
+// --- UTILS & COMPONENTS ---
 const calculateSimulatedScores = (dice) => {
-  const counts = {}; let sum = 0;
-  dice.forEach(d => { counts[d] = (counts[d] || 0) + 1; sum += d; });
-  const countValues = Object.values(counts);
-  const uniqueDice = Object.keys(counts).map(Number).sort((a,b)=>a-b);
+  const counts = {}; let sum = 0; dice.forEach(d => { counts[d] = (counts[d] || 0) + 1; sum += d; });
+  const countValues = Object.values(counts); const uniqueDice = Object.keys(counts).map(Number).sort((a,b)=>a-b);
   let consecutive = 0, maxConsecutive = 0;
   for(let i=0; i<uniqueDice.length-1; i++) {
       if(uniqueDice[i+1] === uniqueDice[i]+1) consecutive++; else consecutive = 0;
@@ -110,28 +102,19 @@ const calculateSimulatedScores = (dice) => {
         smallStraight:maxConsecutive>=3?30:0, largeStraight:maxConsecutive>=4?40:0, yams:countValues.includes(5)?50:0, chance:sum
     },
     difficulty: { 
-        yams: countValues.includes(5) ? 'extreme' : 'hard', 
-        largeStraight: maxConsecutive >= 4 ? 'hard' : 'medium',
-        smallStraight: maxConsecutive >= 3 ? 'medium' : 'low',
-        fullHouse: (countValues.includes(3)&&countValues.includes(2)) ? 'medium' : 'hard',
-        fourOfKind: countValues.some(c=>c>=4) ? 'medium' : 'hard',
-        threeOfKind: countValues.some(c=>c>=3) ? 'low' : 'medium'
+        yams: countValues.includes(5) ? 'extreme' : 'hard', largeStraight: maxConsecutive >= 4 ? 'hard' : 'medium', smallStraight: maxConsecutive >= 3 ? 'medium' : 'low',
+        fullHouse: (countValues.includes(3)&&countValues.includes(2)) ? 'medium' : 'hard', fourOfKind: countValues.some(c=>c>=4) ? 'medium' : 'hard', threeOfKind: countValues.some(c=>c>=3) ? 'low' : 'medium'
     }
   };
 };
 
-/* ==========================================================================
-   SOUS-COMPOSANTS
-   ========================================================================== */
-
 const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
   if(isFoggy && isLocked) return <div className="w-full py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
   if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
-  const cat = categories.find(c=>c.id===category);
-  const vals = cat?.values || Array.from({length:31},(_,i)=>i);
+  const cat = categories.find(c=>c.id===category); const vals = cat?.values || Array.from({length:31},(_,i)=>i);
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -140,13 +123,11 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
 };
 
 const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStarted, avatar, onAvatarClick }) => {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(player);
-  const save = () => { if(name.trim()){onNameChange(index,name.trim());setEditing(false);} };
+  const [editing, setEditing] = useState(false); const [name, setName] = useState(player); const save = () => { if(name.trim()){onNameChange(index,name.trim());setEditing(false);} };
   return (
     <div className="glass-strong rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group" style={{animationDelay:`${index*80}ms`,animation:'fade-in-scale 0.4s ease-out backwards'}}>
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition-all duration-300 shadow-inner overflow-hidden cursor-pointer hover:scale-110 hover:shadow-lg group-hover:ring-2 group-hover:ring-white/20" title="Changer l'avatar">
+        <button onClick={() => onAvatarClick(index)} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition-all duration-300 shadow-inner overflow-hidden cursor-pointer hover:scale-110 hover:shadow-lg group-hover:ring-2 group-hover:ring-white/20">
             {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -162,80 +143,37 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
 };
 
 const VisualDie = ({ value, onClick, skin }) => {
-    const [rolling, setRolling] = useState(false);
-    const s = DICE_SKINS[skin] || DICE_SKINS.classic;
-    const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
+    const [rolling, setRolling] = useState(false); const s = DICE_SKINS[skin] || DICE_SKINS.classic; const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
     return (
-        <button onClick={handleClick} className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl active:scale-90 transition-all duration-200 ${s.bg} ${s.text} ${s.border} border-2 shadow-lg hover:shadow-xl ${rolling ? '' : 'hover:-translate-y-1'}`}
-          style={rolling ? {animation: 'dice-roll 0.6s ease-in-out'} : {}}>
+        <button onClick={handleClick} className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl active:scale-90 transition-all duration-200 ${s.bg} ${s.text} ${s.border} border-2 shadow-lg hover:shadow-xl ${rolling ? '' : 'hover:-translate-y-1'}`} style={rolling ? {animation: 'dice-roll 0.6s ease-in-out'} : {}}>
             {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
         </button>
     );
 };
 
-const FloatingScore = ({ x, y, value }) => {
-    return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100]" style={{ left: x, top: y, animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>;
-};
+const FloatingScore = ({ x, y, value }) => { return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100]" style={{ left: x, top: y, animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>; };
 
-// Graphique : Le Fil du Match (Line Chart)
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
-    const history = [];
-    const currentScores = {};
-    players.forEach(p => currentScores[p] = 0);
-    history.push({ index: -1, ...currentScores });
+    const history = []; const currentScores = {}; players.forEach(p => currentScores[p] = 0); history.push({ index: -1, ...currentScores });
     moveLog.forEach((move, index) => {
-        if(currentScores[move.player] !== undefined) {
-             currentScores[move.player] += parseInt(move.value);
-             history.push({ index, ...currentScores });
-        }
+        if(currentScores[move.player] !== undefined) { currentScores[move.player] += parseInt(move.value); history.push({ index, ...currentScores }); }
     });
     if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
     const maxScore = Math.max(...history.map(h => Math.max(...Object.values(h).filter(v => typeof v === 'number' && v !== h.index))));
-    const width = 1000;
-    const height = 300;
-    const paddingX = 40;
-    const paddingY = 40;
-    const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
+    const width = 1000; const height = 300; const paddingX = 40; const paddingY = 40; const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
     return (
         <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {[0, 0.25, 0.5, 0.75, 1].map(p => {
-                    const y = paddingY + p * (height - 2*paddingY);
-                    return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
-                })}
+                {[0, 0.25, 0.5, 0.75, 1].map(p => { const y = paddingY + p * (height - 2*paddingY); return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />; })}
                 {players.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
-                    const points = history.map((step, i) => {
-                        const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
-                        const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
-                        return `${x},${y}`;
-                    }).join(' ');
-                    return (
-                        <g key={player}>
-                            <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-                            {history.map((step, i) => {
-                                const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
-                                const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
-                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
-                                return (
-                                    <g key={i}>
-                                        <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
-                                        <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
-                                    </g>
-                                );
-                            })}
-                        </g>
-                    );
+                    const points = history.map((step, i) => { const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX); const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY)); return `${x},${y}`; }).join(' ');
+                    return ( <g key={player}> <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/> {history.map((step, i) => { const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX); const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY)); if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null; return ( <g key={i}> <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" /> <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text> </g> ); })} </g> );
                 })}
             </svg>
             <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">
-                {players.map((p, i) => (
-                    <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
-                        <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div>
-                        <span className="text-xs text-white font-bold">{p}</span>
-                    </div>
-                ))}
+                {players.map((p, i) => ( <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full"> <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div> <span className="text-xs text-white font-bold">{p}</span> </div> ))}
             </div>
         </div>
     );
@@ -243,84 +181,34 @@ const GameFlowChart = ({ moveLog, players }) => {
 
 const DiceLuckChart = ({ stats }) => {
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
-    const upperStats = [
-        { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
-        { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
-        { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" },
-        { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" },
-        { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
-        { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
-    ];
+    const upperStats = [ { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" }, { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" }, { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" }, { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" }, { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" }, { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" }, ];
     const data = upperStats.map(s => ({ ...s, pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0 }));
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 text-center">
-                        <div className="font-black text-2xl text-white">{d.label}</div>
-                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
-                        <div className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} style={{ width: `${d.pct}%` }}></div>
-                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">{d.pct}%</div>
-                    </div>
-                </div>
-             ))}
+             {data.map((d, i) => ( <div key={i} className="flex items-center gap-4"> <div className="w-12 text-center"> <div className="font-black text-2xl text-white">{d.label}</div> <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div> </div> <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10"> <div className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} style={{ width: `${d.pct}%` }}></div> <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">{d.pct}%</div> </div> </div> ))}
         </div>
     );
 };
 
-// MINI CHART FOR HISTORY
 const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
     if (!moveLog || moveLog.length === 0) return null;
-    const pNames = gamePlayers.map(p => p.name || p);
-    const history = [];
-    const currentScores = {};
-    pNames.forEach(p => currentScores[p] = 0);
-    history.push({ ...currentScores });
-    moveLog.forEach((move) => {
-        if(currentScores[move.player] !== undefined) {
-            currentScores[move.player] += parseInt(move.value) || 0;
-            history.push({ ...currentScores });
-        }
-    });
-    if(history.length < 2) return null;
-    const maxScore = Math.min(375, Math.max(...history.map(h => Math.max(...pNames.map(p => h[p] || 0)))));
-    if(maxScore <= 0) return null;
-    const w = 600, h = 160, px = 30, py = 20;
-    const colors = ["#6366f1","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899"];
+    const pNames = gamePlayers.map(p => p.name || p); const history = []; const currentScores = {}; pNames.forEach(p => currentScores[p] = 0); history.push({ ...currentScores });
+    moveLog.forEach((move) => { if(currentScores[move.player] !== undefined) { currentScores[move.player] += parseInt(move.value) || 0; history.push({ ...currentScores }); } });
+    if(history.length < 2) return null; const maxScore = Math.min(375, Math.max(...history.map(h => Math.max(...pNames.map(p => h[p] || 0))))); if(maxScore <= 0) return null; const w = 600, h = 160, px = 30, py = 20; const colors = ["#6366f1","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899"];
     return (
         <div className="w-full mt-3 bg-black/30 rounded-xl p-2 border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out'}}>
             <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{height:'120px'}} preserveAspectRatio="none">
-                {[0,0.5,1].map(p=>{const y=py+p*(h-2*py);return <line key={p} x1={px} y1={y} x2={w-px} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>;
-                })}
+                {[0,0.5,1].map(p=>{const y=py+p*(h-2*py);return <line key={p} x1={px} y1={y} x2={w-px} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>;})}
                 {pNames.map((player, pIdx) => {
-                    const color = colors[pIdx % colors.length];
-                    const pts = history.map((step, i) => {
-                        const x = px + (i / (history.length - 1)) * (w - 2 * px);
-                        const y = (h - py) - ((Math.min(step[player]||0, 375) / maxScore) * (h - 2 * py));
-                        return `${x},${y}`;
-                    }).join(' ');
-                    const lastStep = history[history.length - 1];
-                    const lastX = px + ((history.length - 1) / (history.length - 1)) * (w - 2 * px);
-                    const lastY = (h - py) - ((Math.min(lastStep[player]||0, 375) / maxScore) * (h - 2 * py));
-                    return (
-                        <g key={player}>
-                            <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{filter:`drop-shadow(0 0 4px ${color}40)`}}/>
-                            <circle cx={lastX} cy={lastY} r="4" fill={color} stroke="#fff" strokeWidth="1.5"/>
-                            <text x={lastX+8} y={lastY+4} fontSize="11" fill={color} fontWeight="bold">{lastStep[player]||0}</text>
-                        </g>
-                    );
+                    const color = colors[pIdx % colors.length]; const pts = history.map((step, i) => { const x = px + (i / (history.length - 1)) * (w - 2 * px); const y = (h - py) - ((Math.min(step[player]||0, 375) / maxScore) * (h - 2 * py)); return `${x},${y}`; }).join(' '); const lastStep = history[history.length - 1]; const lastX = px + ((history.length - 1) / (history.length - 1)) * (w - 2 * px); const lastY = (h - py) - ((Math.min(lastStep[player]||0, 375) / maxScore) * (h - 2 * py));
+                    return ( <g key={player}> <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{filter:`drop-shadow(0 0 4px ${color}40)`}}/> <circle cx={lastX} cy={lastY} r="4" fill={color} stroke="#fff" strokeWidth="1.5"/> <text x={lastX+8} y={lastY+4} fontSize="11" fill={color} fontWeight="bold">{lastStep[player]||0}</text> </g> );
                 })}
             </svg>
         </div>
     );
 };
 
-/* ==========================================================================
-   COMPOSANT PRINCIPAL
-   ========================================================================== */
-
+// --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
   const [scores,setScores]=useState({});
@@ -368,7 +256,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVEAUX ÉTATS POUR LES FONCTIONNALITÉS DEMANDÉES
+  // NEW FEATURES STATES
   const [showBonusMissedModal, setShowBonusMissedModal] = useState(null);
   const [showBonusWonModal, setShowBonusWonModal] = useState(null);
   const [showSuddenDeathModal, setShowSuddenDeathModal] = useState(false);
@@ -388,7 +276,6 @@ export default function YamsUltimateLegacy() {
   const [enableDefaultGages, setEnableDefaultGages] = useState(true);
   const [newGageInput, setNewGageInput] = useState("");
   
-  const [showBonusLostNotif, setShowBonusLostNotif] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const replayIntervalRef = useRef(null);
@@ -418,7 +305,6 @@ export default function YamsUltimateLegacy() {
   }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();},[]);
-  
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
@@ -497,7 +383,7 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // LOGIQUE BONUS ET ANIMATIONS (CORRIGÉ)
+    // LOGIQUE BONUS ET ANIMATIONS
     const upperCatsList = categories.filter(c => c.upper && !c.upperHeader && !c.upperDivider && !c.upperTotal && !c.upperGrandTotal);
     if(value !== '' && upperCatsList.some(c => c.id === category)) {
         const isUpperFull = upperCatsList.every(c => ns[player][c.id] !== undefined);
@@ -1111,7 +997,7 @@ export default function YamsUltimateLegacy() {
             </select>
 
             <div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
-            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
+            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date || '-'}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date || '-'}</div></div></div>}
             {filteredGameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -1134,6 +1020,7 @@ export default function YamsUltimateLegacy() {
                             <div className="flex items-center gap-2">
                                 <div className="flex flex-wrap gap-1">
                                     {Array.isArray(g.seasons) && g.seasons.map(s => <span key={s} className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{s}</span>)}
+                                    {(!g.seasons && g.season && g.season !== 'Aucune') && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{g.season}</span>}
                                 </div>
                                 <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"><Edit3 size={12}/></button>
                             </div>
@@ -1144,6 +1031,7 @@ export default function YamsUltimateLegacy() {
                 </div>
                 {g.moveLog && g.moveLog.length > 1 && <GameFlowChartMini moveLog={g.moveLog} gamePlayers={g.players||g.results}/>}
                 <div className="space-y-2">{(g.players||g.results).sort((a,b)=> {
+                    // TRI PAR SCORE, PUIS TIEBREAKER
                     if(a.score !== b.score) return b.score - a.score;
                     return (b.tieBreaker||0) - (a.tieBreaker||0);
                 }).map((pl,i)=>{
@@ -1203,7 +1091,7 @@ export default function YamsUltimateLegacy() {
                   })()}
                 </div>
 
-                {/* NOUVEAU DESIGN YAMS & YAMS CACHES (CARTES) */}
+                {/* NOUVELLE VERSION GRAPHIQUE YAMS & YAMS CACHÉS (CARTES) */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Dices className="text-purple-400"/> Chasse aux Yams</h2>
                     
