@@ -6,12 +6,13 @@ import {
   Zap, Scale, Swords, ThumbsDown, ThumbsUp, Crown, 
   ScrollText, Award, Flame, Coffee, Ghost, Moon, Wand2,
   TrendingUp, AlertTriangle, Gift, Camera, Calendar, PenLine, Info, Save,
-  Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel
+  Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel, Frown
 } from "lucide-react";
 
 // --- CONFIGURATION ---
 const categories = [
   { id:"upperHeader", upperHeader:true },
+  // Ajout de la propriété 'max' pour détecter les Yams Cachés
   { id:"ones", name:"As", values:[0,1,2,3,4,5], upper:true, icon:"⚀", color:"#3b82f6", max:5 },
   { id:"twos", name:"Deux", values:[0,2,4,6,8,10], upper:true, icon:"⚁", color:"#8b5cf6", max:10 },
   { id:"threes", name:"Trois", values:[0,3,6,9,12,15], upper:true, icon:"⚂", color:"#ec4899", max:15 },
@@ -81,6 +82,8 @@ const AVATAR_LIST = [
 ];
 
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
+const upperCats = categories.filter(c => c.upper && !c.upperHeader && !c.upperDivider && !c.upperTotal && !c.upperGrandTotal);
+
 const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
 
 // --- UTILS ---
@@ -168,44 +171,27 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
-
-    const history = [];
-    const currentScores = {};
-    players.forEach(p => currentScores[p] = 0);
-    
-    // Initial state
+    const history = []; const currentScores = {}; players.forEach(p => currentScores[p] = 0);
     history.push({ index: -1, ...currentScores });
-
     moveLog.forEach((move, index) => {
         if(currentScores[move.player] !== undefined) {
              currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
              history.push({ index, ...currentScores });
         }
     });
-
     if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
-
     const maxScore = Math.max(...history.map(h => Math.max(...Object.values(h).filter(v => typeof v === 'number' && v !== h.index))));
-    const width = 1000;
-    const height = 300;
-    const paddingX = 40;
-    const paddingY = 40;
-    
+    const width = 1000; const height = 300; const paddingX = 40; const paddingY = 40;
     const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
-
     return (
         <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {/* Lignes de repère */}
                 {[0, 0.25, 0.5, 0.75, 1].map(p => {
                     const y = paddingY + p * (height - 2*paddingY);
                     return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
                 })}
-
                 {players.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
                     const points = history.map((step, i) => {
@@ -213,25 +199,13 @@ const GameFlowChart = ({ moveLog, players }) => {
                         const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
                         return `${x},${y}`;
                     }).join(' ');
-                    
                     return (
                         <g key={player}>
-                            <polyline 
-                                points={points} 
-                                fill="none" 
-                                stroke={color} 
-                                strokeWidth="4" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                            />
-                            {/* Points et Chiffres */}
+                            <polyline points={points} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
                             {history.map((step, i) => {
                                 const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
                                 const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
-                                
-                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
                                 if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
-                                
                                 return (
                                     <g key={i}>
                                         <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
@@ -255,12 +229,8 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
-    
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
     const upperStats = [
         { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
         { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
@@ -269,12 +239,7 @@ const DiceLuckChart = ({ stats }) => {
         { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
         { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
     ];
-    
-    const data = upperStats.map(s => ({
-        ...s,
-        pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0
-    }));
-
+    const data = upperStats.map(s => ({ ...s, pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0 }));
     return (
         <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
              {data.map((d, i) => (
@@ -284,19 +249,11 @@ const DiceLuckChart = ({ stats }) => {
                         <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
                     </div>
                     <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
-                        <div 
-                            className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
-                            style={{ width: `${d.pct}%` }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
-                            {d.pct}%
-                        </div>
+                        <div className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} style={{ width: `${d.pct}%` }}></div>
+                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">{d.pct}%</div>
                     </div>
                 </div>
              ))}
-             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
-                 Taux de réussite moyen sur la partie supérieure (historique complet)
-            </div>
         </div>
     );
 };
@@ -334,7 +291,7 @@ export default function YamsUltimateLegacy() {
   const [fogMode, setFogMode] = useState(false);
   const [speedMode, setSpeedMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [jokersEnabled, setJokersEnabled] = useState(false); // DEFAULT FALSE JOKERS
+  const [jokersEnabled, setJokersEnabled] = useState(false);
   const [jokerMax, setJokerMax] = useState(2);
   const [jokers, setJokers] = useState({});
   const [diceSkin, setDiceSkin] = useState('classic');
@@ -349,7 +306,11 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V30 (Yams Detail)
+  // NOUVEAUX ÉTATS POUR BONUS RATÉ ET MORT SUBITE
+  const [showBonusMissedModal, setShowBonusMissedModal] = useState(null); // { player: "Name", score: 55 }
+  const [showSuddenDeathModal, setShowSuddenDeathModal] = useState(false);
+  const [suddenDeathScores, setSuddenDeathScores] = useState({});
+
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -359,17 +320,12 @@ export default function YamsUltimateLegacy() {
   const [renamingSeason, setRenamingSeason] = useState(null);
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
-  const [tempHistorySeason, setTempHistorySeason] = useState('');
   
-  // Yams Detail Logic
-  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); // { player: 'Name' }
-
-  // GAGES STATES
+  const [pendingYamsDetail, setPendingYamsDetail] = useState(null);
   const [customGages, setCustomGages] = useState([]);
   const [enableDefaultGages, setEnableDefaultGages] = useState(true);
   const [newGageInput, setNewGageInput] = useState("");
   
-  const [endGameData, setEndGameData] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const replayIntervalRef = useRef(null);
@@ -391,13 +347,7 @@ export default function YamsUltimateLegacy() {
 
   useEffect(() => {
     let wakeLock = null;
-    const requestWakeLock = async () => {
-        if ('wakeLock' in navigator && wakeLockEnabled) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) { console.log(err); }
-        }
-    };
+    const requestWakeLock = async () => { if ('wakeLock' in navigator && wakeLockEnabled) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); } } };
     if (wakeLockEnabled) requestWakeLock();
     const handleVisibilityChange = () => { if (wakeLock !== null && document.visibilityState === 'visible' && wakeLockEnabled) requestWakeLock(); };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -433,11 +383,9 @@ export default function YamsUltimateLegacy() {
   const addPlayer=()=>{if(players.length<6&&!isGameStarted())setPlayers([...players,`Joueur ${players.length+1}`]);};
   const removePlayer=i=>{if(players.length>1&&!isGameStarted()){const rem=players[i];const np=[...players];np.splice(i,1);setPlayers(np);const ns={...scores};delete ns[rem];setScores(ns);}};
   const updatePlayerName=(i,name)=>{const old=players[i];const np=[...players];np[i]=name;setPlayers(np);if(scores[old]){const ns={...scores};ns[name]=ns[old];delete ns[old];setScores(ns);}};
-  // FIX AVATAR: Simply set index and show modal
   const openAvatarSelector = (index) => { setAvatarSelectorIndex(index); setShowAvatarModal(true); };
   const selectAvatar = (icon) => { const p = players[avatarSelectorIndex]; setPlayerAvatars({...playerAvatars, [p]: icon}); setShowAvatarModal(false); };
 
-  // GAGES FUNCTIONS
   const addCustomGage = () => { if (newGageInput.trim()) { setCustomGages([...customGages, { id: Date.now(), text: newGageInput.trim(), active: true }]); setNewGageInput(""); } };
   const toggleCustomGage = (id) => { setCustomGages(customGages.map(g => g.id === id ? { ...g, active: !g.active } : g)); };
   const deleteCustomGage = (id) => { setCustomGages(customGages.filter(g => g.id !== id)); };
@@ -448,9 +396,22 @@ export default function YamsUltimateLegacy() {
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
-  const getBonusProgress=p=>{ const filled=categories.filter(c=>c.upper&&scores[p]?.[c.id]!==undefined).length; if(!filled)return{status:'neutral',message:''}; const targets=[{id:'ones',t:3},{id:'twos',t:6},{id:'threes',t:9},{id:'fours',t:12},{id:'fives',t:15},{id:'sixes',t:18}]; let exp=0;targets.forEach(c=>{if(scores[p]?.[c.id]!==undefined)exp+=c.t;}); const diff=calcUpper(p)-exp; if(diff>0)return{status:'ahead',message:`Avance: +${diff}`,color:'text-green-400'}; if(diff<0)return{status:'behind',message:`Retard: ${diff}`,color:'text-red-400'}; return{status:'ontrack',message:'Sur la cible',color:'text-blue-400'}; };
-  const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
-  const getWinner=()=>{if(!players.length)return[];const max=Math.max(...players.map(p=>calcTotal(p)));return players.filter(p=>calcTotal(p)===max);};
+  
+  // getWinner mis à jour pour supporter la mort subite (tieBreakerScores)
+  const getWinner=(tieBreakerScores = {})=>{
+      if(!players.length)return[];
+      const totals = players.map(p => ({name: p, score: calcTotal(p), tieScore: tieBreakerScores[p] || 0}));
+      const maxScore = Math.max(...totals.map(t => t.score));
+      const tiedPlayers = totals.filter(t => t.score === maxScore);
+      
+      if(tiedPlayers.length > 1 && Object.keys(tieBreakerScores).length > 0) {
+          // Si égalité et scores de départage existent
+          const maxTie = Math.max(...tiedPlayers.map(t => t.tieScore));
+          return tiedPlayers.filter(t => t.tieScore === maxTie).map(t => t.name);
+      }
+      return tiedPlayers.map(t => t.name);
+  };
+  
   const getLoser=()=>{if(!players.length)return null;const totals=players.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
@@ -474,7 +435,20 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // NEW: DETECT YAMS 50
+    // NEW: DETECT BONUS MISSED (ANIMATION)
+    if(value !== '' && upperCats.some(c => c.id === category)) {
+        // Check if upper section is now full
+        const isUpperFull = upperCats.every(c => ns[player][c.id] !== undefined);
+        if(isUpperFull) {
+            const currentUpper = calcUpper(player, ns);
+            if(currentUpper < 63) {
+                 setShowBonusMissedModal({ player, score: currentUpper });
+                 setConfetti('sad');
+                 setTimeout(() => { setShowBonusMissedModal(null); setConfetti(null); }, 4000);
+            }
+        }
+    }
+
     if(category==='yams' && value==='50'){
         setPendingYamsDetail({ player });
         setConfetti('gold');
@@ -505,13 +479,11 @@ export default function YamsUltimateLegacy() {
     }
   };
 
-  // NEW FUNCTION: Save detail of Yams
   const saveYamsDetail = (val) => {
       if(!pendingYamsDetail) return;
       const { player } = pendingYamsDetail;
       const newScores = { ...scores };
       if(newScores[player]) {
-          // Initialize array if doesn't exist
           if(!newScores[player].yamsHistory) newScores[player].yamsHistory = [];
           newScores[player].yamsHistory.push(val);
       }
@@ -525,16 +497,15 @@ export default function YamsUltimateLegacy() {
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false);
+      setSuddenDeathScores({}); setShowSuddenDeathModal(false); // Reset SD
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
-      // CHAOS MODE START ACTION FOR 1ST PLAYER
       if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
       saveCurrentGame({});
   };
 
   const updateGameSeason = (id, newSeason) => {
-     // Multi-season logic: toggle season in array
      const updatedHistory = gameHistory.map(g => {
          if (g.id !== id) return g;
          const currentSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season && g.season !== 'Aucune' ? [g.season] : []);
@@ -544,50 +515,79 @@ export default function YamsUltimateLegacy() {
          } else {
              newSeasons = [...currentSeasons, newSeason];
          }
-         return { ...g, seasons: newSeasons, season: null }; // remove legacy string
+         return { ...g, seasons: newSeasons, season: null }; 
      });
      setGameHistory(updatedHistory);
      saveHistory(updatedHistory);
-     // Don't close modal, allow multiple selections
   };
 
-  useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
+  // CHECK FIN DE PARTIE + MORT SUBITE
+  useEffect(()=>{
+      if(isGameComplete() && !showEndGameModal && !showSuddenDeathModal){
+          const winners = getWinner();
+          if (winners.length > 1) {
+              // ÉGALITÉ DÉTECTÉE -> MORT SUBITE
+              setShowSuddenDeathModal(true);
+          } else {
+              setShowVictoryAnimation(true);
+              setConfetti('gold');
+              setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);
+          }
+      }
+  },[scores,showEndGameModal, showSuddenDeathModal]);
   
-  // LOGIQUE GAGES MIXTES
   useEffect(() => { 
     if (showEndGameModal && !currentGage) {
         let pool = [];
         if (enableDefaultGages) pool = [...pool, ...DEFAULT_GAGES];
-        if (customGages && customGages.length > 0) {
-            const activeCustoms = customGages.filter(g => g.active).map(g => g.text);
-            pool = [...pool, ...activeCustoms];
-        }
-        
-        if (pool.length > 0) {
-            setCurrentGage(pool[Math.floor(Math.random() * pool.length)]);
-        } else {
-            setCurrentGage("Aucun gage sélectionné !");
-        }
-    } else if (!showEndGameModal) { 
-        setCurrentGage(null); 
-    } 
+        if (customGages && customGages.length > 0) pool = [...pool, ...customGages.filter(g => g.active).map(g => g.text)];
+        if (pool.length > 0) setCurrentGage(pool[Math.floor(Math.random() * pool.length)]); else setCurrentGage("Aucun gage sélectionné !");
+    } else if (!showEndGameModal) { setCurrentGage(null); } 
   }, [showEndGameModal, customGages, enableDefaultGages]);
 
   const saveGameFromModal=()=>{ 
-      const w=getWinner(); const l=getLoser(); 
-      // Save active seasons as array
+      const w=getWinner(suddenDeathScores); // Utilise les scores de départage pour identifier le vrai vainqueur
+      // const l=getLoser(); // Attention, getLoser ne gère pas encore les tieBreakers pour le "dernier", mais souvent pas besoin.
+      // Trouver le perdant "réel" pour le reset (celui qui a le moins de points ou perdu la mort subite s'ils étaient tous à égalité)
+      // Simplification : on prend le joueur qui n'est PAS dans w (winners) ou le dernier du tableau trié.
+      
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
-      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
+      const game={
+          id:Date.now(),
+          seasons:currentSeasons,
+          date:new Date().toLocaleDateString('fr-FR'),
+          time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+          players:players.map(p=>({
+              name:p,
+              score:calcTotal(p),
+              isWinner:w.includes(p),
+              yamsCount:scores[p]?.yams===50?1:0,
+              tieBreaker: suddenDeathScores[p] // Sauvegarde du score de départage
+          })), 
+          grid: JSON.parse(JSON.stringify(scores)), 
+          moveLog: JSON.parse(JSON.stringify(moveLog))
+      }; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
       setGlobalXP(prev => prev + 100);
-      resetGame(l ? l.name : null); 
+      
+      // Calcul du loser pour le next start
+      let loserName = null;
+      if (players.length > 0) {
+          const sortedPlayers = [...players].sort((a,b) => {
+              const scoreA = calcTotal(a);
+              const scoreB = calcTotal(b);
+              if (scoreA !== scoreB) return scoreA - scoreB;
+              return (suddenDeathScores[a]||0) - (suddenDeathScores[b]||0);
+          });
+          loserName = sortedPlayers[0];
+      }
+
+      resetGame(loserName); 
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
-  const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(navigator.share){try{await navigator.share({text:t});}catch(e){navigator.clipboard.writeText(t);alert('Score copié!');}}else{navigator.clipboard.writeText(t);alert('Score copié!');}};
   const exportData=()=>{const b=new Blob([JSON.stringify({gameHistory,exportDate:new Date().toISOString(),version:'1.0'},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
 
-  // Filtrer l'historique par saison active (POUR STATS)
   const filteredHistory = useMemo(() => {
       if(!gameHistory || !Array.isArray(gameHistory)) return [];
       if(!statsFilterSeason || statsFilterSeason === 'Toutes') return gameHistory;
@@ -598,7 +598,6 @@ export default function YamsUltimateLegacy() {
       }); 
   }, [gameHistory, statsFilterSeason]);
   
-  // Filtrer historique pour l'onglet historique
   const filteredGameHistory = useMemo(() => {
       if(!gameHistory || !Array.isArray(gameHistory)) return [];
       if(!historyFilterSeason || historyFilterSeason === 'Toutes') return gameHistory;
@@ -614,8 +613,7 @@ export default function YamsUltimateLegacy() {
       filteredHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); 
       allPlayerNames.forEach(name => { 
           stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0,
-          // Stats pour la chance aux dés
-          totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0 }; 
+          totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0, hiddenYamsCount:0 }; 
           streaks[name] = 0; isStreaking[name] = true; 
       }); 
       filteredHistory.forEach((game) => { 
@@ -632,10 +630,17 @@ export default function YamsUltimateLegacy() {
               if(gameGrid[p.name]) { 
                   s.historyGames++; 
                   let currentUpperSum = 0;
-                  categories.filter(c => c.upper).forEach(cat => { const val = gameGrid[p.name][cat.id]; if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); } });
+                  // COUNT HIDDEN YAMS
+                  categories.filter(c => c.upper && c.max).forEach(cat => {
+                      const val = gameGrid[p.name][cat.id];
+                      if(val !== undefined && val !== "" && parseInt(val) === cat.max) {
+                          s.hiddenYamsCount++;
+                      }
+                      if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); }
+                  });
+                  
                   if (currentUpperSum >= 63) { s.bonusCount++; }
                   const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
-                  // Accumulate dice luck (FIX: Ensure parsing works)
                   s.totalOnes += parseInt(gameGrid[p.name]['ones']||0);
                   s.totalTwos += parseInt(gameGrid[p.name]['twos']||0);
                   s.totalThrees += parseInt(gameGrid[p.name]['threes']||0);
@@ -652,16 +657,9 @@ export default function YamsUltimateLegacy() {
   const getPieData = () => playerStats.filter(s=>s.wins>0).map(s=>({name:s.name,value:s.wins}));
   const isFoggy = (p) => fogMode && !isGameComplete() && getNextPlayer() !== p;
   const getLeader = () => { if(isGameComplete() || hideTotals || fogMode) return null; const totals = players.map(p => ({name: p, score: calcTotal(p)})); const max = Math.max(...totals.map(t => t.score)); if(max === 0) return null; const leaders = totals.filter(t => t.score === max); if (leaders.length > 1) return null; return leaders[0].name; };
-  const leader = getLeader();
   const getTensionColor = () => { if(players.length < 2) return 'bg-gray-800'; const totals = players.map(p => calcTotal(p)).sort((a,b)=>b-a); const diff = totals[0] - totals[1]; if(diff < 20) return 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse'; if(diff < 50) return 'bg-gradient-to-r from-yellow-500 to-orange-500'; return 'bg-gradient-to-r from-blue-500 to-cyan-500'; };
-  const quickEdit = () => {
-      setShowEndGameModal(false);
-      setEditMode(true);
-      setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));
-      setLastPlayerBeforeEdit(lastPlayerToPlay);
-  };
+  const quickEdit = () => { setShowEndGameModal(false); setEditMode(true); setScoresBeforeEdit(JSON.parse(JSON.stringify(scores))); setLastPlayerBeforeEdit(lastPlayerToPlay); };
   
-  // FIX REPLAY: Simple safe display function
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
     let upperSum = 0; let lowerSum = 0;
@@ -675,80 +673,26 @@ export default function YamsUltimateLegacy() {
     return upperSum + bonus + lowerSum;
   };
   
-  // TIMELAPSE
   const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
   const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
 
-  // REPLAY RENDERER
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
-  // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles) - GESTION ÉGALITÉ
   const getRank = (playerName) => {
-    // Calcul des totaux pour tous les joueurs
     const scoresList = players.map(p => ({ name: p, score: calcTotal(p) }));
-    
-    // Tri décroissant
     scoresList.sort((a, b) => b.score - a.score);
-
-    // Trouver le score du joueur actuel
     const myScore = scoresList.find(s => s.name === playerName)?.score || 0;
-
-    // Le rang est 1 + le nombre de joueurs qui ont strictement plus
     const rank = scoresList.filter(s => s.score > myScore).length + 1;
-    
     return rank;
   };
 
-  // CALCUL VRAIES STATS D'ECHEC (CORRECTION CRASH & DOUBLON) - DEFINE HERE
   const calculateGlobalFailures = (target) => {
-    const failures = {};
-    playableCats.forEach(cat => failures[cat.id] = 0);
-    let totalGames = 0;
-    
-    // SAFE ACCESS: on vérifie que gameHistory existe
-    const historyToUse = statsFilterSeason === 'Toutes' ? (gameHistory || []) : (gameHistory || []).filter(g => {
-        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
-        if(statsFilterSeason === 'Aucune') return gSeasons.length === 0;
-        return gSeasons.includes(statsFilterSeason);
-    });
-
+    const failures = {}; playableCats.forEach(cat => failures[cat.id] = 0); let totalGames = 0;
+    const historyToUse = statsFilterSeason === 'Toutes' ? (gameHistory || []) : (gameHistory || []).filter(g => { const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []); if(statsFilterSeason === 'Aucune') return gSeasons.length === 0; return gSeasons.includes(statsFilterSeason); });
     if (!historyToUse || historyToUse.length === 0) return { failures: [], totalGames: 0 };
-
-    historyToUse.forEach(game => {
-        const participants = game.players || game.results || [];
-        const grid = game.grid || {};
-        participants.forEach(p => {
-            if (target === 'GLOBAL' || p.name === target) {
-                const playerGrid = grid[p.name];
-                if (playerGrid) {
-                    totalGames++;
-                    Object.keys(failures).forEach(catId => { if (playerGrid[catId] === 0) failures[catId]++; });
-                }
-            }
-        });
-    });
-    const sortedFailures = Object.entries(failures)
-        .sort(([,a], [,b]) => b - a)
-        .map(([key, value]) => ({ 
-            id: key, name: categories.find(c => c.id === key)?.name || key, count: value,
-            rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0
-        }));
+    historyToUse.forEach(game => { const participants = game.players || game.results || []; const grid = game.grid || {}; participants.forEach(p => { if (target === 'GLOBAL' || p.name === target) { const playerGrid = grid[p.name]; if (playerGrid) { totalGames++; Object.keys(failures).forEach(catId => { if (playerGrid[catId] === 0) failures[catId]++; }); } } }); });
+    const sortedFailures = Object.entries(failures).sort(([,a], [,b]) => b - a).map(([key, value]) => ({ id: key, name: categories.find(c => c.id === key)?.name || key, count: value, rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0 }));
     return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
-  };
-
-  // Yams Distribution Calc
-  const getYamsDistribution = () => {
-      const dist = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-      gameHistory.forEach(g => {
-         const grid = g.grid || {};
-         Object.values(grid).forEach(pGrid => {
-             // Checking new structure
-             if(pGrid.yamsHistory && Array.isArray(pGrid.yamsHistory)) {
-                 pGrid.yamsHistory.forEach(val => dist[val] = (dist[val] || 0) + 1);
-             }
-         });
-      });
-      return dist;
   };
 
   return (
@@ -758,27 +702,92 @@ export default function YamsUltimateLegacy() {
         <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 modal-backdrop">
             <div className="modal-content bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl shadow-yellow-500/20 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl"></div>
                 <div className="text-5xl mb-3" style={{animation:'trophy-float 3s ease-in-out infinite'}}>🎲</div>
                 <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide winner-glow">YAMS !</h3>
                 <p className="text-gray-400 text-sm mb-6 font-medium">Quel chiffre as-tu obtenu ?</p>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                     {[1, 2, 3, 4, 5, 6].map(val => (
-                        <button 
-                            key={val}
-                            onClick={() => saveYamsDetail(val)}
-                            className="aspect-square bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/50 rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 hover:scale-110 active:scale-95 group hover:shadow-lg hover:shadow-yellow-500/20"
-                            style={{animation:`bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) ${val*0.06}s backwards`}}
-                        >
-                            <span className="group-hover:scale-125 transition-transform duration-300">
-                                {['','⚀','⚁','⚂','⚃','⚄','⚅'][val]}
-                            </span>
-                        </button>
+                        <button key={val} onClick={() => saveYamsDetail(val)} className="aspect-square bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/50 rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 hover:scale-110 active:scale-95 group hover:shadow-lg hover:shadow-yellow-500/20">{['','⚀','⚁','⚂','⚃','⚄','⚅'][val]}</button>
                     ))}
                 </div>
-                <div className="text-[10px] text-gray-500 italic">Cela servira pour tes statistiques futures !</div>
             </div>
         </div>
+      )}
+
+      {/* MODAL BONUS MISSED */}
+      {showBonusMissedModal && (
+          <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 modal-backdrop">
+              <div className="modal-content bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-red-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl shadow-red-500/20 relative overflow-hidden">
+                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+                   <div className="text-5xl mb-3 animate-bounce">😭</div>
+                   <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide text-red-500">Oh non !</h3>
+                   <div className="text-white text-lg font-bold mb-4">{showBonusMissedModal.player} a raté le bonus...</div>
+                   <div className="bg-red-500/20 border border-red-500/30 p-4 rounded-2xl mb-4">
+                       <div className="text-gray-400 text-xs uppercase font-bold">Total Partie Supérieure</div>
+                       <div className="text-4xl font-black text-white">{showBonusMissedModal.score} <span className="text-sm text-gray-500">/ 63</span></div>
+                   </div>
+                   <button onClick={() => setShowBonusMissedModal(null)} className="bg-white/10 hover:bg-white/20 text-white w-full py-3 rounded-xl font-bold">Tant pis...</button>
+              </div>
+          </div>
+      )}
+
+      {/* MODAL SUDDEN DEATH */}
+      {showSuddenDeathModal && (
+          <div className="fixed inset-0 bg-black/95 z-[210] flex items-center justify-center p-4 modal-backdrop">
+              <div className="modal-content bg-gradient-to-b from-gray-900 to-black border-4 border-red-600 rounded-3xl p-6 w-full max-w-sm text-center shadow-[0_0_50px_rgba(220,38,38,0.5)] relative overflow-hidden">
+                  <div className="text-6xl mb-4 animate-pulse">☠️</div>
+                  <h2 className="text-3xl font-black text-red-500 uppercase tracking-widest mb-2">MORT SUBITE</h2>
+                  <p className="text-gray-300 text-sm mb-6">Égalité parfaite ! Lancez les dés et faites le plus gros score possible.</p>
+                  
+                  <div className="space-y-4 mb-6">
+                      {getWinner().map(p => (
+                          <div key={p} className="bg-white/10 p-4 rounded-2xl border border-white/10">
+                              <div className="text-white font-bold text-lg mb-2">{p}</div>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400">Total Dés :</span>
+                                  <select 
+                                      className="flex-1 bg-black text-white p-2 rounded-lg font-bold border border-white/20 outline-none text-center"
+                                      value={suddenDeathScores[p] || ''}
+                                      onChange={(e) => setSuddenDeathScores({...suddenDeathScores, [p]: parseInt(e.target.value)})}
+                                  >
+                                      <option value="">-</option>
+                                      {Array.from({length:30}, (_,i) => i+1).reverse().map(n => (
+                                          <option key={n} value={n}>{n}</option>
+                                      ))}
+                                  </select>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+                  
+                  <button 
+                      onClick={() => {
+                          const tiedPlayers = getWinner();
+                          if(tiedPlayers.every(p => suddenDeathScores[p] !== undefined)) {
+                              // Check if still tied in sudden death
+                              const sdScores = tiedPlayers.map(p => suddenDeathScores[p]);
+                              const maxSd = Math.max(...sdScores);
+                              const stillTied = sdScores.filter(s => s === maxSd).length > 1;
+                              
+                              if(stillTied) {
+                                  alert("Encore égalité ! Relancez !");
+                                  setSuddenDeathScores({});
+                              } else {
+                                  setShowSuddenDeathModal(false);
+                                  setShowVictoryAnimation(true);
+                                  setConfetti('gold');
+                                  setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);
+                              }
+                          } else {
+                              alert("Entrez tous les scores !");
+                          }
+                      }}
+                      className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/30 transition-all uppercase tracking-widest"
+                  >
+                      Valider le Duel
+                  </button>
+              </div>
+          </div>
       )}
 
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
@@ -827,17 +836,16 @@ export default function YamsUltimateLegacy() {
   .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
 `}</style>
       {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+(showAchievementNotif.icon==='🎲'?'bg-gradient-to-r from-yellow-600 to-orange-600 border-yellow-400':showAchievementNotif.icon==='🎁'?'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400':'bg-gradient-to-r from-purple-600 to-pink-600 border-purple-400')}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
-      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>🏆</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div></div></div>}
+      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>🏆</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner(suddenDeathScores).join(' & ')}</div></div></div>}
       {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50" style={{animation:'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)'}}><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-red-500/30 backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl" style={{animation:'shake 0.5s ease-in-out infinite'}}>🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
 
-      {/* STUDIO PHOTO MODAL */}
       {showStudioModal && (
           <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[120] p-4 modal-backdrop">
               <div className="modal-content bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 gradient-animate" style={{backgroundSize:'200% 200%'}}></div>
                   <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
                   <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
-                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner(suddenDeathScores)[0] || "..."}</div>
                   
                   <div className="space-y-3 mb-8">
                     {players.map(p => (
@@ -847,12 +855,6 @@ export default function YamsUltimateLegacy() {
                         </div>
                     ))}
                   </div>
-                  
-                  <div className="flex items-center justify-center gap-2 mb-6 opacity-50">
-                      <Dices size={16} className="text-white"/>
-                      <span className="text-white font-bold tracking-widest text-xs">YAMS ULTIMATE LEGACY</span>
-                  </div>
-                  
                   <button onClick={()=>setShowStudioModal(false)} className="bg-white text-black w-full py-4 rounded-xl font-black hover:scale-105 transition-transform">FERMER LE STUDIO</button>
               </div>
           </div>
@@ -898,10 +900,14 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
                   <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}><Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/></div>
                   <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>THE WINNER IS</h2>
-                  <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
+                  <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner(suddenDeathScores)[0]}</div>
                   <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
-                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}>
+                          <div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner(suddenDeathScores)[0])}</div>
+                          {suddenDeathScores[getWinner(suddenDeathScores)[0]] && <div className="text-xs text-yellow-400 font-bold">Mort Subite: {suddenDeathScores[getWinner(suddenDeathScores)[0]]}</div>}
+                          <div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div>
+                      </div>
+                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner(suddenDeathScores)[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
                   </div>
                   {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
                   <div className="space-y-2 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.7s backwards'}}>
@@ -942,31 +948,20 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
-              {/* SAISONS DANS LES REGLAGES */}
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
                  <div className="flex items-center gap-3">
                    <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400"><Calendar size={20}/></div>
                    <div>
                        <div className="text-white font-bold">Gérer les Saisons</div>
                        <div className="text-gray-400 text-xs">Saison active: <span className="text-cyan-400 font-bold">{activeSeason}</span></div>
-                       <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Info size={10}/>Sert à regrouper vos parties par période ou événement.</p>
                    </div>
                  </div>
-                 
                  <div className="flex flex-col gap-2 w-full sm:w-auto">
-                    {/* Selecteur / Créateur */}
                     <div className="flex gap-2">
                         {renamingSeason ? (
                             <div className="flex gap-2 items-center">
                                 <input type="text" value={tempSeasonName} onChange={e=>setTempSeasonName(e.target.value)} className="bg-black/40 text-white px-2 py-1 rounded-lg text-sm border border-cyan-500/50" autoFocus />
-                                <button onClick={() => { 
-                                    if(tempSeasonName && !seasons.includes(tempSeasonName)) {
-                                        const newSeasons = seasons.map(s => s === activeSeason ? tempSeasonName : s);
-                                        setSeasons(newSeasons);
-                                        setActiveSeason(tempSeasonName);
-                                        setRenamingSeason(null);
-                                    }
-                                }} className="p-1 bg-green-500/20 text-green-400 rounded"><Check size={14}/></button>
+                                <button onClick={() => { if(tempSeasonName && !seasons.includes(tempSeasonName)) { const newSeasons = seasons.map(s => s === activeSeason ? tempSeasonName : s); setSeasons(newSeasons); setActiveSeason(tempSeasonName); setRenamingSeason(null); }}} className="p-1 bg-green-500/20 text-green-400 rounded"><Check size={14}/></button>
                                 <button onClick={()=>setRenamingSeason(null)} className="p-1 bg-red-500/20 text-red-400 rounded"><X size={14}/></button>
                             </div>
                         ) : (
@@ -975,35 +970,19 @@ export default function YamsUltimateLegacy() {
                                 {seasons.map(s=><option key={s} value={s}>{s}</option>)}
                             </select>
                         )}
-                        
                         {activeSeason !== 'Aucune' && !renamingSeason && (
                             <>
-                                <button onClick={()=>{setTempSeasonName(activeSeason); setRenamingSeason(true);}} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl" title="Renommer"><Edit3 size={16}/></button>
-                                <button onClick={()=>{
-                                    if(window.confirm(`Supprimer la saison "${activeSeason}" ?`)) {
-                                        setSeasons(seasons.filter(s=>s!==activeSeason));
-                                        setActiveSeason('Aucune');
-                                    }
-                                }} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl" title="Supprimer"><Trash2 size={16}/></button>
+                                <button onClick={()=>{setTempSeasonName(activeSeason); setRenamingSeason(true);}} className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl"><Edit3 size={16}/></button>
+                                <button onClick={()=>{ if(window.confirm(`Supprimer la saison "${activeSeason}" ?`)) { setSeasons(seasons.filter(s=>s!==activeSeason)); setActiveSeason('Aucune'); }}} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl"><Trash2 size={16}/></button>
                             </>
                         )}
                     </div>
-                    
-                    {/* Input Description Saison */}
                     {activeSeason !== 'Aucune' && (
                         <div className="flex gap-2 items-center w-full">
                             <PenLine size={14} className="text-gray-500"/>
-                            <input 
-                                type="text" 
-                                placeholder="Ajouter une description..." 
-                                value={seasonDescriptions[activeSeason] || ''} 
-                                onChange={e => updateSeasonDescription(activeSeason, e.target.value)}
-                                className="bg-transparent text-gray-300 text-xs outline-none border-b border-white/10 focus:border-cyan-400 w-full"
-                            />
+                            <input type="text" placeholder="Ajouter une description..." value={seasonDescriptions[activeSeason] || ''} onChange={e => updateSeasonDescription(activeSeason, e.target.value)} className="bg-transparent text-gray-300 text-xs outline-none border-b border-white/10 focus:border-cyan-400 w-full"/>
                         </div>
                     )}
-                    
-                    {/* Ajouter nouvelle */}
                     <div className="flex gap-2 mt-1">
                          <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
                          <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-xl"><Plus size={16}/></button>
@@ -1043,134 +1022,228 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
-        {/* CHAOS CARD DISPLAY */}
-        {chaosMode && activeChaosCard && !isGameComplete() && (
-            <div className="bg-gradient-to-r from-pink-600 via-purple-600 to-fuchsia-600 p-4 rounded-3xl shadow-lg border-2 border-pink-400 chaos-bg" style={{backgroundImage:'linear-gradient(135deg,#db2777,#9333ea,#c026d3,#db2777)',animation:'chaos-gradient 3s ease infinite',backgroundSize:'300% 300%'}}>
-                <div className="flex items-center gap-4">
-                    <div className="text-4xl bg-white/20 p-3 rounded-xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{activeChaosCard.icon}</div>
-                    <div>
-                        <div className="text-xs font-bold text-pink-200 uppercase tracking-widest">ÉVÉNEMENT CHAOS</div>
-                        <div className="text-xl font-black text-white">{activeChaosCard.title}</div>
-                        <div className="text-sm text-white/90">{activeChaosCard.desc}</div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* TAB: GAGES */}
-        {currentTab === 'gages' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
-                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
-                            <span className="text-sm font-bold text-white">Gages par défaut</span>
-                            <button 
-                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
-                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
-                            >
-                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="mb-8">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                            {DEFAULT_GAGES.map((g, i) => (
-                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
-                                    <span className="text-lg">📜</span> {g}
+        {/* TAB: HISTORY */}
+        {currentTab==='history'&&(
+          <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
+            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
+                        {editingHistoryId === g.id ? (
+                            <div className="flex gap-2 animate-in slide-in-from-left-2 items-center bg-black/40 p-2 rounded-xl">
+                                <span className="text-xs text-gray-400 mr-1">Saison(s):</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {seasons.map(s => {
+                                        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
+                                        const isSelected = gSeasons.includes(s);
+                                        return (
+                                            <button key={s} onClick={() => updateGameSeason(g.id, s)} className={`text-[10px] px-2 py-0.5 rounded-lg border ${isSelected ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-500'}`}>{s}</button>
+                                        );
+                                    })}
                                 </div>
-                            ))}
-                        </div>
+                                <button onClick={() => setEditingHistoryId(null)} className="ml-2 p-1 bg-white/10 text-white rounded hover:bg-white/20"><Check size={14}/></button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap gap-1">
+                                    {Array.isArray(g.seasons) && g.seasons.map(s => <span key={s} className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{s}</span>)}
+                                </div>
+                                <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"><Edit3 size={12}/></button>
+                            </div>
+                        )}
+                        {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
-
-                    <div className="border-t border-white/10 pt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
-                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
-                        </div>
-
-                        <div className="flex gap-2 mb-4">
-                            <input 
-                                type="text" 
-                                value={newGageInput}
-                                onChange={(e) => setNewGageInput(e.target.value)}
-                                placeholder="Inventez une punition..." 
-                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
-                            />
-                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {customGages.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
-                            ) : (
-                                customGages.map(g => (
-                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
-                                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
-                                            {/* SWITCH VISUEL */}
-                                            <button 
-                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
-                                            >
-                                                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
-                                            </button>
-                                            <span className="text-white font-medium">{g.text}</span>
-                                        </div>
-                                        <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
-                                            <Trash2 size={16}/>
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
+                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
-            </div>
+                <div className="space-y-2">{(g.players||g.results).sort((a,b)=> {
+                    // TRI PAR SCORE, PUIS TIEBREAKER
+                    if(a.score !== b.score) return b.score - a.score;
+                    return (b.tieBreaker||0) - (a.tieBreaker||0);
+                }).map((pl,i)=>{
+                    const isTrueWinner = i === 0;
+                    return (
+                        <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm">
+                            <span className="text-white font-bold flex items-center gap-3">
+                                {isTrueWinner ? <span className="text-2xl animate-pulse">👑</span> : (i===1?<span className="text-xl">🥈</span>:i===2?<span className="text-xl">🥉</span>:null)}
+                                <span className="text-lg">{pl.name}</span>
+                                {pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}
+                            </span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-black text-2xl" style={{color:isTrueWinner?T.primary:'#9ca3af'}}>{pl.score}</span>
+                                {pl.tieBreaker && <span className="text-sm font-bold text-gray-500">({pl.tieBreaker})</span>}
+                            </div>
+                        </div>
+                    );
+                })}</div></div>)}</div>}
+          </div></div>
         )}
 
-        {/* TAB: RULES & HELP */}
-        {currentTab === 'rules' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><BookOpen/> Règles Officielles</h2>
-                    <div className="space-y-4 text-gray-300 text-sm">
-                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎯 Objectif</h3><p>Marquer le plus de points en réalisant des combinaisons. Le perdant de la partie précédente commence la suivante !</p></div>
-                        <div className="bg-white/5 p-4 rounded-2xl"><h3 className="font-bold text-white mb-1">🎁 Bonus 35 points</h3><p>Si la somme de la partie supérieure (As à Six) fait <strong>63 points ou plus</strong>.</p></div>
+        {/* TAB: STATS & TROPHIES */}
+        {currentTab==='stats'&&(
+            <div className="space-y-6 tab-enter">
+                
+                <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/10">
+                    <div>
+                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><Activity className="text-blue-400"/> Statistiques</h2>
+                        {statsFilterSeason !== 'Toutes' && seasonDescriptions[statsFilterSeason] && (
+                            <p className="text-gray-400 text-xs mt-1 italic pl-10">{seasonDescriptions[statsFilterSeason]}</p>
+                        )}
                     </div>
+                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
+                        <option value="Toutes">Toutes les Saisons</option>
+                        <option value="Aucune">Hors Saison</option>
+                        {seasons.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
                 </div>
 
+                {/* 1. SCORE MAXI ATTEINT */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-wider mb-6"><Dices/> Simulateur Intelligent</h2>
-                    <div className="mb-4">
-                        <label className="text-gray-400 text-xs font-bold uppercase block mb-2">Simuler pour :</label>
-                        <select value={simPlayer || ''} onChange={(e) => setSimPlayer(e.target.value)} className="w-full bg-[#1e293b] text-white p-3 rounded-xl font-bold border border-white/20">
-                            {players.map(p => <option key={p} value={p} className="bg-[#1e293b] text-white">{p}</option>)}
+                  {(()=>{
+                      if(!playerStats || !playerStats.length) return <div className="text-center text-gray-500 py-8">Pas encore de statistiques. Jouez une partie !</div>;
+                      const bestScore = Math.max(...playerStats.map(s=>s.maxScore));
+                      const bestPlayers = playerStats.filter(s=>s.maxScore===bestScore);
+                      const maxPossible = 375;
+                      const pctOfMax = ((bestScore/maxPossible)*100).toFixed(1);
+                      if (bestScore === 0) return <div className="text-center text-gray-500 py-8">Jouez pour débloquer les stats !</div>;
+                      return (
+                      <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20">
+                          <div className="flex items-center justify-between flex-wrap gap-4">
+                              <div className="flex items-center gap-4"><span className="text-6xl animate-pulse">🌟</span><div><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div><div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div><div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div></div></div>
+                              <div className="text-right"><div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div><div className="text-white text-5xl font-black">{pctOfMax}%</div><div className="text-gray-300 text-xs">du maximum théorique</div></div>
+                          </div>
+                      </div>
+                      );
+                  })()}
+                </div>
+
+                {/* NOUVELLE SECTION YAMS CACHES */}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Dices className="text-purple-400"/> Chasse aux Yams</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="text-gray-400 border-b border-white/10">
+                                    <th className="p-3">Joueur</th>
+                                    <th className="p-3 text-center">Yams Vrais (50pts)</th>
+                                    <th className="p-3 text-center">Yams Cachés (Sup)</th>
+                                    <th className="p-3 text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {playerStats.map(p => (
+                                    <tr key={p.name} className="border-b border-white/5 hover:bg-white/5">
+                                        <td className="p-3 font-bold text-white flex items-center gap-2">
+                                            <span>{playerAvatars[p.name] || '👤'}</span> {p.name}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full font-black text-lg">{p.yamsCount}</span>
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <span className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full font-black text-lg">{p.hiddenYamsCount}</span>
+                                        </td>
+                                        <td className="p-3 text-center font-black text-white text-xl">
+                                            {p.yamsCount + p.hiddenYamsCount}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-400 italic text-center">* Yams Caché = Un score maximum réalisé dans une catégorie supérieure (ex: 5 aux As, 30 aux Six)</div>
+                </div>
+
+                {/* 3. RECORDS & STATS (GRILLE DE 4) */}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                  <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(()=>{
+                        if(!playerStats || playerStats.length === 0) return <div className="text-gray-500 italic">Pas assez de données...</div>;
+                        const bestAvg = Math.max(...playerStats.map(s=>s.avgScore));
+                        const bestAvgP = playerStats.filter(s=>s.avgScore===bestAvg);
+                        const mostG = Math.max(...playerStats.map(s=>s.games));
+                        const mostGP = playerStats.filter(s=>s.games===mostG);
+                        const totY = playerStats.reduce((sum,s)=>sum+s.yamsCount,0);
+                        const maxY = Math.max(...playerStats.map(s=>s.yamsCount));
+                        const mostYP = playerStats.filter(s=>s.yamsCount===maxY);
+                        return (
+                            <>
+                                <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div>
+                                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div>
+                                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div>
+                                <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div>
+                            </>
+                        );
+                    })()}
+                  </div>
+                </div>
+
+                {/* 5. FACE A FACE V2 */}
+                <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
+                    <div className="flex gap-4 items-center justify-center mb-8">
+                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" disabled selected>Sélectionner...</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
+                        </select>
+                        <div className="text-2xl font-black italic text-gray-500">VS</div>
+                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" disabled selected>Sélectionner...</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
-                    <div className="flex justify-center gap-3 mb-6">
-                        {simDice.map((val, i) => (
-                            <VisualDie key={i} value={val} onClick={() => { const newD = [...simDice]; newD[i] = newD[i] === 6 ? 1 : newD[i] + 1; setSimDice(newD); }} skin={diceSkin} />
-                        ))}
+                    {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
+                        <div className="space-y-6">
+                            {(() => {
+                                const p1 = playerStats.find(s=>s.name===versus.p1);
+                                const p2 = playerStats.find(s=>s.name===versus.p2);
+                                if (!p1 || !p2) return null;
+                                const p1Wins = filteredHistory.filter(g => {
+                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
+                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
+                                    return pp1 && pp2 && pp1.score > pp2.score;
+                                }).length;
+                                const p2Wins = filteredHistory.filter(g => {
+                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
+                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
+                                    return pp1 && pp2 && pp2.score > pp1.score;
+                                }).length;
+                                return (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
+                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
+                                                <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
+                                                <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
+                                                <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
+                                                <div className="text-white font-black text-6xl mb-1">{p2Wins}</div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
+                </div>
+
+                {/* 7. LE FIL DU MATCH (GAME FLOW) */}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><TrendingUp/> Le Fil du Match</h2>
+                        <div className="text-xs text-gray-400 font-bold bg-white/10 px-3 py-1 rounded-full">Dernière Partie</div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        {Object.entries(calculateSimulatedScores(simDice).scores).map(([key, score]) => {
-                            const cat = categories.find(c => c.id === key);
-                            const difficulty = calculateSimulatedScores(simDice).difficulty[key];
-                            if (!cat) return null;
-                            const isTaken = scores[simPlayer]?.[cat.id] !== undefined;
-                            const existingScore = scores[simPlayer]?.[cat.id];
-                            if(isTaken) return <div key={key} className="p-2 rounded-xl border border-white/5 bg-black/20 opacity-50 flex flex-col items-center justify-center text-center"><div className="font-bold text-gray-500">{cat.name}</div><div className="text-gray-600 font-bold">Déjà fait ({existingScore})</div></div>;
-                            const isGood = score > 0;
-                            return <div key={key} className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center ${isGood ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
-                                <div className="font-bold text-white">{cat.name}</div>
-                                <div className={`text-lg font-black ${isGood ? 'text-green-400' : 'text-gray-500'}`}>{score}</div>
-                                {isGood && difficulty && <div className={`w-full h-1 mt-1 rounded-full ${difficulty==='low'?'bg-green-500':difficulty==='medium'?'bg-yellow-500':difficulty==='hard'?'bg-orange-500':'bg-red-500'}`}></div>}
-                            </div>;
-                        })}
+                    <div className="h-64 w-full bg-black/20 rounded-xl p-4 relative">
+                        {(!moveLog || moveLog.length < 2) && (!gameHistory[0]?.moveLog || gameHistory[0]?.moveLog.length < 2) ? 
+                            <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">Pas assez de données pour le moment</div> :
+                            <GameFlowChart moveLog={moveLog.length > 0 ? moveLog : gameHistory[0]?.moveLog} players={players} />
+                        }
                     </div>
                 </div>
+
             </div>
         )}
 
@@ -1192,8 +1265,6 @@ export default function YamsUltimateLegacy() {
                   <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
                 </div>
               </div>
-              {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
-              {/* PANNEAU INFORMATION JOUEUR */}
               {!editMode && !isGameComplete() && (
                   <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1201,14 +1272,8 @@ export default function YamsUltimateLegacy() {
                               <span className="text-2xl">🎯</span>
                               <div>
                                   <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
-                                  {getEmptyCells(getNextPlayer()).length>0 && (
-                                      <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
-                                  )}
                               </div>
                           </div>
-                          {lastModifiedCell && (
-                              (()=>{const catId=lastModifiedCell.split('-')[1];const cat=categories.find(c=>c.id===catId);return <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2.5 rounded-xl shadow-lg border-2 border-yellow-300"><div className="flex items-center gap-3"><div><div className="text-white text-xs font-bold uppercase tracking-wide">Dernier coup</div><div className="text-slate-900 font-black text-sm">{lastPlayerToPlay}</div><div className="text-slate-900 font-bold text-xs mt-0.5">{cat?.name||''}</div></div><div className="text-slate-900 font-black text-3xl">{scores[lastPlayerToPlay]?.[catId]||0}</div></div></div>;})()
-                          )}
                       </div>
                   </div>
               )}
@@ -1217,21 +1282,14 @@ export default function YamsUltimateLegacy() {
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
                 {players.map((p,i)=><th key={i} className={`p-0 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
-                        {/* REAL-TIME RANKING BADGE - LEFT OF AVATAR */}
                         <div className="flex items-center justify-center gap-2">
                              {isGameStarted() && !isGameComplete() && (
                                 <div className="z-20">
-                                    {getRank(p) === 1 ? (
-                                        <Crown size={32} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
-                                    ) : (
-                                        getRank(p) === 2 ? <span className="text-3xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
-                                        getRank(p) === 3 ? <span className="text-3xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
-                                    )}
+                                    {getRank(p) === 1 ? <Crown size={32} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" /> : null}
                                 </div>
                             )}
                             <div className="text-3xl cursor-pointer hover:scale-110 transition-transform" onClick={() => openAvatarSelector(i)}>{playerAvatars[p] || "👤"}</div>
                         </div>
-                        
                         <div className="text-sm mt-1">{p}</div>
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
                         {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
@@ -1243,7 +1301,7 @@ export default function YamsUltimateLegacy() {
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
                   return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block">{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
-                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
+                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span></div>)}</div>
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
                   :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
@@ -1253,573 +1311,6 @@ export default function YamsUltimateLegacy() {
               </tbody></table></div>
             </div>
           </div>
-        )}
-
-        {/* TAB: HISTORY */}
-        {currentTab==='history'&&(
-          <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
-            {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
-                        {/* MULTI SEASON EDIT BUTTON */}
-                        {editingHistoryId === g.id ? (
-                            <div className="flex gap-2 animate-in slide-in-from-left-2 items-center bg-black/40 p-2 rounded-xl">
-                                <span className="text-xs text-gray-400 mr-1">Saison(s):</span>
-                                <div className="flex flex-wrap gap-1">
-                                    {seasons.map(s => {
-                                        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
-                                        const isSelected = gSeasons.includes(s);
-                                        return (
-                                            <button 
-                                                key={s}
-                                                onClick={() => updateGameSeason(g.id, s)}
-                                                className={`text-[10px] px-2 py-0.5 rounded-lg border ${isSelected ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-500'}`}
-                                            >
-                                                {s}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <button onClick={() => setEditingHistoryId(null)} className="ml-2 p-1 bg-white/10 text-white rounded hover:bg-white/20"><Check size={14}/></button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <div className="flex flex-wrap gap-1">
-                                    {Array.isArray(g.seasons) && g.seasons.map(s => <span key={s} className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{s}</span>)}
-                                    {(!g.seasons && g.season && g.season !== 'Aucune') && <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-bold border border-cyan-500/30">{g.season}</span>}
-                                </div>
-                                <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier les saisons"><Edit3 size={12}/></button>
-                            </div>
-                        )}
-                        {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
-                    </div>
-                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
-                </div>
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=><div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span></div>)}</div></div>)}</div>}
-          </div></div>
-        )}
-
-        {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
-        {currentTab==='stats'&&(
-            <div className="space-y-6 tab-enter">
-                
-                {/* 0. FILTRE SAISONS */}
-                <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/10">
-                    <div>
-                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><Activity className="text-blue-400"/> Statistiques</h2>
-                        {statsFilterSeason !== 'Toutes' && seasonDescriptions[statsFilterSeason] && (
-                            <p className="text-gray-400 text-xs mt-1 italic pl-10">{seasonDescriptions[statsFilterSeason]}</p>
-                        )}
-                    </div>
-                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
-                        <option value="Toutes">Toutes les Saisons</option>
-                        <option value="Aucune">Hors Saison</option>
-                        {seasons.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-
-                {/* 1. SCORE MAXI ATTEINT (BANNER) - SAFE MODE */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                  {(()=>{
-                      if(!playerStats || !playerStats.length) return <div className="text-center text-gray-500 py-8">Pas encore de statistiques. Jouez une partie !</div>;
-                      const bestScore = Math.max(...playerStats.map(s=>s.maxScore));
-                      const bestPlayers = playerStats.filter(s=>s.maxScore===bestScore);
-                      const maxPossible = 375;
-                      const pctOfMax = ((bestScore/maxPossible)*100).toFixed(1);
-                      
-                      if (bestScore === 0) return <div className="text-center text-gray-500 py-8">Jouez pour débloquer les stats !</div>;
-
-                      return (
-                      <div className="mb-2 p-6 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-400/50 rounded-2xl backdrop-blur-sm shadow-xl shadow-yellow-500/20">
-                          <div className="flex items-center justify-between flex-wrap gap-4">
-                              <div className="flex items-center gap-4">
-                                  <span className="text-6xl animate-pulse">🌟</span>
-                                  <div>
-                                      <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Record Absolu</div>
-                                      <div className="text-white text-3xl font-black">{bestScore} <span className="text-sm font-normal text-gray-400">/ {maxPossible}</span></div>
-                                      <div className="text-white font-bold text-lg mt-1">{bestPlayers.map(p=>p.name).join(' & ')}</div>
-                                  </div>
-                              </div>
-                              <div className="text-right">
-                                  <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Performance</div>
-                                  <div className="text-white text-5xl font-black">{pctOfMax}%</div>
-                                  <div className="text-gray-300 text-xs">du maximum théorique</div>
-                              </div>
-                          </div>
-                      </div>
-                      );
-                  })()}
-                </div>
-
-                {/* 2. PALMARES (PODIUM) - SAFE MODE */}
-                {getPieData().length > 0 && (
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
-                            const pStat = playerStats.find(s => s.name === entry.name);
-                            if (!pStat) return null;
-                            const total = getPieData().reduce((s,item)=>s+item.value,0); 
-                            const pct = total > 0 ? ((entry.value/total)*100).toFixed(0) : 0; 
-                            const isTop = idx === 0; 
-                            const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
-                            
-                            return (
-                                <div key={idx} className={'relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-105 cursor-pointer group '+(isTop?'bg-gradient-to-br from-yellow-500/30 via-orange-500/20 to-red-500/30 border-2 border-yellow-400/50 shadow-2xl shadow-yellow-500/30 animate-pulse':'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 hover:border-white/30')}>
-                                    <div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity"><div className="w-full h-full rounded-full blur-3xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}></div></div>
-                                    {isTop && <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-1 rounded-full text-xs font-black animate-bounce">⭐ TOP 1</div>}
-                                    <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],color:'#000'}}>{idx+1}</div>
-                                            {isTop && <div className="text-5xl animate-bounce">👑</div>}
-                                        </div>
-                                        <div className="mb-4">
-                                            <h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3>
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-4xl font-black" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span>
-                                                <span className="text-gray-400 text-sm font-semibold">victoires</span>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between text-sm"><span className="text-gray-400 font-semibold">Taux de victoire</span><span className="text-white font-black text-lg">{pct}%</span></div>
-                                            <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{backgroundColor:isTop?'#fbbf24':COLORS[idx%COLORS.length],width:pct+'%'}}></div></div>
-                                            
-                                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 mt-2">
-                                                <div className="col-span-2 grid grid-cols-3 gap-1 mb-2">
-                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Yams</div><div className="font-bold text-white">{pStat.yamsCount}</div></div>
-                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Moy.</div><div className="font-bold text-white">{pStat.avgScore}</div></div>
-                                                    <div className="text-center"><div className="text-gray-400 text-[10px] uppercase">Record</div><div className="font-bold text-green-400">{pStat.maxScore}</div></div>
-                                                </div>
-                                                <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Actuelle 🔥</div><div className="font-bold text-orange-400 text-lg">{pStat.currentStreak}</div></div>
-                                                <div className="text-center bg-white/5 p-2 rounded-lg"><div className="text-gray-400 text-xs">Série Max ⚡</div><div className="font-bold text-yellow-400 text-lg">{pStat.maxConsecutiveWins}</div></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                )}
-
-                {/* 3. RECORDS & STATS (GRILLE DE 4) - SAFE MODE */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                  <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(()=>{
-                        if(!playerStats || playerStats.length === 0) return <div className="text-gray-500 italic">Pas assez de données...</div>;
-                        
-                        const bestAvg = Math.max(...playerStats.map(s=>s.avgScore));
-                        const bestAvgP = playerStats.filter(s=>s.avgScore===bestAvg);
-                        const mostG = Math.max(...playerStats.map(s=>s.games));
-                        const mostGP = playerStats.filter(s=>s.games===mostG);
-                        const totY = playerStats.reduce((sum,s)=>sum+s.yamsCount,0);
-                        const maxY = Math.max(...playerStats.map(s=>s.yamsCount));
-                        const mostYP = playerStats.filter(s=>s.yamsCount===maxY);
-                        
-                        return (
-                            <>
-                                <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎯</span><div><div className="text-blue-300 text-xs font-bold uppercase">Meilleure Moyenne</div><div className="text-white text-xl font-black">{bestAvgP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-blue-300">{bestAvg} pts</div></div>
-                                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎮</span><div><div className="text-purple-300 text-xs font-bold uppercase">Plus Actif</div><div className="text-white text-xl font-black">{mostGP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-purple-300">{mostG} parties</div></div>
-                                <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">🎲</span><div><div className="text-yellow-300 text-xs font-bold uppercase">Total Yams</div><div className="text-white text-xl font-black">Tous joueurs</div></div></div><div className="text-4xl font-black text-yellow-300">{totY} 🎲</div></div>
-                                <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5"><div className="flex items-center gap-3 mb-3"><span className="text-4xl">👑</span><div><div className="text-green-300 text-xs font-bold uppercase">Roi du Yams</div><div className="text-white text-xl font-black">{mostYP.map(p=>p.name).join(' & ')}</div></div></div><div className="text-4xl font-black text-green-300">{maxY} Yams</div></div>
-                            </>
-                        );
-                    })()}
-                  </div>
-                </div>
-
-                {/* 4. HALL OF FAME - SAFE MODE */}
-                {hallOfFame && hallOfFame.biggestWin.gap > -1 && (
-                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                        <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-yellow-500"/> Hall of Fame</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 border border-green-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><Swords size={40} className="text-green-400"/></div>
-                                <div className="text-green-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Swords size={14}/> Plus large victoire</div>
-                                <div className="text-white font-black text-3xl">+{hallOfFame.biggestWin.gap} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.biggestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.biggestWin.second}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/40 border border-orange-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><Scale size={40} className="text-orange-400"/></div>
-                                <div className="text-orange-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><Scale size={14}/> Plus serré</div>
-                                <div className="text-white font-black text-3xl">+{hallOfFame.tightestWin.gap} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.tightestWin.winner} <span className="text-gray-500 font-normal">vs</span> {hallOfFame.tightestWin.second}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-purple-900/40 to-fuchsia-900/40 border border-purple-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><ThumbsDown size={40} className="text-purple-400"/></div>
-                                <div className="text-purple-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsDown size={14}/> Vainqueur petit bras</div>
-                                <div className="text-white font-black text-3xl">{hallOfFame.lowestWinner.score} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.lowestWinner.name}</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-4 rounded-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                <div className="absolute top-2 right-2 opacity-20"><ThumbsUp size={40} className="text-red-400"/></div>
-                                <div className="text-red-400 font-bold text-xs uppercase mb-1 flex items-center gap-2"><ThumbsUp size={14}/> Perdant Magnifique</div>
-                                <div className="text-white font-black text-3xl">{hallOfFame.highestLoser.score} pts</div>
-                                <div className="text-gray-300 text-sm mt-1 font-bold">{hallOfFame.highestLoser.name}</div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 5. FACE A FACE V2 (SAFE MODE) */}
-                <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
-                    
-                    <div className="flex gap-4 items-center justify-center mb-8">
-                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                        <div className="text-2xl font-black italic text-gray-500">VS</div>
-                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    
-                    {versus.p1 && versus.p2 && playerStats.find(s=>s.name===versus.p1) && playerStats.find(s=>s.name===versus.p2) && (
-                        <div className="space-y-6">
-                            {/* SCORECARD */}
-                            {(() => {
-                                const p1 = playerStats.find(s=>s.name===versus.p1);
-                                const p2 = playerStats.find(s=>s.name===versus.p2);
-                                if (!p1 || !p2) return null;
-
-                                const p1Wins = filteredHistory.filter(g => {
-                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp1.score > pp2.score;
-                                }).length;
-                                const p2Wins = filteredHistory.filter(g => {
-                                    const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                    const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                    return pp1 && pp2 && pp2.score > pp1.score;
-                                }).length;
-
-                                let p1Total = 0, p2Total = 0, gapSum = 0, streak = 0, currentWinner = null;
-                                const mutualGames = filteredHistory.filter(g => {
-                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     if(pp1 && pp2) { p1Total += pp1.score; p2Total += pp2.score; gapSum += Math.abs(pp1.score - pp2.score); return true; }
-                                     return false;
-                                });
-                                for(let i=0; i<mutualGames.length; i++) {
-                                     const g = mutualGames[i];
-                                     const pp1 = (g.players||g.results).find(p=>p.name===versus.p1);
-                                     const pp2 = (g.players||g.results).find(p=>p.name===versus.p2);
-                                     const winner = pp1.score > pp2.score ? versus.p1 : versus.p2;
-                                     if(currentWinner === null) { currentWinner = winner; streak = 1; }
-                                     else if(currentWinner === winner) streak++;
-                                     else break;
-                                }
-                                const avgGap = mutualGames.length > 0 ? Math.round(gapSum / mutualGames.length) : 0;
-
-                                return (
-                                    <>
-                                        <div className="text-center mb-4"><span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-gray-300">Total des rencontres : {mutualGames.length}</span></div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {/* P1 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-2xl relative overflow-hidden text-center group hover:scale-[1.02] transition-transform">
-                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-blue-400"/></div>
-                                                <div className="text-blue-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p1}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p1Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
-                                            </div>
-                                            {/* P2 CARD STYLE HoF */}
-                                            <div className="bg-gradient-to-br from-red-900/40 to-rose-900/40 border border-red-500/30 p-6 rounded-2xl text-center relative overflow-hidden group hover:scale-[1.02] transition-transform">
-                                                <div className="absolute top-2 right-2 opacity-20"><Swords size={60} className="text-red-400"/></div>
-                                                <div className="text-red-400 font-bold text-sm uppercase mb-2 tracking-widest">{versus.p2}</div>
-                                                <div className="text-white font-black text-6xl mb-1">{p2Wins}</div>
-                                                <div className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Victoires</div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Écart Moyen</div>
-                                                <div className="text-white font-black text-lg">{avgGap} pts</div>
-                                            </div>
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Série en cours</div>
-                                                <div className="text-white font-black text-sm">{currentWinner || "-"} <span className="text-yellow-400">x{streak}</span></div>
-                                            </div>
-                                            <div className="bg-white/5 p-3 rounded-xl text-center border border-white/10">
-                                                <div className="text-[9px] uppercase text-gray-400 font-bold mb-1">Cumul Points</div>
-                                                <div className="text-xs font-bold"><span className="text-blue-400">{p1Total}</span> / <span className="text-red-400">{p2Total}</span></div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            {[
-                                                { label: "Moyenne", v1: p1.avgScore, v2: p2.avgScore },
-                                                { label: "Record", v1: p1.maxScore, v2: p2.maxScore },
-                                                { label: "Total Yams", v1: p1.yamsCount, v2: p2.yamsCount },
-                                                { label: "Bonus", v1: p1.bonusCount, v2: p2.bonusCount }
-                                            ].map((stat, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-black/20 px-4 py-3 rounded-xl border border-white/5">
-                                                    <span className={`font-black w-12 text-center text-lg ${stat.v1 > stat.v2 ? "text-green-400" : "text-white"}`}>{stat.v1}</span>
-                                                    <span className="text-[10px] uppercase text-gray-500 font-bold flex-1 text-center tracking-widest">{stat.label}</span>
-                                                    <span className={`font-black w-12 text-center text-lg ${stat.v2 > stat.v1 ? "text-green-400" : "text-white"}`}>{stat.v2}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-                </div>
-
-                {/* 7. LE FIL DU MATCH (GAME FLOW) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><TrendingUp/> Le Fil du Match</h2>
-                        <div className="text-xs text-gray-400 font-bold bg-white/10 px-3 py-1 rounded-full">Dernière Partie</div>
-                    </div>
-                    
-                    <div className="h-64 w-full bg-black/20 rounded-xl p-4 relative">
-                        {(!moveLog || moveLog.length < 2) && (!gameHistory[0]?.moveLog || gameHistory[0]?.moveLog.length < 2) ? 
-                            <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">Pas assez de données pour le moment</div> :
-                            <GameFlowChart moveLog={moveLog.length > 0 ? moveLog : gameHistory[0]?.moveLog} players={players} />
-                        }
-                    </div>
-                </div>
-
-                {/* 8. CHANCE AUX DES */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
-                    <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
-                            <option value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    {versus.luckPlayer && (
-                        <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
-                    )}
-                </div>
-
-                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
-                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-                     <div className="mb-6 relative z-10">
-                        <div className="flex items-center gap-3 mb-6">
-                             <AlertTriangle className="text-blue-400" size={32}/>
-                             <h2 className="text-3xl font-black text-white">Zone de Danger</h2>
-                        </div>
-                        
-                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg">
-                            <option value="GLOBAL" className="bg-slate-900">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                     </div>
-                     
-                     <div className="overflow-x-auto max-h-96 overflow-y-auto relative z-10 pr-2">
-                         {(() => {
-                             const pName = versus.failPlayer || 'GLOBAL';
-                             const { failures, totalGames } = calculateGlobalFailures(pName);
-                             
-                             if (totalGames === 0) return <div className="text-center text-gray-300 font-bold text-sm py-8 bg-black/20 rounded-xl">Aucune donnée disponible pour l'instant.</div>;
-
-                             return (
-                                 <table className="w-full text-sm text-left border-collapse">
-                                    <thead>
-                                        <tr className="text-blue-200 border-b-2 border-blue-500/30"><th className="py-3 pl-4 uppercase text-[10px] tracking-widest text-left">Catégorie</th><th className="py-3 text-center uppercase text-[10px] tracking-widest">Échecs (0 pts)</th><th className="py-3 pr-4 text-center uppercase text-[10px] tracking-widest w-24">Taux</th></tr>
-                                    </thead>
-                                    <tbody className="text-white">
-                                        {failures.map(f => (
-                                            <tr key={f.id} className="border-b border-blue-500/10 hover:bg-blue-500/10 transition-colors">
-                                                <td className="py-3 pl-4 font-bold flex items-center justify-start gap-3 text-lg">
-                                                    <span className="text-2xl">{categories.find(c=>c.id===f.id)?.icon}</span> 
-                                                    {f.name}
-                                                </td>
-                                                <td className={`py-3 text-center font-black text-lg ${f.count > 0 ? 'text-blue-300' : 'text-gray-500'}`}>{f.count} <span className="text-xs text-gray-500 font-normal">/ {totalGames}</span></td>
-                                                <td className="py-3 pr-4 text-center">
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <span className="font-bold">{f.rate}%</span>
-                                                        <div className="w-16 h-2 bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5">
-                                                            <div className={`h-full transition-all duration-500 ${f.rate > 50 ? 'bg-blue-500' : f.rate > 20 ? 'bg-cyan-400' : 'bg-green-400'}`} style={{width: `${f.rate}%`}}></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                             );
-                         })()}
-                     </div>
-                </div>
-
-            </div>
-        )}
-
-        {/* TAB: GAGES */}
-        {currentTab === 'gages' && (
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
-                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
-                            <span className="text-sm font-bold text-white">Gages par défaut</span>
-                            <button 
-                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
-                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
-                            >
-                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="mb-8">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                            {DEFAULT_GAGES.map((g, i) => (
-                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
-                                    <span className="text-lg">📜</span> {g}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="border-t border-white/10 pt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
-                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
-                        </div>
-
-                        <div className="flex gap-2 mb-4">
-                            <input 
-                                type="text" 
-                                value={newGageInput}
-                                onChange={(e) => setNewGageInput(e.target.value)}
-                                placeholder="Inventez une punition..." 
-                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
-                            />
-                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {customGages.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
-                            ) : (
-                                customGages.map(g => (
-                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
-                                        <div className="flex items-center gap-3 flex-1">
-                                            <span className="text-white font-medium">{g.text}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {/* COMMUTATEUR VISUEL POUR GAGE PERSONNALISÉ */}
-                                            <button 
-                                                onClick={() => toggleCustomGage(g.id)}
-                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
-                                            >
-                                                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
-                                            </button>
-                                            
-                                            <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
-                                                <Trash2 size={16}/>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
-        {currentTab==='trophies'&&(
-            <div className="space-y-4 tab-enter">
-                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {ACHIEVEMENTS.map((ach,achIdx) => {
-                            let winners = [];
-                            playerStats.forEach(p => {
-                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
-                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
-                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
-                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
-                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
-                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
-                            });
-                            const unlocked = winners.length > 0;
-                            return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all duration-500 hover:scale-105 ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale hover:opacity-60'}`} style={unlocked?{animation:`badge-unlock 0.6s cubic-bezier(0.34,1.56,0.64,1) ${achIdx*0.08}s backwards`}:{animation:`fade-in-scale 0.3s ease-out ${achIdx*0.05}s backwards`}}>
-                                    <div className={`text-4xl mb-2 filter drop-shadow-md ${unlocked?'float-anim':''}`}>{ach.icon}</div>
-                                    <div className="font-bold text-white text-sm">{ach.name}</div>
-                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
-                                    {unlocked ? (
-                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
-                                            {winners.join(', ')}
-                                        </div>
-                                    ) : (
-                                        <div className="text-[9px] font-bold text-gray-600 border-t border-white/5 pt-2 mt-1 w-full uppercase tracking-wider flex items-center justify-center gap-1"><Lock size={8}/> Verrouillé</div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* CAREER BADGES */}
-                {playerStats.length > 0 && (
-                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Star className="text-purple-400"/> Badges de Carrière</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {playerStats.map((pStat, idx) => {
-                            const badges = [];
-                            if(pStat.games >= 1) badges.push({icon:'🎮',name:'Initié',desc:`${pStat.games} parties jouées`});
-                            if(pStat.games >= 10) badges.push({icon:'⚔️',name:'Guerrier',desc:'10+ parties'});
-                            if(pStat.games >= 25) badges.push({icon:'🛡️',name:'Gladiateur',desc:'25+ parties'});
-                            if(pStat.games >= 50) badges.push({icon:'👴',name:'Vétéran',desc:'50+ parties'});
-                            if(pStat.wins >= 1) badges.push({icon:'🥇',name:'Vainqueur',desc:'1ère victoire'});
-                            if(pStat.wins >= 10) badges.push({icon:'🏅',name:'Champion',desc:'10+ victoires'});
-                            if(pStat.maxScore >= 200) badges.push({icon:'📈',name:'Scorer',desc:'200+ pts'});
-                            if(pStat.maxScore >= 300) badges.push({icon:'🔥',name:'Légende',desc:'300+ pts'});
-                            if(pStat.maxScore >= 350) badges.push({icon:'⚡',name:'Divin',desc:'350+ pts'});
-                            if(pStat.yamsCount >= 1) badges.push({icon:'🎲',name:'Lucky',desc:'1er Yams'});
-                            if(pStat.yamsCount >= 5) badges.push({icon:'🎯',name:'Sniper',desc:'5+ Yams'});
-                            if(pStat.bonusCount >= 1) badges.push({icon:'🎁',name:'Bonus!',desc:'1er bonus'});
-                            if(pStat.bonusCount >= 10) badges.push({icon:'💎',name:'Collectionneur',desc:'10+ bonus'});
-                            if(pStat.currentStreak >= 3) badges.push({icon:'🔥',name:'En feu!',desc:`Série de ${pStat.currentStreak}`});
-                            if(pStat.maxConsecutiveWins >= 5) badges.push({icon:'💪',name:'Inarrêtable',desc:`Série max ${pStat.maxConsecutiveWins}`});
-                            const COLORS=['#6366f1','#ec4899','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
-                            const color = COLORS[idx%COLORS.length];
-                            return (
-                                <div key={pStat.name} className="glass-strong rounded-2xl p-5 hover:bg-white/10 transition-all duration-300" style={{animation:`fade-in-scale 0.4s ease-out ${idx*0.1}s backwards`}}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black shadow-lg" style={{backgroundColor:color,color:'#000'}}>{playerAvatars[pStat.name]||'👤'}</div>
-                                        <div>
-                                            <div className="text-white font-black text-lg">{pStat.name}</div>
-                                            <div className="text-gray-400 text-xs font-bold">{badges.length} badge{badges.length>1?'s':''} débloqué{badges.length>1?'s':''}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {badges.length === 0 ? (
-                                            <div className="text-gray-500 text-xs italic">Jouez pour débloquer des badges !</div>
-                                        ) : badges.map((b,bi) => (
-                                            <div key={bi} className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 hover:bg-white/20 transition-all duration-200 hover:scale-105 cursor-default group" title={b.desc} style={{animation:`bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1) ${bi*0.04}s backwards`}}>
-                                                <span className="text-lg group-hover:scale-110 transition-transform">{b.icon}</span>
-                                                <span className="text-[10px] font-bold text-white uppercase tracking-wide">{b.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                )}
-            </div>
         )}
       </div>
     </div>
