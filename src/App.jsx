@@ -120,7 +120,7 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
   const vals = cat?.values || Array.from({length:31},(_,i)=>i);
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -133,9 +133,9 @@ const PlayerCard = ({ player, index, onRemove, onNameChange, canRemove, gameStar
   const [name, setName] = useState(player);
   const save = () => { if(name.trim()){onNameChange(index,name.trim());setEditing(false);} };
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm hover:bg-white/10 transition-all relative">
+    <div className="glass-strong rounded-2xl p-3 sm:p-4 hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group" style={{animationDelay:`${index*80}ms`,animation:'fade-in-scale 0.4s ease-out backwards'}}>
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <button onClick={() => onAvatarClick(index)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition-colors shadow-inner overflow-hidden cursor-pointer" title="Changer l'avatar">
+        <button onClick={() => onAvatarClick(index)} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-xl hover:bg-white/20 transition-all duration-300 shadow-inner overflow-hidden cursor-pointer hover:scale-110 hover:shadow-lg group-hover:ring-2 group-hover:ring-white/20" title="Changer l'avatar">
             {avatar && avatar.startsWith('data:image') ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : (avatar || "👤")}
         </button>
         {editing ? <input type="text" value={name} onChange={e=>setName(e.target.value)} onKeyPress={e=>e.key==='Enter'&&save()} className="flex-1 bg-white/10 border border-white/20 rounded-xl px-2 py-1 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 text-sm" autoFocus/>
@@ -155,21 +155,22 @@ const VisualDie = ({ value, onClick, skin }) => {
     const s = DICE_SKINS[skin] || DICE_SKINS.classic;
     const handleClick = () => { setRolling(true); setTimeout(() => setRolling(false), 500); onClick(); };
     return (
-        <button onClick={handleClick} className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl hover:translate-y-1 active:scale-95 transition-all ${s.bg} ${s.text} ${s.border} border-2 shadow-lg ${rolling ? 'animate-spin' : ''}`}>
+        <button onClick={handleClick} className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl active:scale-90 transition-all duration-200 ${s.bg} ${s.text} ${s.border} border-2 shadow-lg hover:shadow-xl ${rolling ? '' : 'hover:-translate-y-1'}`}
+          style={rolling ? {animation: 'dice-roll 0.6s ease-in-out'} : {}}>
             {['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value]}
         </button>
     );
 };
 
 const FloatingScore = ({ x, y, value }) => {
-    return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100] animate-[floatUp_1s_ease-out_forwards]" style={{ left: x, top: y }}>+{value}</div>;
+    return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100]" style={{ left: x, top: y, animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>;
 };
 
-// --- NOUVEAUX COMPOSANTS STATS (SÉCURISÉS) ---
+// --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart)
+// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
 const GameFlowChart = ({ moveLog, players }) => {
-    if (!moveLog || !Array.isArray(moveLog) || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
+    if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
 
     const history = [];
     const currentScores = {};
@@ -223,6 +224,21 @@ const GameFlowChart = ({ moveLog, players }) => {
                                 strokeLinecap="round" 
                                 strokeLinejoin="round"
                             />
+                            {/* Points et Chiffres */}
+                            {history.map((step, i) => {
+                                const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
+                                const y = (height - paddingY) - ((step[player] / (maxScore || 1)) * (height - 2 * paddingY));
+                                
+                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
+                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
+                                
+                                return (
+                                    <g key={i}>
+                                        <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
+                                        <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
+                                    </g>
+                                );
+                            })}
                         </g>
                     );
                 })}
@@ -239,7 +255,7 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation)
+// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
 const DiceLuckChart = ({ stats }) => {
     // Si pas de stats, message
     if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
@@ -285,78 +301,6 @@ const DiceLuckChart = ({ stats }) => {
     );
 };
 
-// Graphique : Répartition des Yams (NOUVEAU)
-const YamsDistributionChart = ({ stats }) => {
-    // PROTEGE: if stats undefined return null
-    if(!stats || !stats.yamsDetails) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
-    // Convert yamsDetails object to array
-    const data = [1,2,3,4,5,6].map(v => ({ 
-        label: v, 
-        count: stats.yamsDetails[v] || 0 
-    }));
-    
-    const maxCount = Math.max(...data.map(d => d.count), 1); 
-
-    return (
-        <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
-             <h4 className="text-white font-bold text-center mb-2 text-sm uppercase">🎯 Répartition des Yams Réussis</h4>
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-8 text-center font-black text-xl text-yellow-500">
-                        {['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
-                    </div>
-                    <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
-                </div>
-             ))}
-        </div>
-    );
-};
-
-// Graphique : Yams Cachés (NOUVEAU)
-const HiddenYamsChart = ({ stats }) => {
-    // PROTEGE: if stats undefined return null
-    if(!stats || !stats.hiddenYams) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données</div>;
-    
-    const data = [
-        { label: "As", key: 'ones', val: 5 },
-        { label: "Deux", key: 'twos', val: 10 },
-        { label: "Trois", key: 'threes', val: 15 },
-        { label: "Quatre", key: 'fours', val: 20 },
-        { label: "Cinq", key: 'fives', val: 25 },
-        { label: "Six", key: 'sixes', val: 30 }
-    ].map(item => ({
-        ...item,
-        count: stats.hiddenYams[item.key] || 0
-    }));
-
-    const maxCount = Math.max(...data.map(d => d.count), 1);
-
-    return (
-        <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
-             <h4 className="text-white font-bold text-center mb-2 text-sm uppercase">🕵️ Yams Cachés (Max Supérieur)</h4>
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 text-right text-xs text-gray-400 font-bold uppercase">{d.label}</div>
-                    <div className="flex-1 bg-white/5 rounded-full h-4 relative overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-1000" 
-                            style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        ></div>
-                    </div>
-                    <div className="w-6 text-right font-bold text-white text-sm">{d.count}</div>
-                </div>
-             ))}
-        </div>
-    );
-};
-
 // --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
@@ -398,14 +342,14 @@ export default function YamsUltimateLegacy() {
   const [showLog, setShowLog] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
-  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', luckPlayer: '', yamsPlayer: 'GLOBAL'});
+  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', luckPlayer: ''});
   const [globalXP, setGlobalXP] = useState(0);
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V24+
+  // NOUVELLES FONCTIONNALITES V30 (Yams Detail)
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -416,10 +360,9 @@ export default function YamsUltimateLegacy() {
   const [tempSeasonName, setTempSeasonName] = useState('');
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [tempHistorySeason, setTempHistorySeason] = useState('');
-
-  // NOUVEAU STATES (V35 - Yams Detail & Tie Breaker)
-  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); 
-  const [tieBreakerActive, setTieBreakerData] = useState(null); 
+  
+  // Yams Detail Logic
+  const [pendingYamsDetail, setPendingYamsDetail] = useState(null); // { player: 'Name' }
 
   // GAGES STATES
   const [customGages, setCustomGages] = useState([]);
@@ -521,12 +464,6 @@ export default function YamsUltimateLegacy() {
     if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3000); return; } }
     if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
-    
-    // SNAPSHOT POUR BONUS RATE
-    const upperCats = categories.filter(c => c.upper);
-    const countUpperBefore = upperCats.filter(c => scores[player]?.[c.id] !== undefined).length;
-    const oldUp = calcUpper(player);
-    
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
     const valInt = value === '' ? 0 : parseInt(value);
     
@@ -537,7 +474,7 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // DETECTION YAMS
+    // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
         setPendingYamsDetail({ player });
         setConfetti('gold');
@@ -550,26 +487,9 @@ export default function YamsUltimateLegacy() {
     } else { 
         setConfetti(null); 
     }
-    
-    // DETECTION BONUS & BONUS RATÉ
-    const newUp = categories.filter(c => c.upper).reduce((s, c) => s + (ns[player]?.[c.id] || 0), 0);
-    const countUpperAfter = upperCats.filter(c => ns[player]?.[c.id] !== undefined).length;
 
-    // Bonus Gagné
-    if(oldUp<63 && newUp>=63){
-        setConfetti('bonus');
-        setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); 
-        setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);
-    }
-
-    // BONUS RATÉ (Uniquement si on remplit la dernière case du haut et que score < 63)
-    if (countUpperBefore < upperCats.length && countUpperAfter === upperCats.length && newUp < 63) {
-         setShowAchievementNotif({icon:'🌧️', title:'Dommage...', description:`Il manquait ${63-newUp} points pour le bonus !`});
-         setConfetti('rain');
-         setTimeout(()=>setConfetti(null), 4000);
-         setTimeout(()=>setShowAchievementNotif(null), 4000);
-    }
-
+    const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
+    if(oldUp<63&&newUp>=63){setConfetti('bonus');setShowAchievementNotif({icon:'🎁',title:'Bonus Obtenu !',description:player+' a débloqué le bonus de 35 points !'}); setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},4000);}
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
     if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');setShowAchievementNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});setTimeout(()=>{setShowAchievementNotif(null);setConfetti(null);},5000);}
     setScores(ns);saveCurrentGame(ns);
@@ -591,6 +511,7 @@ export default function YamsUltimateLegacy() {
       const { player } = pendingYamsDetail;
       const newScores = { ...scores };
       if(newScores[player]) {
+          // Initialize array if doesn't exist
           if(!newScores[player].yamsHistory) newScores[player].yamsHistory = [];
           newScores[player].yamsHistory.push(val);
       }
@@ -603,15 +524,17 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setEndGameData(null); setTieBreakerData(null);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
+      // CHAOS MODE START ACTION FOR 1ST PLAYER
       if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
       saveCurrentGame({});
   };
 
   const updateGameSeason = (id, newSeason) => {
+     // Multi-season logic: toggle season in array
      const updatedHistory = gameHistory.map(g => {
          if (g.id !== id) return g;
          const currentSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season && g.season !== 'Aucune' ? [g.season] : []);
@@ -621,92 +544,43 @@ export default function YamsUltimateLegacy() {
          } else {
              newSeasons = [...currentSeasons, newSeason];
          }
-         return { ...g, seasons: newSeasons, season: null }; 
+         return { ...g, seasons: newSeasons, season: null }; // remove legacy string
      });
      setGameHistory(updatedHistory);
      saveHistory(updatedHistory);
+     // Don't close modal, allow multiple selections
   };
 
-  // CHECK END GAME & TIES
-  useEffect(()=>{
-      if(isGameComplete() && !showEndGameModal && !endGameData && !tieBreakerActive) {
-          const ranked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
-          
-          let needsTieBreak = false;
-          let tiedPlayers = [];
-          
-          // Ties for 1st
-          if(ranked.length > 1 && ranked[0].score === ranked[1].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[0].score).map(r => r.name); }
-          // Ties for 2nd
-          else if(ranked.length > 2 && ranked[1].score === ranked[2].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[1].score).map(r => r.name); }
-          // Ties for 3rd
-          else if(ranked.length > 3 && ranked[2].score === ranked[3].score) { needsTieBreak = true; tiedPlayers = ranked.filter(r => r.score === ranked[2].score).map(r => r.name); }
-          
-          if(needsTieBreak) {
-              setTieBreakerData({ players: tiedPlayers, scores: {} });
-          } else {
-              const winners = getWinner();
-              const loser = getLoser();
-              if (winners && winners.length > 0) {
-                 const winnerName = winners[0];
-                 setEndGameData({
-                     winner: winnerName,
-                     score: calcTotal(winnerName),
-                     hasYams: scores[winnerName]?.yams === 50,
-                     loser: loser ? loser.name : null
-                 });
-                 setShowVictoryAnimation(true);
-                 setConfetti('gold');
-                 setTimeout(()=>{
-                     setShowVictoryAnimation(false);
-                     setShowEndGameModal(true);
-                     setConfetti(null);
-                 }, 2000);
-              }
-          }
-      }
-  }, [scores, showEndGameModal, endGameData, tieBreakerActive]); 
-
-  const resolveTieBreaker = () => {
-      // Find winner of tie break
-      const tbScores = tieBreakerActive.scores;
-      const realRanked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
-      
-      // Re-sort based on tie breaker if scores equal
-      realRanked.sort((a,b) => {
-          if (a.score === b.score) {
-              const scoreA = tbScores[a.name] || 0;
-              const scoreB = tbScores[b.name] || 0;
-              return scoreB - scoreA;
-          }
-          return b.score - a.score;
-      });
-      
-      const winnerName = realRanked[0].name;
-      const loserName = realRanked[realRanked.length-1].name;
-      
-      setEndGameData({
-          winner: winnerName,
-          score: calcTotal(winnerName),
-          hasYams: scores[winnerName]?.yams === 50,
-          loser: loserName
-      });
-      setTieBreakerData(null);
-      setShowVictoryAnimation(true);
-      setConfetti('gold');
-      setTimeout(()=>{
-         setShowVictoryAnimation(false);
-         setShowEndGameModal(true);
-         setConfetti(null);
-      }, 2000);
-  };
+  useEffect(()=>{if(isGameComplete()&&!showEndGameModal){setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);}},[scores,showEndGameModal]);
+  
+  // LOGIQUE GAGES MIXTES
+  useEffect(() => { 
+    if (showEndGameModal && !currentGage) {
+        let pool = [];
+        if (enableDefaultGages) pool = [...pool, ...DEFAULT_GAGES];
+        if (customGages && customGages.length > 0) {
+            const activeCustoms = customGages.filter(g => g.active).map(g => g.text);
+            pool = [...pool, ...activeCustoms];
+        }
+        
+        if (pool.length > 0) {
+            setCurrentGage(pool[Math.floor(Math.random() * pool.length)]);
+        } else {
+            setCurrentGage("Aucun gage sélectionné !");
+        }
+    } else if (!showEndGameModal) { 
+        setCurrentGage(null); 
+    } 
+  }, [showEndGameModal, customGages, enableDefaultGages]);
 
   const saveGameFromModal=()=>{ 
       const w=getWinner(); const l=getLoser(); 
-      const game={id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:p===endGameData.winner,yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
+      // Save active seasons as array
+      const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
+      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog))}; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
       setGlobalXP(prev => prev + 100);
-      resetGame(endGameData.loser); 
+      resetGame(l ? l.name : null); 
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
   const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(navigator.share){try{await navigator.share({text:t});}catch(e){navigator.clipboard.writeText(t);alert('Score copié!');}}else{navigator.clipboard.writeText(t);alert('Score copié!');}};
@@ -739,12 +613,9 @@ export default function YamsUltimateLegacy() {
       const stats = {}; const streaks = {}; const isStreaking = {}; const allPlayerNames = new Set(); 
       filteredHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); 
       allPlayerNames.forEach(name => { 
-          // INIT SAFE
           stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0,
-          totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0,
-          yamsDetails: {1:0, 2:0, 3:0, 4:0, 5:0, 6:0},
-          hiddenYams: {ones:0, twos:0, threes:0, fours:0, fives:0, sixes:0}
-          }; 
+          // Stats pour la chance aux dés
+          totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0 }; 
           streaks[name] = 0; isStreaking[name] = true; 
       }); 
       filteredHistory.forEach((game) => { 
@@ -761,19 +632,7 @@ export default function YamsUltimateLegacy() {
               if(gameGrid[p.name]) { 
                   s.historyGames++; 
                   let currentUpperSum = 0;
-                  categories.filter(c => c.upper).forEach(cat => { 
-                      const val = parseInt(gameGrid[p.name][cat.id]); 
-                      if (!isNaN(val)) { 
-                          currentUpperSum += val; 
-                          // Hidden Yams Logic
-                          if(cat.id === 'ones' && val === 5) s.hiddenYams.ones++;
-                          if(cat.id === 'twos' && val === 10) s.hiddenYams.twos++;
-                          if(cat.id === 'threes' && val === 15) s.hiddenYams.threes++;
-                          if(cat.id === 'fours' && val === 20) s.hiddenYams.fours++;
-                          if(cat.id === 'fives' && val === 25) s.hiddenYams.fives++;
-                          if(cat.id === 'sixes' && val === 30) s.hiddenYams.sixes++;
-                      } 
-                  });
+                  categories.filter(c => c.upper).forEach(cat => { const val = gameGrid[p.name][cat.id]; if (val !== undefined && val !== "") { currentUpperSum += parseInt(val); } });
                   if (currentUpperSum >= 63) { s.bonusCount++; }
                   const totals = getPlayerTotals(p.name, gameGrid); s.upperSum += totals.upper; s.lowerSum += totals.lower; 
                   // Accumulate dice luck (FIX: Ensure parsing works)
@@ -783,17 +642,17 @@ export default function YamsUltimateLegacy() {
                   s.totalFours += parseInt(gameGrid[p.name]['fours']||0);
                   s.totalFives += parseInt(gameGrid[p.name]['fives']||0);
                   s.totalSixes += parseInt(gameGrid[p.name]['sixes']||0);
-                  // Yams Detail - SAFE
-                  const yH = gameGrid[p.name]?.yamsHistory;
-                  if(yH && Array.isArray(yH)) {
-                      yH.forEach(v => { if(s.yamsDetails[v] !== undefined) s.yamsDetails[v]++; });
-                  }
               } 
               if (isStreaking[p.name]) { if (p.isWinner) streaks[p.name]++; else isStreaking[p.name] = false; } 
           }); 
       }); 
       const tempStreaks = {}; allPlayerNames.forEach(n => tempStreaks[n] = 0); for(let i=filteredHistory.length-1; i>=0; i--){ const game = filteredHistory[i]; const participants = game.players || []; participants.forEach(p => { if(p.isWinner) { tempStreaks[p.name] = (tempStreaks[p.name] || 0) + 1; if(tempStreaks[p.name] > stats[p.name].maxConsecutiveWins) stats[p.name].maxConsecutiveWins = tempStreaks[p.name]; } else { tempStreaks[p.name] = 0; } }); } return Object.entries(stats).map(([name,d])=>({ name, ...d, avgScore: Math.round(d.totalScore/d.games), currentStreak: streaks[name], bonusRate: d.historyGames > 0 ? Math.round((d.bonusCount/d.historyGames)*100) : 0, avgUpper: d.historyGames > 0 ? Math.round(d.upperSum/d.historyGames) : 0, avgLower: d.historyGames > 0 ? Math.round(d.lowerSum/d.historyGames) : 0 })).sort((a,b)=>b.wins-a.wins); }, [filteredHistory]);
   
+  const hallOfFame = useMemo(() => { if(filteredHistory.length < 2) return null; let biggestWin = { gap: -1 }; let tightestWin = { gap: 9999 }; let lowestWinner = { score: 9999 }; let highestLoser = { score: -1 }; filteredHistory.forEach(g => { const parts = (g.players || g.results).sort((a,b) => b.score - a.score); if(parts.length < 2) return; const winner = parts[0]; const second = parts[1]; const gap = winner.score - second.score; if(gap > biggestWin.gap) biggestWin = { gap, winner: winner.name, second: second.name, date: g.date }; if(gap < tightestWin.gap) tightestWin = { gap, winner: winner.name, second: second.name, date: g.date }; if(winner.score < lowestWinner.score) lowestWinner = { score: winner.score, name: winner.name, date: g.date }; if(second.score > highestLoser.score) highestLoser = { score: second.score, name: second.name, date: g.date }; }); return { biggestWin, tightestWin, lowestWinner, highestLoser }; }, [filteredHistory]);
+  const getPieData = () => playerStats.filter(s=>s.wins>0).map(s=>({name:s.name,value:s.wins}));
+  const isFoggy = (p) => fogMode && !isGameComplete() && getNextPlayer() !== p;
+  const getLeader = () => { if(isGameComplete() || hideTotals || fogMode) return null; const totals = players.map(p => ({name: p, score: calcTotal(p)})); const max = Math.max(...totals.map(t => t.score)); if(max === 0) return null; const leaders = totals.filter(t => t.score === max); if (leaders.length > 1) return null; return leaders[0].name; };
+  const leader = getLeader();
   const getTensionColor = () => { if(players.length < 2) return 'bg-gray-800'; const totals = players.map(p => calcTotal(p)).sort((a,b)=>b-a); const diff = totals[0] - totals[1]; if(diff < 20) return 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse'; if(diff < 50) return 'bg-gradient-to-r from-yellow-500 to-orange-500'; return 'bg-gradient-to-r from-blue-500 to-cyan-500'; };
   const quickEdit = () => {
       setShowEndGameModal(false);
@@ -801,41 +660,117 @@ export default function YamsUltimateLegacy() {
       setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));
       setLastPlayerBeforeEdit(lastPlayerToPlay);
   };
-
-  // CHARTS (Simplified for reliability)
-  const YamsDistChart = ({stats}) => {
-      if(!stats || !stats.yamsDetails) return null;
-      const data = [1,2,3,4,5,6].map(v => ({ label:v, count: stats.yamsDetails[v]||0 }));
-      const max = Math.max(...data.map(d=>d.count), 1);
-      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🎯 Yams Réussis</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-yellow-500 font-bold">{['','⚀','⚁','⚂','⚃','⚄','⚅'][d.label]}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-yellow-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
+  
+  // FIX REPLAY: Simple safe display function
+  const getSafeReplayScore = (player, grid) => {
+    if (!grid || !grid[player]) return 0;
+    let upperSum = 0; let lowerSum = 0;
+    categories.forEach(cat => {
+        const val = grid[player][cat.id];
+        const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
+        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
+        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
+    });
+    const bonus = upperSum >= 63 ? 35 : 0;
+    return upperSum + bonus + lowerSum;
   };
   
-  const HiddenYamsChart = ({stats}) => {
-      if(!stats || !stats.hiddenYams) return null;
-      const data = [{k:'ones',l:'As'},{k:'twos',l:'2'},{k:'threes',l:'3'},{k:'fours',l:'4'},{k:'fives',l:'5'},{k:'sixes',l:'6'}].map(i => ({ label:i.l, count: stats.hiddenYams[i.k]||0 }));
-      const max = Math.max(...data.map(d=>d.count), 1);
-      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🕵️ Max Supérieur</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-purple-400 font-bold">{d.label}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-purple-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
+  // TIMELAPSE
+  const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
+  const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
+
+  // REPLAY RENDERER
+  if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
+
+  // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles) - GESTION ÉGALITÉ
+  const getRank = (playerName) => {
+    // Calcul des totaux pour tous les joueurs
+    const scoresList = players.map(p => ({ name: p, score: calcTotal(p) }));
+    
+    // Tri décroissant
+    scoresList.sort((a, b) => b.score - a.score);
+
+    // Trouver le score du joueur actuel
+    const myScore = scoresList.find(s => s.name === playerName)?.score || 0;
+
+    // Le rang est 1 + le nombre de joueurs qui ont strictement plus
+    const rank = scoresList.filter(s => s.score > myScore).length + 1;
+    
+    return rank;
+  };
+
+  // CALCUL VRAIES STATS D'ECHEC (CORRECTION CRASH & DOUBLON) - DEFINE HERE
+  const calculateGlobalFailures = (target) => {
+    const failures = {};
+    playableCats.forEach(cat => failures[cat.id] = 0);
+    let totalGames = 0;
+    
+    // SAFE ACCESS: on vérifie que gameHistory existe
+    const historyToUse = statsFilterSeason === 'Toutes' ? (gameHistory || []) : (gameHistory || []).filter(g => {
+        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
+        if(statsFilterSeason === 'Aucune') return gSeasons.length === 0;
+        return gSeasons.includes(statsFilterSeason);
+    });
+
+    if (!historyToUse || historyToUse.length === 0) return { failures: [], totalGames: 0 };
+
+    historyToUse.forEach(game => {
+        const participants = game.players || game.results || [];
+        const grid = game.grid || {};
+        participants.forEach(p => {
+            if (target === 'GLOBAL' || p.name === target) {
+                const playerGrid = grid[p.name];
+                if (playerGrid) {
+                    totalGames++;
+                    Object.keys(failures).forEach(catId => { if (playerGrid[catId] === 0) failures[catId]++; });
+                }
+            }
+        });
+    });
+    const sortedFailures = Object.entries(failures)
+        .sort(([,a], [,b]) => b - a)
+        .map(([key, value]) => ({ 
+            id: key, name: categories.find(c => c.id === key)?.name || key, count: value,
+            rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0
+        }));
+    return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
+  };
+
+  // Yams Distribution Calc
+  const getYamsDistribution = () => {
+      const dist = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+      gameHistory.forEach(g => {
+         const grid = g.grid || {};
+         Object.values(grid).forEach(pGrid => {
+             // Checking new structure
+             if(pGrid.yamsHistory && Array.isArray(pGrid.yamsHistory)) {
+                 pGrid.yamsHistory.forEach(val => dist[val] = (dist[val] || 0) + 1);
+             }
+         });
+      });
+      return dist;
   };
 
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
-        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-yellow-500/50 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl relative overflow-hidden">
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 modal-backdrop">
+            <div className="modal-content bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl shadow-yellow-500/20 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
-                
-                <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">YAMS !</h3>
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl"></div>
+                <div className="text-5xl mb-3" style={{animation:'trophy-float 3s ease-in-out infinite'}}>🎲</div>
+                <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide winner-glow">YAMS !</h3>
                 <p className="text-gray-400 text-sm mb-6 font-medium">Quel chiffre as-tu obtenu ?</p>
-                
                 <div className="grid grid-cols-3 gap-3 mb-4">
                     {[1, 2, 3, 4, 5, 6].map(val => (
                         <button 
                             key={val}
                             onClick={() => saveYamsDetail(val)}
-                            className="aspect-square bg-white/5 hover:bg-white/20 border border-white/10 hover:border-yellow-500/50 rounded-2xl flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 group"
+                            className="aspect-square bg-white/5 hover:bg-yellow-500/20 border border-white/10 hover:border-yellow-500/50 rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 hover:scale-110 active:scale-95 group hover:shadow-lg hover:shadow-yellow-500/20"
+                            style={{animation:`bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) ${val*0.06}s backwards`}}
                         >
-                            <span className="group-hover:animate-spin transition-transform duration-700">
+                            <span className="group-hover:scale-125 transition-transform duration-300">
                                 {['','⚀','⚁','⚂','⚃','⚄','⚅'][val]}
                             </span>
                         </button>
@@ -846,53 +781,60 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
 
-      {/* MODAL TIE BREAKER (MORT SUBITE) - STYLISED INPUTS */}
-      {tieBreakerActive && (
-          <div className="fixed inset-0 bg-black/95 z-[160] flex items-center justify-center p-4 backdrop-blur-lg">
-             <div className="bg-red-900/20 border-2 border-red-500 rounded-3xl p-6 w-full max-w-md text-center shadow-[0_0_50px_rgba(220,38,38,0.5)]">
-                 <h2 className="text-3xl font-black text-red-500 mb-2 uppercase animate-pulse">☠️ MORT SUBITE ☠️</h2>
-                 <p className="text-white mb-6">Égalité détectée ! Départagez-vous aux dés.</p>
-                 <div className="space-y-4">
-                     {tieBreakerActive.players.map(p => (
-                         <div key={p} className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-red-500/30">
-                             <span className="font-bold text-white text-lg">{p}</span>
-                             {/* INPUT STYLISÉ COMME LE TABLEAU */}
-                             <input 
-                                type="number" 
-                                placeholder="?" 
-                                className="w-24 py-3 px-2 rounded-xl font-bold text-lg text-center bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
-                                onChange={(e) => setTieBreakerData(prev => ({
-                                    ...prev,
-                                    scores: { ...prev.scores, [p]: parseInt(e.target.value) || 0 }
-                                }))}
-                             />
-                         </div>
-                     ))}
-                 </div>
-                 <button 
-                    onClick={resolveTieBreaker}
-                    className="w-full mt-6 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase rounded-xl shadow-lg transition-transform hover:scale-105"
-                 >
-                     Valider le Vainqueur
-                 </button>
-             </div>
-          </div>
-      )}
-
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
-      {confetti&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(50)].map((_,i)=><div key={i} className="absolute" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',fontSize:'24px',opacity:0.8}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆'][Math.floor(Math.random()*6)]:[ '💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
-      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl animate-ping opacity-50">❌</div></div>}
-      {confetti==='rain'&&<div className="fixed inset-0 pointer-events-none z-50">{[...Array(30)].map((_,i)=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-20px',animation:`fall ${2+Math.random()*3}s linear infinite`,animationDelay:Math.random()*2+'s',opacity:0.5}}>🌧️</div>)}</div>}
-      <style>{`@keyframes fall{to{transform:translateY(100vh) rotate(360deg);opacity:0;}}@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-10px)}20%,40%,60%,80%{transform:translateX(10px)}}.shake-animation{animation:shake 0.5s ease-in-out;}@keyframes slideInRight{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}.slide-in-right{animation:slideInRight 0.5s ease-out;}@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}.tab-enter{animation:slideIn 0.4s ease-out;} @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }`}</style>
-      {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'bg-gradient-to-r px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+( showAchievementNotif.icon==='🎲'?'from-yellow-500 to-orange-500 border-yellow-300':showAchievementNotif.icon==='🎁'?'from-green-500 to-emerald-500 border-green-300':showAchievementNotif.icon==='🌧️'?'from-gray-600 to-slate-700 border-gray-500':'from-purple-500 to-pink-500 border-purple-300')}><div className="flex items-center gap-3"><span className="text-5xl animate-bounce">{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':showAchievementNotif.icon==='🌧️'?'Aïe...':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
-      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-pulse"><div className="text-center"><div className="text-9xl mb-8 animate-bounce">🏆</div><div className="text-6xl font-black text-white mb-4 animate-pulse">PARTIE TERMINÉE !</div><div className="text-3xl font-bold" style={{color:T.primary}}>{getWinner().join(' & ')}</div></div></div>}
-      {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce"><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl">🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
+      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=><div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆','👑','🥇'][Math.floor(Math.random()*8)]:confetti==='bonus'?['🎁','💰','✨','⭐','💎','🎊'][Math.floor(Math.random()*6)]:['💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
+      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
+      <style>{`
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
+  * { font-family: 'Outfit', sans-serif; }
+  @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+  @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-8px)}20%,40%,60%,80%{transform:translateX(8px)}}
+  .shake-animation{animation:shake 0.5s ease-in-out;}
+  @keyframes notif-enter{0%{transform:translateX(120%) scale(0.8);opacity:0}60%{transform:translateX(-8px) scale(1.02)}100%{transform:translateX(0) scale(1);opacity:1}}
+  .slide-in-right{animation:notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1);}
+  @keyframes tab-slide{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .tab-enter{animation:tab-slide 0.35s ease-out;}
+  @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
+  @keyframes bounce-in{0%{transform:scale(0)}40%{transform:scale(1.15)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
+  @keyframes modal-backdrop{from{backdrop-filter:blur(0px);opacity:0}to{backdrop-filter:blur(16px);opacity:1}}
+  @keyframes modal-content{0%{transform:scale(0.7) translateY(40px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+  .modal-backdrop{animation:modal-backdrop 0.3s ease-out forwards;}
+  .modal-content{animation:modal-content 0.45s cubic-bezier(0.34,1.56,0.64,1);}
+  @keyframes trophy-float{0%,100%{transform:translateY(0) rotateY(0deg)}25%{transform:translateY(-15px) rotateY(90deg)}50%{transform:translateY(0) rotateY(180deg)}75%{transform:translateY(-10px) rotateY(270deg)}}
+  @keyframes winner-glow{0%,100%{text-shadow:0 0 20px rgba(250,204,21,0.5)}50%{text-shadow:0 0 40px rgba(250,204,21,0.8),0 0 80px rgba(250,204,21,0.3)}}
+  .winner-glow{animation:winner-glow 2s ease-in-out infinite;}
+  @keyframes dice-roll{0%{transform:rotate(0deg) scale(1)}25%{transform:rotate(90deg) scale(0.8)}50%{transform:rotate(180deg) scale(1.1)}75%{transform:rotate(270deg) scale(0.9)}100%{transform:rotate(360deg) scale(1)}}
+  @keyframes ring-pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)}100%{box-shadow:0 0 0 14px rgba(74,222,128,0)}}
+  .ring-pulse{animation:ring-pulse 1.5s infinite;}
+  @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.3)}50%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(255,215,0,0.2)}}
+  .glow-anim{animation:glow 2s ease-in-out infinite;}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .float-anim{animation:float 3s ease-in-out infinite;}
+  @keyframes fade-in-scale{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes chaos-gradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  .chaos-bg{background-size:400% 400%;animation:chaos-gradient 3s ease infinite;}
+  @keyframes badge-unlock{0%{transform:scale(0) rotate(-180deg)}60%{transform:scale(1.2) rotate(10deg)}100%{transform:scale(1) rotate(0deg)}}
+  @keyframes victory-text{0%{transform:scale(0) rotate(-10deg);opacity:0}50%{transform:scale(1.1) rotate(2deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+  @keyframes gradient-x{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .gradient-animate{background-size:200% 200%;animation:gradient-x 3s ease infinite;}
+  @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(1080deg);opacity:0}}
+  @keyframes sad-pulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.2);opacity:0.8}}
+  .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
+  .glass-strong{background:rgba(255,255,255,0.06);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.12)}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.25)}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+  .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
+`}</style>
+      {showAchievementNotif&&<div className="fixed top-20 right-4 z-50 slide-in-right"><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm '+(shakeAnimation?'shake-animation ':'')+(showAchievementNotif.icon==='🎲'?'bg-gradient-to-r from-yellow-600 to-orange-600 border-yellow-400':showAchievementNotif.icon==='🎁'?'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400':'bg-gradient-to-r from-purple-600 to-pink-600 border-purple-400')}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{showAchievementNotif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">🎉 {showAchievementNotif.icon==='🎲'?'Exploit !':showAchievementNotif.icon==='🎁'?'Succès !':'Incroyable !'}</div><div className="font-black text-xl">{showAchievementNotif.title}</div><div className="text-sm opacity-90">{showAchievementNotif.description}</div></div></div></div></div>}
+      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>🏆</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div></div></div>}
+      {showTurnWarning&&<div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50" style={{animation:'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)'}}><div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl shadow-red-500/30 backdrop-blur-xl border border-white/20 flex items-center gap-3"><span className="text-2xl" style={{animation:'shake 0.5s ease-in-out infinite'}}>🚫</span><span className="font-semibold">{showTurnWarning}</span></div></div>}
 
       {/* STUDIO PHOTO MODAL */}
       {showStudioModal && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[120] p-4">
-              <div className="bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+          <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[120] p-4 modal-backdrop">
+              <div className="modal-content bg-gradient-to-b from-gray-900 to-black p-8 rounded-3xl text-center max-w-sm w-full border-4 border-white/10 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 gradient-animate" style={{backgroundSize:'200% 200%'}}></div>
                   <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
                   <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
                   <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
@@ -917,16 +859,16 @@ export default function YamsUltimateLegacy() {
       )}
 
       {showAvatarModal && (
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60] p-4">
-              <div className={'bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
-                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)}><X/></button></div>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4 modal-backdrop">
+              <div className={'modal-content bg-gradient-to-br '+T.card+' border border-white/10 rounded-3xl p-6 max-w-md w-full relative'}>
+                  <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-white">Choisir un Avatar</h3><button onClick={()=>setShowAvatarModal(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><X/></button></div>
                   <div className="grid grid-cols-4 gap-3">
                       {AVATAR_LIST.map((av, i) => {
                           const player = players[avatarSelectorIndex];
                           const stats = playerStats.find(s => s.name === player);
                           const locked = isAvatarLocked(av.req, stats);
                           return (
-                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer'}`}>
+                              <button key={i} onClick={() => !locked && selectAvatar(av.icon)} disabled={locked} className={`relative aspect-square rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 ${locked ? 'bg-white/5 opacity-50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 hover:scale-110 cursor-pointer hover:shadow-lg'}`} style={{animation:`bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1) ${i*0.03}s backwards`}}>
                                   {av.icon}
                                   {locked && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><Lock size={16} className="text-white"/></div>}
                               </button>
@@ -939,33 +881,37 @@ export default function YamsUltimateLegacy() {
       )}
 
       {undoData && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-4">
-            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-transform">
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100]" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>
+            <button onClick={handleUndo} className="bg-white text-red-500 px-6 py-3 rounded-full font-black shadow-2xl shadow-red-500/30 border-4 border-red-500 flex items-center gap-2 hover:scale-105 transition-all duration-200 active:scale-95">
                 <Undo2 size={24} strokeWidth={3} /> OUPS ! ANNULER
             </button>
         </div>
       )}
 
       {showEndGameModal&&(
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`bg-gradient-to-b from-yellow-600 to-yellow-900 w-full max-w-sm rounded-[40px] p-1 shadow-[0_0_50px_rgba(234,179,8,0.3)]`}>
-            <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
-                <Trophy className="mx-auto text-yellow-400 mb-4 relative z-10" size={64}/>
-                <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10">THE WINNER IS</h2>
-                <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white">{getWinner()[0]}</div>
-                <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
-                    <div className="bg-white/10 p-4 rounded-3xl"><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
-                </div>
-                {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10"><p className="text-[10px] uppercase font-bold text-red-300">Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold">"{currentGage}"</p></div>)}
-                <div className="space-y-2 relative z-10">
-                    <button onClick={saveGameFromModal} className="w-full py-4 bg-yellow-500 text-black font-black rounded-2xl shadow-xl hover:scale-105 transition-transform">ENREGISTRER</button>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={quickEdit} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2"><Edit3 size={16}/> MODIFIER</button>
-                        <button onClick={()=>setShowEndGameModal(false)} className="py-4 bg-white/10 text-white font-bold rounded-2xl">FERMER</button>
-                    </div>
-                </div>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 modal-backdrop">
+          <div className="modal-content w-full max-w-sm">
+            <div className="bg-gradient-to-b from-yellow-600 to-yellow-900 rounded-[40px] p-1 shadow-[0_0_60px_rgba(234,179,8,0.4)] glow-anim">
+              <div className="bg-slate-900 rounded-[38px] overflow-hidden p-8 text-center relative">
+                  <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
+                  <div className="absolute -top-10 -left-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
+                  <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
+                  <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}><Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/></div>
+                  <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>THE WINNER IS</h2>
+                  <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
+                  <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
+                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
+                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
+                  </div>
+                  {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
+                  <div className="space-y-2 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.7s backwards'}}>
+                      <button onClick={saveGameFromModal} className="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-black rounded-2xl shadow-xl hover:scale-[1.03] transition-all duration-200 hover:shadow-yellow-500/40 hover:shadow-2xl active:scale-[0.98]">✨ ENREGISTRER</button>
+                      <div className="grid grid-cols-2 gap-2">
+                          <button onClick={quickEdit} className="py-4 bg-white/20 text-white font-bold rounded-2xl hover:bg-white/30 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"><Edit3 size={16}/> MODIFIER</button>
+                          <button onClick={()=>setShowEndGameModal(false)} className="py-4 bg-white/10 text-white font-bold rounded-2xl hover:bg-white/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">FERMER</button>
+                      </div>
+                  </div>
+              </div>
             </div>
           </div>
         </div>
@@ -976,8 +922,8 @@ export default function YamsUltimateLegacy() {
         <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
           {isGameStarted() && !isGameComplete() && !hideTotals && !fogMode && <div className={`h-1 w-full rounded-t-3xl ${getTensionColor()}`}></div>}
           <div className="flex items-center justify-between flex-wrap gap-4 mb-4 mt-2">
-            <div className="flex items-center gap-4"><div className="text-5xl">🎲</div><div><h1 className="text-3xl sm:text-4xl font-black text-white bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">YAMS</h1>
-            <p className="text-sm text-gray-400">Score keeper premium</p>
+            <div className="flex items-center gap-4"><div className="text-5xl float-anim">🎲</div><div><h1 className="text-3xl sm:text-4xl font-black text-white bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent" style={{letterSpacing:'-0.02em'}}>YAMS</h1>
+            <p className="text-sm text-gray-400 font-medium tracking-wider">Score keeper premium</p>
             </div></div>
             <div className="flex gap-2">
                 <button onClick={()=>setShowLog(!showLog)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><ScrollText size={22} className="text-white"/></button>
@@ -994,7 +940,7 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-900">1</option><option value="2" className="bg-slate-900">2</option><option value="3" className="bg-slate-900">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
               {/* SAISONS DANS LES REGLAGES */}
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
@@ -1024,9 +970,9 @@ export default function YamsUltimateLegacy() {
                                 <button onClick={()=>setRenamingSeason(null)} className="p-1 bg-red-500/20 text-red-400 rounded"><X size={14}/></button>
                             </div>
                         ) : (
-                            <select value={activeSeason} onChange={e=>setActiveSeason(e.target.value)} className="bg-slate-900 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none w-full sm:w-40">
-                                <option className="bg-slate-900" value="Aucune">Aucune (Hors Saison)</option>
-                                {seasons.map(s=><option className="bg-slate-900" key={s} value={s}>{s}</option>)}
+                            <select value={activeSeason} onChange={e=>setActiveSeason(e.target.value)} className="bg-black/30 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none w-full sm:w-40">
+                                <option value="Aucune">Aucune (Hors Saison)</option>
+                                {seasons.map(s=><option key={s} value={s}>{s}</option>)}
                             </select>
                         )}
                         
@@ -1099,9 +1045,9 @@ export default function YamsUltimateLegacy() {
 
         {/* CHAOS CARD DISPLAY */}
         {chaosMode && activeChaosCard && !isGameComplete() && (
-            <div className="bg-gradient-to-r from-pink-600 to-purple-600 p-4 rounded-3xl shadow-lg border-2 border-pink-400 animate-in slide-in-from-top-2">
+            <div className="bg-gradient-to-r from-pink-600 via-purple-600 to-fuchsia-600 p-4 rounded-3xl shadow-lg border-2 border-pink-400 chaos-bg" style={{backgroundImage:'linear-gradient(135deg,#db2777,#9333ea,#c026d3,#db2777)',animation:'chaos-gradient 3s ease infinite',backgroundSize:'300% 300%'}}>
                 <div className="flex items-center gap-4">
-                    <div className="text-4xl bg-white/20 p-2 rounded-xl">{activeChaosCard.icon}</div>
+                    <div className="text-4xl bg-white/20 p-3 rounded-xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{activeChaosCard.icon}</div>
                     <div>
                         <div className="text-xs font-bold text-pink-200 uppercase tracking-widest">ÉVÉNEMENT CHAOS</div>
                         <div className="text-xl font-black text-white">{activeChaosCard.title}</div>
@@ -1166,7 +1112,6 @@ export default function YamsUltimateLegacy() {
                                         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleCustomGage(g.id)}>
                                             {/* SWITCH VISUEL */}
                                             <button 
-                                                onClick={() => toggleCustomGage(g.id)}
                                                 className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
                                             >
                                                 <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
@@ -1277,12 +1222,10 @@ export default function YamsUltimateLegacy() {
                              {isGameStarted() && !isGameComplete() && (
                                 <div className="z-20">
                                     {getRank(p) === 1 ? (
-                                        <div className="bg-yellow-500/20 p-1.5 rounded-full backdrop-blur-sm border border-yellow-400/50">
-                                            <Crown size={24} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse" fill="currentColor" />
-                                        </div>
+                                        <Crown size={32} className="text-yellow-400 drop-shadow-lg animate-bounce" fill="currentColor" />
                                     ) : (
-                                        getRank(p) === 2 ? <span className="text-2xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
-                                        getRank(p) === 3 ? <span className="text-2xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
+                                        getRank(p) === 2 ? <span className="text-3xl drop-shadow-md filter grayscale-[0.2]">🥈</span> :
+                                        getRank(p) === 3 ? <span className="text-3xl drop-shadow-md filter sepia-[0.4]">🥉</span> : null
                                     )}
                                 </div>
                             )}
@@ -1317,7 +1260,7 @@ export default function YamsUltimateLegacy() {
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2"><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {gameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{gameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{gameHistory[gameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{gameHistory[0]?.date}</div></div></div>}
-            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
+            {gameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{gameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
@@ -1359,7 +1302,7 @@ export default function YamsUltimateLegacy() {
           </div></div>
         )}
 
-        {/* TAB: STATS & TROPHIES - NOUVEAU DESIGN ANALYST EDITION */}
+        {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='stats'&&(
             <div className="space-y-6 tab-enter">
                 
@@ -1371,10 +1314,10 @@ export default function YamsUltimateLegacy() {
                             <p className="text-gray-400 text-xs mt-1 italic pl-10">{seasonDescriptions[statsFilterSeason]}</p>
                         )}
                     </div>
-                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-slate-900 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
-                        <option className="bg-slate-900" value="Toutes">Toutes les Saisons</option>
-                        <option className="bg-slate-900" value="Aucune">Hors Saison</option>
-                        {seasons.map(s=><option className="bg-slate-900" key={s} value={s}>{s}</option>)}
+                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
+                        <option value="Toutes">Toutes les Saisons</option>
+                        <option value="Aucune">Hors Saison</option>
+                        {seasons.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
 
@@ -1527,14 +1470,14 @@ export default function YamsUltimateLegacy() {
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
-                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-slate-900 text-white p-4 rounded-2xl outline-none font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option className="bg-slate-900" value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
+                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" disabled selected>Sélectionner...</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
-                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-slate-900 text-white p-4 rounded-2xl outline-none font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
-                            <option className="bg-slate-900" value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
+                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                            <option value="" disabled selected>Sélectionner...</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
                     
@@ -1651,59 +1594,17 @@ export default function YamsUltimateLegacy() {
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
                     <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
-                            <option className="bg-slate-900" value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
+                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
+                            <option value="">Sélectionner un joueur...</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                     </div>
                     {versus.luckPlayer && (
                         <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
                     )}
                 </div>
-                
-                {/* 9. REPARTITION DES YAMS (NEW V31) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Star className="text-yellow-400"/> Détail des Yams</h2>
-                    <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, yamsPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
-                            <option className="bg-slate-900" value="GLOBAL">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
-                        </select>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* CHART 1: YAMS REUSSIS */}
-                        {(() => {
-                            const target = versus.yamsPlayer || 'GLOBAL';
-                            let yamsData = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-                            
-                            if (target === 'GLOBAL') {
-                                playerStats.forEach(p => { Object.entries(p.yamsDetails).forEach(([k,v]) => yamsData[k] += v); });
-                            } else {
-                                const p = playerStats.find(s => s.name === target);
-                                if(p) yamsData = p.yamsDetails;
-                            }
-                            
-                            return <YamsDistributionChart stats={{ yamsDetails: yamsData }} />;
-                        })()}
-                        
-                        {/* CHART 2: HIDDEN YAMS */}
-                        {(() => {
-                            const target = versus.yamsPlayer || 'GLOBAL';
-                            let hiddenData = {ones:0, twos:0, threes:0, fours:0, fives:0, sixes:0};
-                            
-                            if (target === 'GLOBAL') {
-                                playerStats.forEach(p => { Object.entries(p.hiddenYams).forEach(([k,v]) => hiddenData[k] += v); });
-                            } else {
-                                const p = playerStats.find(s => s.name === target);
-                                if(p) hiddenData = p.hiddenYams;
-                            }
-                            
-                            return <HiddenYamsChart stats={{ hiddenYams: hiddenData }} />;
-                        })()}
-                    </div>
-                </div>
 
-                {/* 10. STATISTIQUES DE RAYAGE (FAILURES) */}
+                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
@@ -1711,9 +1612,9 @@ export default function YamsUltimateLegacy() {
                              <h2 className="text-3xl font-black text-white">Zone de Danger</h2>
                         </div>
                         
-                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
-                            <option className="bg-slate-900" value="GLOBAL">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
+                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg">
+                            <option value="GLOBAL" className="bg-slate-900">🌍 GLOBAL (Tous les joueurs)</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                      </div>
                      
@@ -1757,13 +1658,90 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
+        {/* TAB: GAGES */}
+        {currentTab === 'gages' && (
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Gavel className="text-orange-500"/> Gages & Punitions</h2>
+                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
+                            <span className="text-sm font-bold text-white">Gages par défaut</span>
+                            <button 
+                                onClick={() => setEnableDefaultGages(!enableDefaultGages)}
+                                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${enableDefaultGages ? 'bg-green-500' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform duration-300 ${enableDefaultGages ? 'left-7' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mb-8">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Gages Classiques ({DEFAULT_GAGES.length})</h3>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 transition-opacity duration-300 ${enableDefaultGages ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                            {DEFAULT_GAGES.map((g, i) => (
+                                <div key={i} className="bg-white/5 p-3 rounded-xl border border-white/10 text-gray-300 text-sm flex items-center gap-2">
+                                    <span className="text-lg">📜</span> {g}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Vos Gages Personnalisés</h3>
+                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-xs font-bold">{customGages.length} créés</span>
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                value={newGageInput}
+                                onChange={(e) => setNewGageInput(e.target.value)}
+                                placeholder="Inventez une punition..." 
+                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                onKeyPress={(e) => e.key === 'Enter' && addCustomGage()}
+                            />
+                            <button onClick={addCustomGage} className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded-xl transition-colors"><Plus/></button>
+                        </div>
+
+                        <div className="space-y-2">
+                            {customGages.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 italic">Aucun gage personnalisé. Soyez créatifs !</div>
+                            ) : (
+                                customGages.map(g => (
+                                    <div key={g.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${g.active ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 opacity-60'}`}>
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <span className="text-white font-medium">{g.text}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {/* COMMUTATEUR VISUEL POUR GAGE PERSONNALISÉ */}
+                                            <button 
+                                                onClick={() => toggleCustomGage(g.id)}
+                                                className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${g.active ? 'bg-green-500' : 'bg-gray-600'}`}
+                                            >
+                                                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
+                                            </button>
+                                            
+                                            <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                                <Trash2 size={16}/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* TAB: TROPHIES (ANCIENNE VERSION GARDÉE POUR COMPATIBILITÉ) */}
         {currentTab==='trophies'&&(
             <div className="space-y-4 tab-enter">
                 <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {ACHIEVEMENTS.map(ach => {
+                        {ACHIEVEMENTS.map((ach,achIdx) => {
                             let winners = [];
                             playerStats.forEach(p => {
                                 if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
@@ -1775,20 +1753,72 @@ export default function YamsUltimateLegacy() {
                             });
                             const unlocked = winners.length > 0;
                             return (
-                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 scale-105 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale'}`}>
-                                    <div className="text-4xl mb-2 filter drop-shadow-md">{ach.icon}</div>
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all duration-500 hover:scale-105 ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale hover:opacity-60'}`} style={unlocked?{animation:`badge-unlock 0.6s cubic-bezier(0.34,1.56,0.64,1) ${achIdx*0.08}s backwards`}:{animation:`fade-in-scale 0.3s ease-out ${achIdx*0.05}s backwards`}}>
+                                    <div className={`text-4xl mb-2 filter drop-shadow-md ${unlocked?'float-anim':''}`}>{ach.icon}</div>
                                     <div className="font-bold text-white text-sm">{ach.name}</div>
                                     <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
-                                    {unlocked && (
+                                    {unlocked ? (
                                         <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
                                             {winners.join(', ')}
                                         </div>
+                                    ) : (
+                                        <div className="text-[9px] font-bold text-gray-600 border-t border-white/5 pt-2 mt-1 w-full uppercase tracking-wider flex items-center justify-center gap-1"><Lock size={8}/> Verrouillé</div>
                                     )}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
+
+                {/* CAREER BADGES */}
+                {playerStats.length > 0 && (
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Star className="text-purple-400"/> Badges de Carrière</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {playerStats.map((pStat, idx) => {
+                            const badges = [];
+                            if(pStat.games >= 1) badges.push({icon:'🎮',name:'Initié',desc:`${pStat.games} parties jouées`});
+                            if(pStat.games >= 10) badges.push({icon:'⚔️',name:'Guerrier',desc:'10+ parties'});
+                            if(pStat.games >= 25) badges.push({icon:'🛡️',name:'Gladiateur',desc:'25+ parties'});
+                            if(pStat.games >= 50) badges.push({icon:'👴',name:'Vétéran',desc:'50+ parties'});
+                            if(pStat.wins >= 1) badges.push({icon:'🥇',name:'Vainqueur',desc:'1ère victoire'});
+                            if(pStat.wins >= 10) badges.push({icon:'🏅',name:'Champion',desc:'10+ victoires'});
+                            if(pStat.maxScore >= 200) badges.push({icon:'📈',name:'Scorer',desc:'200+ pts'});
+                            if(pStat.maxScore >= 300) badges.push({icon:'🔥',name:'Légende',desc:'300+ pts'});
+                            if(pStat.maxScore >= 350) badges.push({icon:'⚡',name:'Divin',desc:'350+ pts'});
+                            if(pStat.yamsCount >= 1) badges.push({icon:'🎲',name:'Lucky',desc:'1er Yams'});
+                            if(pStat.yamsCount >= 5) badges.push({icon:'🎯',name:'Sniper',desc:'5+ Yams'});
+                            if(pStat.bonusCount >= 1) badges.push({icon:'🎁',name:'Bonus!',desc:'1er bonus'});
+                            if(pStat.bonusCount >= 10) badges.push({icon:'💎',name:'Collectionneur',desc:'10+ bonus'});
+                            if(pStat.currentStreak >= 3) badges.push({icon:'🔥',name:'En feu!',desc:`Série de ${pStat.currentStreak}`});
+                            if(pStat.maxConsecutiveWins >= 5) badges.push({icon:'💪',name:'Inarrêtable',desc:`Série max ${pStat.maxConsecutiveWins}`});
+                            const COLORS=['#6366f1','#ec4899','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+                            const color = COLORS[idx%COLORS.length];
+                            return (
+                                <div key={pStat.name} className="glass-strong rounded-2xl p-5 hover:bg-white/10 transition-all duration-300" style={{animation:`fade-in-scale 0.4s ease-out ${idx*0.1}s backwards`}}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black shadow-lg" style={{backgroundColor:color,color:'#000'}}>{playerAvatars[pStat.name]||'👤'}</div>
+                                        <div>
+                                            <div className="text-white font-black text-lg">{pStat.name}</div>
+                                            <div className="text-gray-400 text-xs font-bold">{badges.length} badge{badges.length>1?'s':''} débloqué{badges.length>1?'s':''}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {badges.length === 0 ? (
+                                            <div className="text-gray-500 text-xs italic">Jouez pour débloquer des badges !</div>
+                                        ) : badges.map((b,bi) => (
+                                            <div key={bi} className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 hover:bg-white/20 transition-all duration-200 hover:scale-105 cursor-default group" title={b.desc} style={{animation:`bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1) ${bi*0.04}s backwards`}}>
+                                                <span className="text-lg group-hover:scale-110 transition-transform">{b.icon}</span>
+                                                <span className="text-[10px] font-bold text-white uppercase tracking-wide">{b.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                )}
             </div>
         )}
       </div>
