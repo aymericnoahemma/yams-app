@@ -120,7 +120,7 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
   const vals = cat?.values || Array.from({length:31},(_,i)=>i);
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50 ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -168,88 +168,56 @@ const FloatingScore = ({ x, y, value }) => {
 
 // --- NOUVEAUX COMPOSANTS STATS ---
 
-// Graphique : Le Fil du Match (Line Chart) - AVEC CHIFFRES
-const GameFlowChart = ({ moveLog, players }) => {
-    if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
+// --- COMPOSANT PRINCIPAL ---
 
+// ═══ INLINE GAME FLOW CHART FOR HISTORY ═══
+const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
+    if (!moveLog || moveLog.length === 0) return null;
+    const pNames = gamePlayers.map(p => p.name || p);
     const history = [];
     const currentScores = {};
-    players.forEach(p => currentScores[p] = 0);
-    
-    // Initial state
-    history.push({ index: -1, ...currentScores });
-
-    moveLog.forEach((move, index) => {
+    pNames.forEach(p => currentScores[p] = 0);
+    history.push({ ...currentScores });
+    moveLog.forEach((move) => {
         if(currentScores[move.player] !== undefined) {
-             currentScores[move.player] += parseInt(move.value);
-             // On clone l'état des scores à cet instant T
-             history.push({ index, ...currentScores });
+            currentScores[move.player] += parseInt(move.value) || 0;
+            history.push({ ...currentScores });
         }
     });
-
-    if(history.length < 2) return <div className="text-center text-gray-500 text-xs py-8">Pas assez de coups joués</div>;
-
-    const maxScore = Math.max(...history.map(h => Math.max(...players.map(p => h[p] || 0))));
-    const cappedMax = Math.min(maxScore, 375);
-    const width = 1000;
-    const height = 300;
-    const paddingX = 40;
-    const paddingY = 40;
-    
-    const colors = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
-
+    if(history.length < 2) return null;
+    const maxScore = Math.min(375, Math.max(...history.map(h => Math.max(...pNames.map(p => h[p] || 0)))));
+    if(maxScore <= 0) return null;
+    const w = 600, h = 160, px = 30, py = 20;
+    const colors = ["#6366f1","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899"];
     return (
-        <div className="relative w-full h-64 overflow-hidden bg-black/20 rounded-xl p-2">
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {/* Lignes de repère */}
-                {[0, 0.25, 0.5, 0.75, 1].map(p => {
-                    const y = paddingY + p * (height - 2*paddingY);
-                    return <line key={p} x1={paddingX} y1={y} x2={width-paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
+        <div className="w-full mt-3 bg-black/30 rounded-xl p-2 border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out'}}>
+            <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{height:'120px'}} preserveAspectRatio="none">
+                {[0,0.5,1].map(p=>{const y=py+p*(h-2*py);return <line key={p} x1={px} y1={y} x2={w-px} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>;
                 })}
-
-                {players.map((player, pIdx) => {
+                {pNames.map((player, pIdx) => {
                     const color = colors[pIdx % colors.length];
-                    const points = history.map((step, i) => {
-                        const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
-                        const y = (height - paddingY) - ((Math.min(step[player], 375) / (cappedMax || 1)) * (height - 2 * paddingY));
+                    const pts = history.map((step, i) => {
+                        const x = px + (i / (history.length - 1)) * (w - 2 * px);
+                        const y = (h - py) - ((Math.min(step[player]||0, 375) / maxScore) * (h - 2 * py));
                         return `${x},${y}`;
                     }).join(' ');
-                    
+                    const lastStep = history[history.length - 1];
+                    const lastX = px + ((history.length - 1) / (history.length - 1)) * (w - 2 * px);
+                    const lastY = (h - py) - ((Math.min(lastStep[player]||0, 375) / maxScore) * (h - 2 * py));
                     return (
                         <g key={player}>
-                            <polyline 
-                                points={points} 
-                                fill="none" 
-                                stroke={color} 
-                                strokeWidth="4" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                                style={{filter:`drop-shadow(0 0 6px ${color}40)`}}
-                            />
-                            {/* Points et Chiffres */}
-                            {history.map((step, i) => {
-                                const x = paddingX + (i / (history.length - 1)) * (width - 2 * paddingX);
-                                const y = (height - paddingY) - ((Math.min(step[player], 375) / (cappedMax || 1)) * (height - 2 * paddingY));
-                                
-                                // Affiche seulement certains points pour ne pas surcharger si bcp de tours
-                                if(history.length > 20 && i % 4 !== 0 && i !== history.length - 1) return null;
-                                
-                                return (
-                                    <g key={i}>
-                                        <circle cx={x} cy={y} r="5" fill="#fff" stroke={color} strokeWidth="2" />
-                                        <text x={x} y={y - 15} fontSize="16" fill="#fff" textAnchor="middle" fontWeight="bold" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{step[player]}</text>
-                                    </g>
-                                );
-                            })}
+                            <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{filter:`drop-shadow(0 0 4px ${color}40)`}}/>
+                            <circle cx={lastX} cy={lastY} r="4" fill={color} stroke="#fff" strokeWidth="1.5"/>
+                            <text x={lastX+8} y={lastY+4} fontSize="11" fill={color} fontWeight="bold">{lastStep[player]||0}</text>
                         </g>
                     );
                 })}
             </svg>
-            <div className="flex justify-center gap-4 mt-2 flex-wrap absolute bottom-2 w-full">
-                {players.map((p, i) => (
-                    <div key={p} className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full">
-                        <div className="w-3 h-3 rounded-full" style={{backgroundColor: colors[i % colors.length]}}></div>
-                        <span className="text-xs text-white font-bold">{p}</span>
+            <div className="flex justify-center gap-3 mt-1">
+                {pNames.map((p, i) => (
+                    <div key={p} className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full" style={{backgroundColor:colors[i%colors.length]}}></div>
+                        <span className="text-[9px] text-gray-400 font-bold">{p}</span>
                     </div>
                 ))}
             </div>
@@ -257,53 +225,6 @@ const GameFlowChart = ({ moveLog, players }) => {
     );
 };
 
-// Graphique : Chance aux Dés (Estimation) - CORRIGE DATA SOURCE & DESIGN
-const DiceLuckChart = ({ stats }) => {
-    // Si pas de stats, message
-    if(!stats || stats.totalGames === 0) return <div className="text-center text-gray-500 text-xs py-8 bg-black/20 rounded-xl">Pas assez de données pour ce joueur</div>;
-    
-    // Si stats existent mais tout est à 0 (nouveau joueur ou bug), on affiche aussi un message mais on tente
-    const upperStats = [
-        { label: "1", val: stats.totalOnes || 0, max: (stats.totalGames || 1) * 5, desc: "As" },
-        { label: "2", val: stats.totalTwos || 0, max: (stats.totalGames || 1) * 10, desc: "Deux" },
-        { label: "3", val: stats.totalThrees || 0, max: (stats.totalGames || 1) * 15, desc: "Trois" },
-        { label: "4", val: stats.totalFours || 0, max: (stats.totalGames || 1) * 20, desc: "Quatre" },
-        { label: "5", val: stats.totalFives || 0, max: (stats.totalGames || 1) * 25, desc: "Cinq" },
-        { label: "6", val: stats.totalSixes || 0, max: (stats.totalGames || 1) * 30, desc: "Six" },
-    ];
-    
-    const data = upperStats.map(s => ({
-        ...s,
-        pct: s.max > 0 ? Math.min(100, Math.round((s.val / s.max) * 100)) : 0
-    }));
-
-    return (
-        <div className="space-y-4 mt-4 bg-black/20 p-4 rounded-xl">
-             {data.map((d, i) => (
-                <div key={i} className="flex items-center gap-4">
-                    <div className="w-12 text-center">
-                        <div className="font-black text-2xl text-white">{d.label}</div>
-                        <div className="text-[10px] text-gray-400 uppercase">{d.desc}</div>
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden border border-white/10">
-                        <div 
-                            className={`h-full transition-all duration-1000 ${d.pct > 75 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : d.pct > 40 ? 'bg-gradient-to-r from-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-500 to-red-400'}`} 
-                            style={{ width: `${d.pct}%` }}
-                        ></div>
-                        <div className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-black text-white drop-shadow-md">
-                            {d.pct}%
-                        </div>
-                    </div>
-                </div>
-             ))}
-             <div className="text-center text-[10px] text-gray-500 italic mt-2 border-t border-white/5 pt-2">
-                 Taux de réussite moyen sur la partie supérieure (historique complet)
-            </div>
-        </div>
-    );
-};
-
-// --- COMPOSANT PRINCIPAL ---
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
   const [scores,setScores]=useState({});
@@ -344,7 +265,7 @@ export default function YamsUltimateLegacy() {
   const [showLog, setShowLog] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
   const [floatingScores, setFloatingScores] = useState([]);
-  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', luckPlayer: ''});
+  const [versus, setVersus] = useState({p1: '', p2: '', failPlayer: 'GLOBAL', yamsFilter: 'GLOBAL'});
   const [globalXP, setGlobalXP] = useState(0);
   const [chaosMode, setChaosMode] = useState(false);
   const [activeChaosCard, setActiveChaosCard] = useState(null);
@@ -458,7 +379,7 @@ export default function YamsUltimateLegacy() {
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
   const getWinner=()=>{if(!players.length)return[];const max=Math.max(...players.map(p=>calcTotal(p)));const tied=players.filter(p=>calcTotal(p)===max);if(suddenDeathWinner&&tied.includes(suddenDeathWinner))return[suddenDeathWinner];return tied;};
   const getLoser=()=>{if(!players.length)return null;const winners=getWinner();const nonWinners=players.filter(p=>!winners.includes(p));if(nonWinners.length===0){const totals=players.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);}const totals=nonWinners.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);};
-  const handleSuddenDeathWin=(winner)=>{setSuddenDeathWinner(winner);setShowSuddenDeath(false);setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);};
+  const handleSuddenDeathWin=(winner,sdScores=null)=>{setSuddenDeathWinner(winner);if(sdScores){const ns={...scores};Object.entries(sdScores).forEach(([p,v])=>{if(!ns[p])ns[p]={};ns[p].suddenDeathScore=v;});setScores(ns);}setShowSuddenDeath(false);setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},2000);};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
@@ -618,7 +539,7 @@ export default function YamsUltimateLegacy() {
       const w=getWinner(); const l=getLoser(); 
       // Save active seasons as array
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
-      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0,suddenDeathWin:suddenDeathWinner===p})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog)), suddenDeath: suddenDeathWinner ? true : false, suddenDeathWinner: suddenDeathWinner || null}; 
+      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0,suddenDeathWin:suddenDeathWinner===p,suddenDeathScore:scores[p]?.suddenDeathScore||null})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog)), suddenDeath: suddenDeathWinner ? true : false, suddenDeathWinner: suddenDeathWinner || null}; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
       setGlobalXP(prev => prev + 100);
       resetGame(l ? l.name : null); 
@@ -834,7 +755,15 @@ export default function YamsUltimateLegacy() {
   @keyframes notif-enter{0%{transform:translateX(120%) scale(0.8);opacity:0}60%{transform:translateX(-8px) scale(1.02)}100%{transform:translateX(0) scale(1);opacity:1}}
   .slide-in-right{animation:notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1);}
   @keyframes tab-slide{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
-  .tab-enter{animation:tab-slide 0.35s ease-out;}
+  @keyframes stagger-in{from{transform:translateY(12px) scale(0.97);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+  @keyframes card-hover{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.1)}50%{box-shadow:0 0 20px 0 rgba(255,255,255,0.05)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0.1)}}
+  @keyframes score-pop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .score-pop{animation:score-pop 0.3s cubic-bezier(0.34,1.56,0.64,1)}
+  @keyframes slide-down{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .slide-down{animation:slide-down 0.4s ease-out}
+  @keyframes subtle-pulse{0%,100%{opacity:0.7}50%{opacity:1}}
+  .subtle-pulse{animation:subtle-pulse 2s ease-in-out infinite}
+  .tab-enter{animation:stagger-in 0.45s cubic-bezier(0.22,1,0.36,1);}
   @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
   @keyframes bounce-in{0%{transform:scale(0)}40%{transform:scale(1.15)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
   @keyframes modal-backdrop{from{backdrop-filter:blur(0px);opacity:0}to{backdrop-filter:blur(16px);opacity:1}}
@@ -882,14 +811,35 @@ export default function YamsUltimateLegacy() {
                 <div className="text-8xl mb-4 relative z-10" style={{animation:'trophy-float 2s ease-in-out infinite'}}>⚔️</div>
                 <h2 className="text-xs font-black tracking-[0.3em] text-red-400 mb-2 relative z-10 uppercase" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>Égalité parfaite</h2>
                 <div className="text-5xl font-black uppercase mb-2 relative z-10 text-white" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards',textShadow:'0 0 30px rgba(239,68,68,0.5)'}}>MORT SUBITE</div>
-                <p className="text-gray-400 text-sm mb-8 relative z-10 font-medium" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}>Les joueurs suivants sont à égalité avec <span className="text-white font-black">{calcTotal(suddenDeathPlayers[0])} points</span>. Qui remporte la mort subite ?</p>
+                <p className="text-gray-400 text-sm mb-4 relative z-10 font-medium" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}>Égalité à <span className="text-white font-black">{calcTotal(suddenDeathPlayers[0])} points</span> !</p>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.55s backwards'}}>
+                  <div className="text-center mb-3"><span className="text-yellow-400 text-xs font-black uppercase tracking-widest">🎲 Chaque joueur lance les 5 dés</span></div>
+                  <p className="text-gray-400 text-xs text-center">Additionnez vos dés et saisissez votre total ci-dessous.</p>
+                </div>
                 <div className="space-y-3 relative z-10">
                   {suddenDeathPlayers.map((p, idx) => (
-                    <button key={p} onClick={() => handleSuddenDeathWin(p)} className="w-full py-5 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-black text-xl rounded-2xl shadow-xl hover:scale-[1.03] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-3 border border-red-400/30 hover:shadow-red-500/40 hover:shadow-2xl" style={{animation:`fade-in-scale 0.4s ease-out ${0.6+idx*0.1}s backwards`}}>
-                      <span className="text-2xl">{playerAvatars[p] || '👤'}</span> {p} <span className="text-2xl">👑</span>
-                    </button>
+                    <div key={p} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all" style={{animation:`fade-in-scale 0.4s ease-out ${0.6+idx*0.1}s backwards`}}>
+                      <span className="text-2xl">{playerAvatars[p] || '👤'}</span>
+                      <span className="text-white font-black text-lg flex-1">{p}</span>
+                      <select id={`sd-score-${idx}`} className="bg-black/50 text-white font-black text-xl text-center py-3 px-4 rounded-xl border border-white/20 focus:border-red-400 outline-none w-24 transition-all hover:bg-black/70" defaultValue="">
+                        <option value="" style={{backgroundColor:'#0f172a'}}>-</option>
+                        {Array.from({length:26},(_,i)=>i+5).map(v=><option key={v} value={v} style={{backgroundColor:'#0f172a'}}>{v}</option>)}
+                      </select>
+                    </div>
                   ))}
                 </div>
+                <button onClick={() => {
+                  const sdScores = {};
+                  suddenDeathPlayers.forEach((p, idx) => {
+                    const el = document.getElementById(`sd-score-${idx}`);
+                    sdScores[p] = el ? parseInt(el.value) || 0 : 0;
+                  });
+                  const maxSD = Math.max(...Object.values(sdScores));
+                  const sdWinners = Object.entries(sdScores).filter(([,v]) => v === maxSD && v > 0);
+                  if(sdWinners.length === 0) { alert('Saisissez les scores de chaque joueur !'); return; }
+                  if(sdWinners.length > 1) { alert('Encore une égalité ! Relancez les dés.'); return; }
+                  handleSuddenDeathWin(sdWinners[0][0], sdScores);
+                }} className="w-full mt-4 py-4 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-black text-lg rounded-2xl shadow-xl hover:scale-[1.02] transition-all duration-200 active:scale-[0.98] border border-red-400/30 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.9s backwards'}}>⚔️ VALIDER LA MORT SUBITE</button>
               </div>
             </div>
           </div>
@@ -1214,6 +1164,94 @@ export default function YamsUltimateLegacy() {
             </div>
         )}
 
+        
+        {/* TAB: TROPHIES & CAREER */}
+        {currentTab==='trophies'&&(
+            <div className="space-y-4 tab-enter">
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Award className="text-yellow-400"/> Trophées & Succès</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {ACHIEVEMENTS.map((ach,achIdx) => {
+                            let winners = [];
+                            playerStats.forEach(p => {
+                                if (ach.id === 'first_win' && p.wins > 0) winners.push(p.name);
+                                if (ach.id === 'score_300' && p.maxScore >= 300) winners.push(p.name);
+                                if (ach.id === 'score_350' && p.maxScore >= 350) winners.push(p.name);
+                                if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
+                                if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
+                                if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                            });
+                            const unlocked = winners.length > 0;
+                            return (
+                                <div key={ach.id} className={`p-4 rounded-2xl border flex flex-col items-center text-center transition-all duration-500 hover:scale-105 ${unlocked ? 'bg-yellow-500/20 border-yellow-500/50 shadow-lg shadow-yellow-500/20' : 'bg-black/20 border-white/5 opacity-40 grayscale hover:opacity-60'}`} style={unlocked?{animation:`badge-unlock 0.6s cubic-bezier(0.34,1.56,0.64,1) ${achIdx*0.08}s backwards`}:{animation:`fade-in-scale 0.3s ease-out ${achIdx*0.05}s backwards`}}>
+                                    <div className={`text-4xl mb-2 filter drop-shadow-md ${unlocked?'float-anim':''}`}>{ach.icon}</div>
+                                    <div className="font-bold text-white text-sm">{ach.name}</div>
+                                    <div className="text-[10px] text-gray-400 mb-2 leading-tight">{ach.desc}</div>
+                                    {unlocked ? (
+                                        <div className="text-[9px] font-black text-yellow-400 border-t border-yellow-500/30 pt-2 mt-1 w-full truncate uppercase tracking-wider">
+                                            {winners.join(', ')}
+                                        </div>
+                                    ) : (
+                                        <div className="text-[9px] font-bold text-gray-600 border-t border-white/5 pt-2 mt-1 w-full uppercase tracking-wider flex items-center justify-center gap-1"><Lock size={8}/> Verrouillé</div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* CAREER BADGES */}
+                {playerStats.length > 0 && (
+                <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Star className="text-purple-400"/> Badges de Carrière</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {playerStats.map((pStat, idx) => {
+                            const badges = [];
+                            if(pStat.games >= 1) badges.push({icon:'🎮',name:'Initié',desc:`${pStat.games} parties jouées`});
+                            if(pStat.games >= 10) badges.push({icon:'⚔️',name:'Guerrier',desc:'10+ parties'});
+                            if(pStat.games >= 25) badges.push({icon:'🛡️',name:'Gladiateur',desc:'25+ parties'});
+                            if(pStat.games >= 50) badges.push({icon:'👴',name:'Vétéran',desc:'50+ parties'});
+                            if(pStat.wins >= 1) badges.push({icon:'🥇',name:'Vainqueur',desc:'1ère victoire'});
+                            if(pStat.wins >= 10) badges.push({icon:'🏅',name:'Champion',desc:'10+ victoires'});
+                            if(pStat.maxScore >= 200) badges.push({icon:'📈',name:'Scorer',desc:'200+ pts'});
+                            if(pStat.maxScore >= 300) badges.push({icon:'🔥',name:'Légende',desc:'300+ pts'});
+                            if(pStat.maxScore >= 350) badges.push({icon:'⚡',name:'Divin',desc:'350+ pts'});
+                            if(pStat.yamsCount >= 1) badges.push({icon:'🎲',name:'Lucky',desc:'1er Yams'});
+                            if(pStat.yamsCount >= 5) badges.push({icon:'🎯',name:'Sniper',desc:'5+ Yams'});
+                            if(pStat.bonusCount >= 1) badges.push({icon:'🎁',name:'Bonus!',desc:'1er bonus'});
+                            if(pStat.bonusCount >= 10) badges.push({icon:'💎',name:'Collectionneur',desc:'10+ bonus'});
+                            if(pStat.currentStreak >= 3) badges.push({icon:'🔥',name:'En feu!',desc:`Série de ${pStat.currentStreak}`});
+                            if(pStat.maxConsecutiveWins >= 5) badges.push({icon:'💪',name:'Inarrêtable',desc:`Série max ${pStat.maxConsecutiveWins}`});
+                            const COLORS=['#6366f1','#ec4899','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+                            const color = COLORS[idx%COLORS.length];
+                            return (
+                                <div key={pStat.name} className="glass-strong rounded-2xl p-5 hover:bg-white/10 transition-all duration-300" style={{animation:`fade-in-scale 0.4s ease-out ${idx*0.1}s backwards`}}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black shadow-lg" style={{backgroundColor:color,color:'#000'}}>{playerAvatars[pStat.name]||'👤'}</div>
+                                        <div>
+                                            <div className="text-white font-black text-lg">{pStat.name}</div>
+                                            <div className="text-gray-400 text-xs font-bold">{badges.length} badge{badges.length>1?'s':''} débloqué{badges.length>1?'s':''}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {badges.length === 0 ? (
+                                            <div className="text-gray-500 text-xs italic">Jouez pour débloquer des badges !</div>
+                                        ) : badges.map((b,bi) => (
+                                            <div key={bi} className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 hover:bg-white/20 transition-all duration-200 hover:scale-105 cursor-default group" title={b.desc} style={{animation:`bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1) ${bi*0.04}s backwards`}}>
+                                                <span className="text-lg group-hover:scale-110 transition-transform">{b.icon}</span>
+                                                <span className="text-[10px] font-bold text-white uppercase tracking-wide">{b.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                )}
+            </div>
+        )}
+
         {/* TAB: RULES & HELP */}
         {currentTab === 'rules' && (
             <div className="space-y-4 tab-enter">
@@ -1382,7 +1420,8 @@ export default function YamsUltimateLegacy() {
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span></div>})}</div></div>)}</div>}
+                {g.moveLog && g.moveLog.length > 1 && <GameFlowChartMini moveLog={g.moveLog} gamePlayers={g.players||g.results}/>}
+                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="flex items-baseline gap-1.5"><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>{pl.suddenDeathScore&&<span className="text-sm font-bold text-red-400">({pl.suddenDeathScore})</span>}</span></div>})}</div></div>)}</div>}
           </div></div>
         )}
 
@@ -1518,11 +1557,29 @@ export default function YamsUltimateLegacy() {
 
                 {/* 4. YAMS STATS & YAMS CACHÉS */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Dices className="text-yellow-400"/> Yams & Yams Cachés</h2>
+                    <h2 className="text-3xl font-black text-white mb-4 flex items-center gap-3"><Dices className="text-yellow-400"/> Yams & Yams Cachés</h2>
+                    <select onChange={e=>setVersus({...versus, yamsFilter: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg mb-6">
+                        <option value="GLOBAL" className="bg-slate-900">🌍 GLOBAL (Tous les joueurs)</option>
+                        {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
+                    </select>
                     
                     {/* Yams Distribution */}
                     {(()=>{
-                        const dist = getYamsDistribution();
+                        const dist = (() => {
+                            const d = {1:0,2:0,3:0,4:0,5:0,6:0};
+                            const target = versus.yamsFilter || 'GLOBAL';
+                            (filteredHistory||[]).forEach(g => {
+                                const grid = g.grid || {};
+                                (g.players||g.results||[]).forEach(p => {
+                                    if(target !== 'GLOBAL' && p.name !== target) return;
+                                    const pGrid = grid[p.name];
+                                    if(pGrid && pGrid.yamsHistory && Array.isArray(pGrid.yamsHistory)) {
+                                        pGrid.yamsHistory.forEach(val => d[val] = (d[val] || 0) + 1);
+                                    }
+                                });
+                            });
+                            return d;
+                        })();
                         const totalYams = Object.values(dist).reduce((s,v)=>s+v,0);
                         return (
                         <div className="mb-6">
@@ -1545,9 +1602,11 @@ export default function YamsUltimateLegacy() {
                         const hiddenYamsData = {};
                         const upperCatConfig = [{id:'ones',name:'As',max:5,icon:'⚀'},{id:'twos',name:'Deux',max:10,icon:'⚁'},{id:'threes',name:'Trois',max:15,icon:'⚂'},{id:'fours',name:'Quatre',max:20,icon:'⚃'},{id:'fives',name:'Cinq',max:25,icon:'⚄'},{id:'sixes',name:'Six',max:30,icon:'⚅'}];
                         const allPlayerNames = new Set();
+                        const target = versus.yamsFilter || 'GLOBAL';
                         (filteredHistory||[]).forEach(g => {
                             const grid = g.grid || {};
                             (g.players||g.results||[]).forEach(p => {
+                                if(target !== 'GLOBAL' && p.name !== target) return;
                                 allPlayerNames.add(p.name);
                                 if(!hiddenYamsData[p.name]) hiddenYamsData[p.name] = {total:0, details:{}};
                                 upperCatConfig.forEach(cat => {
@@ -1755,35 +1814,8 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
-                {/* 7. LE FIL DU MATCH (GAME FLOW) */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-3xl font-black text-white flex items-center gap-3"><TrendingUp/> Le Fil du Match</h2>
-                        <div className="text-xs text-gray-400 font-bold bg-white/10 px-3 py-1 rounded-full">Dernière Partie</div>
-                    </div>
-                    
-                    <div className="h-64 w-full bg-black/20 rounded-xl p-4 relative">
-                        {(!moveLog || moveLog.length < 2) && (!gameHistory[0]?.moveLog || gameHistory[0]?.moveLog.length < 2) ? 
-                            <div className="flex items-center justify-center h-full text-gray-400 text-xs italic">Pas assez de données pour le moment</div> :
-                            <GameFlowChart moveLog={moveLog.length > 0 ? moveLog : gameHistory[0]?.moveLog} players={players} />
-                        }
-                    </div>
-                </div>
-
-                {/* 8. CHANCE AUX DES */}
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
-                    <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
-                            <option value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
-                        </select>
-                    </div>
-                    {versus.luckPlayer && (
-                        <DiceLuckChart stats={playerStats.find(s => s.name === versus.luckPlayer)} />
-                    )}
-                </div>
-
+                
+                
                 {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
                      <div className="mb-6 relative z-10">
