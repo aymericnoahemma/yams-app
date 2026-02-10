@@ -12,7 +12,7 @@ import {
 // --- CONFIGURATION ---
 const categories = [
   { id:"upperHeader", upperHeader:true },
-  // AJOUT DE LA PROPRIÉTÉ 'max' POUR CALCULER LES YAMS CACHÉS
+  // AJOUT DE 'max' pour le calcul des Yams Cachés
   { id:"ones", name:"As", values:[0,1,2,3,4,5], upper:true, icon:"⚀", color:"#3b82f6", max:5 },
   { id:"twos", name:"Deux", values:[0,2,4,6,8,10], upper:true, icon:"⚁", color:"#8b5cf6", max:10 },
   { id:"threes", name:"Trois", values:[0,3,6,9,12,15], upper:true, icon:"⚂", color:"#ec4899", max:15 },
@@ -63,17 +63,6 @@ const CHAOS_EVENTS = [
     { title: "Rien ne va plus", desc: "Aucun effet, ouf !", icon: "😌" }
 ];
 
-const ACHIEVEMENTS = [
-    { id: "first_win", name: "Première Victoire", desc: "Gagner une partie", xp: 100, icon: "🥇" },
-    { id: "score_300", name: "Légende", desc: "Faire un score > 300", xp: 500, icon: "🔥" },
-    { id: "score_350", name: "Dieu du Yams", desc: "Faire un score > 350", xp: 1000, icon: "⚡" },
-    { id: "yams_king", name: "Yams Master", desc: "Faire 10 Yams au total", xp: 300, icon: "🎲" },
-    { id: "veteran", name: "Vétéran", desc: "Jouer 50 parties", xp: 500, icon: "👴" },
-    { id: "bonus_hunter", name: "Chasseur de Bonus", desc: "Obtenir 20 fois le bonus", xp: 400, icon: "🎁" },
-    { id: "perfect_lose", name: "Lanterne Rouge", desc: "Faire moins de 150 points", xp: 150, icon: "🐌" },
-    { id: "chaos_survivor", name: "Chaos Survivor", desc: "Gagner en mode Chaos", xp: 250, icon: "🌪️" },
-];
-
 const AVATAR_LIST = [
     { icon: "👤", req: "none" }, { icon: "🙂", req: "none" }, { icon: "😎", req: "none" }, { icon: "🤠", req: "none" },
     { icon: "🤖", req: "games:1" }, { icon: "🦊", req: "games:5" }, { icon: "🦁", req: "wins:1" }, { icon: "👑", req: "wins:5" },
@@ -82,7 +71,6 @@ const AVATAR_LIST = [
 ];
 
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
-// Pour détecter le remplissage de la partie supérieure
 const upperCats = categories.filter(c => c.upper && !c.upperHeader && !c.upperDivider && !c.upperTotal && !c.upperGrandTotal);
 
 const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
@@ -116,7 +104,6 @@ const calculateSimulatedScores = (dice) => {
   };
 };
 
-// --- COMPOSANTS INTERNES ---
 const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
   if(isFoggy && isLocked) return <div className="w-full py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
   if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
@@ -170,7 +157,6 @@ const FloatingScore = ({ x, y, value }) => {
     return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100]" style={{ left: x, top: y, animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>;
 };
 
-// --- NOUVEAUX COMPOSANTS STATS ---
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
     const history = []; const currentScores = {}; players.forEach(p => currentScores[p] = 0);
@@ -306,7 +292,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVEAUX ÉTATS POUR BONUS RATÉ ET MORT SUBITE
+  // NOUVEAUX ÉTATS
   const [showBonusMissedModal, setShowBonusMissedModal] = useState(null);
   const [showSuddenDeathModal, setShowSuddenDeathModal] = useState(false);
   const [suddenDeathScores, setSuddenDeathScores] = useState({});
@@ -397,7 +383,7 @@ export default function YamsUltimateLegacy() {
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
-  // MODIFIÉ: Prise en compte du départage (tieBreaker)
+  // LOGIQUE MORT SUBITE AJOUTÉE
   const getWinner=(tieBreakerScores = {})=>{
       if(!players.length)return[];
       const totals = players.map(p => ({name: p, score: calcTotal(p), tieScore: tieBreakerScores[p] || 0}));
@@ -405,7 +391,6 @@ export default function YamsUltimateLegacy() {
       const tiedPlayers = totals.filter(t => t.score === maxScore);
       
       if(tiedPlayers.length > 1 && Object.keys(tieBreakerScores).length > 0) {
-          // Si égalité et scores de départage existent
           const maxTie = Math.max(...tiedPlayers.map(t => t.tieScore));
           return tiedPlayers.filter(t => t.tieScore === maxTie).map(t => t.name);
       }
@@ -435,9 +420,8 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // MODIFIÉ: DÉTECTION BONUS RATÉ
+    // DETECTION BONUS RATE
     if(value !== '' && upperCats.some(c => c.id === category)) {
-        // Check if upper section is now full
         const isUpperFull = upperCats.every(c => ns[player][c.id] !== undefined);
         if(isUpperFull) {
             const currentUpper = calcUpper(player, ns);
@@ -478,7 +462,6 @@ export default function YamsUltimateLegacy() {
         } 
     }
   };
-
   const saveYamsDetail = (val) => {
       if(!pendingYamsDetail) return;
       const { player } = pendingYamsDetail;
@@ -547,6 +530,7 @@ export default function YamsUltimateLegacy() {
 
   const saveGameFromModal=()=>{ 
       const w=getWinner(suddenDeathScores); // Utilise les scores de départage pour identifier le vrai vainqueur
+      
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
       const game={
           id:Date.now(),
@@ -690,8 +674,8 @@ export default function YamsUltimateLegacy() {
     const sortedFailures = Object.entries(failures).sort(([,a], [,b]) => b - a).map(([key, value]) => ({ id: key, name: categories.find(c => c.id === key)?.name || key, count: value, rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0 }));
     return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
   };
-  
- return (
+
+  return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
