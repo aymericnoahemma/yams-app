@@ -12,7 +12,7 @@ import {
 // --- CONFIGURATION ---
 const categories = [
   { id:"upperHeader", upperHeader:true },
-  // Ajout de la propriété 'max' pour détecter les Yams Cachés
+  // AJOUT DE LA PROPRIÉTÉ 'max' POUR CALCULER LES YAMS CACHÉS
   { id:"ones", name:"As", values:[0,1,2,3,4,5], upper:true, icon:"⚀", color:"#3b82f6", max:5 },
   { id:"twos", name:"Deux", values:[0,2,4,6,8,10], upper:true, icon:"⚁", color:"#8b5cf6", max:10 },
   { id:"threes", name:"Trois", values:[0,3,6,9,12,15], upper:true, icon:"⚂", color:"#ec4899", max:15 },
@@ -82,6 +82,7 @@ const AVATAR_LIST = [
 ];
 
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
+// Pour détecter le remplissage de la partie supérieure
 const upperCats = categories.filter(c => c.upper && !c.upperHeader && !c.upperDivider && !c.upperTotal && !c.upperGrandTotal);
 
 const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
@@ -170,7 +171,6 @@ const FloatingScore = ({ x, y, value }) => {
 };
 
 // --- NOUVEAUX COMPOSANTS STATS ---
-
 const GameFlowChart = ({ moveLog, players }) => {
     if (!moveLog || moveLog.length === 0) return <div className="text-center text-gray-500 text-xs py-8">Pas de données pour cette partie</div>;
     const history = []; const currentScores = {}; players.forEach(p => currentScores[p] = 0);
@@ -307,7 +307,7 @@ export default function YamsUltimateLegacy() {
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
   // NOUVEAUX ÉTATS POUR BONUS RATÉ ET MORT SUBITE
-  const [showBonusMissedModal, setShowBonusMissedModal] = useState(null); // { player: "Name", score: 55 }
+  const [showBonusMissedModal, setShowBonusMissedModal] = useState(null);
   const [showSuddenDeathModal, setShowSuddenDeathModal] = useState(false);
   const [suddenDeathScores, setSuddenDeathScores] = useState({});
 
@@ -397,7 +397,7 @@ export default function YamsUltimateLegacy() {
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); if(jokersEnabled) { const usedJokers = jokerMax - (jokers[p] !== undefined ? jokers[p] : jokerMax); if(usedJokers > 0) total -= (usedJokers * 10); } return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
   
-  // getWinner mis à jour pour supporter la mort subite (tieBreakerScores)
+  // MODIFIÉ: Prise en compte du départage (tieBreaker)
   const getWinner=(tieBreakerScores = {})=>{
       if(!players.length)return[];
       const totals = players.map(p => ({name: p, score: calcTotal(p), tieScore: tieBreakerScores[p] || 0}));
@@ -435,7 +435,7 @@ export default function YamsUltimateLegacy() {
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
-    // NEW: DETECT BONUS MISSED (ANIMATION)
+    // MODIFIÉ: DÉTECTION BONUS RATÉ
     if(value !== '' && upperCats.some(c => c.id === category)) {
         // Check if upper section is now full
         const isUpperFull = upperCats.every(c => ns[player][c.id] !== undefined);
@@ -547,10 +547,6 @@ export default function YamsUltimateLegacy() {
 
   const saveGameFromModal=()=>{ 
       const w=getWinner(suddenDeathScores); // Utilise les scores de départage pour identifier le vrai vainqueur
-      // const l=getLoser(); // Attention, getLoser ne gère pas encore les tieBreakers pour le "dernier", mais souvent pas besoin.
-      // Trouver le perdant "réel" pour le reset (celui qui a le moins de points ou perdu la mort subite s'ils étaient tous à égalité)
-      // Simplification : on prend le joueur qui n'est PAS dans w (winners) ou le dernier du tableau trié.
-      
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
       const game={
           id:Date.now(),
@@ -694,8 +690,8 @@ export default function YamsUltimateLegacy() {
     const sortedFailures = Object.entries(failures).sort(([,a], [,b]) => b - a).map(([key, value]) => ({ id: key, name: categories.find(c => c.id === key)?.name || key, count: value, rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0 }));
     return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
   };
-
-  return (
+  
+ return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
@@ -714,7 +710,7 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
 
-      {/* MODAL BONUS MISSED */}
+      {/* MODAL BONUS MISSED (NOUVEAU) */}
       {showBonusMissedModal && (
           <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 modal-backdrop">
               <div className="modal-content bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-red-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl shadow-red-500/20 relative overflow-hidden">
@@ -731,7 +727,7 @@ export default function YamsUltimateLegacy() {
           </div>
       )}
 
-      {/* MODAL SUDDEN DEATH */}
+      {/* MODAL SUDDEN DEATH (NOUVEAU) */}
       {showSuddenDeathModal && (
           <div className="fixed inset-0 bg-black/95 z-[210] flex items-center justify-center p-4 modal-backdrop">
               <div className="modal-content bg-gradient-to-b from-gray-900 to-black border-4 border-red-600 rounded-3xl p-6 w-full max-w-sm text-center shadow-[0_0_50px_rgba(220,38,38,0.5)] relative overflow-hidden">
@@ -1296,7 +1292,7 @@ export default function YamsUltimateLegacy() {
                     </div>
                 </th>)}</tr></thead><tbody>
                 {categories.map(cat=>{
-                  if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
+                  if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
                   return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')}><td className="p-3 sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10"><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className="text-white font-bold block">{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=><td key={pi} className={`p-2 transition-all ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50':''}`}>
