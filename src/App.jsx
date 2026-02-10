@@ -405,7 +405,7 @@ export default function YamsUltimateLegacy() {
   const [showStudioModal, setShowStudioModal] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabled] = useState(true);
   
-  // NOUVELLES FONCTIONNALITES V24
+  // NOUVELLES FONCTIONNALITES V24+
   const [seasons, setSeasons] = useState([]); 
   const [activeSeason, setActiveSeason] = useState('Aucune');
   const [seasonDescriptions, setSeasonDescriptions] = useState({});
@@ -417,10 +417,8 @@ export default function YamsUltimateLegacy() {
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [tempHistorySeason, setTempHistorySeason] = useState('');
 
-  // Yams Detail Logic
+  // NOUVEAU STATES (V35 - Yams Detail & Tie Breaker)
   const [pendingYamsDetail, setPendingYamsDetail] = useState(null); 
-  
-  // Tie Breaker Logic (Mort Subite)
   const [tieBreakerActive, setTieBreakerData] = useState(null); 
 
   // GAGES STATES
@@ -672,8 +670,8 @@ export default function YamsUltimateLegacy() {
   const resolveTieBreaker = () => {
       // Find winner of tie break
       const tbScores = tieBreakerActive.scores;
-      
       const realRanked = players.map(p => ({ name: p, score: calcTotal(p) })).sort((a,b)=>b.score-a.score);
+      
       // Re-sort based on tie breaker if scores equal
       realRanked.sort((a,b) => {
           if (a.score === b.score) {
@@ -693,7 +691,6 @@ export default function YamsUltimateLegacy() {
           hasYams: scores[winnerName]?.yams === 50,
           loser: loserName
       });
-      
       setTieBreakerData(null);
       setShowVictoryAnimation(true);
       setConfetti('gold');
@@ -742,6 +739,7 @@ export default function YamsUltimateLegacy() {
       const stats = {}; const streaks = {}; const isStreaking = {}; const allPlayerNames = new Set(); 
       filteredHistory.forEach(g => g.players.forEach(p => allPlayerNames.add(p.name))); 
       allPlayerNames.forEach(name => { 
+          // INIT SAFE
           stats[name] = { wins:0, games:0, maxScore:0, totalScore:0, yamsCount:0, maxConsecutiveWins:0, bonusCount:0, upperSum:0, lowerSum:0, historyGames:0,
           totalOnes:0, totalTwos:0, totalThrees:0, totalFours:0, totalFives:0, totalSixes:0,
           yamsDetails: {1:0, 2:0, 3:0, 4:0, 5:0, 6:0},
@@ -802,95 +800,20 @@ export default function YamsUltimateLegacy() {
       setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));
       setLastPlayerBeforeEdit(lastPlayerToPlay);
   };
-  
-  // FIX REPLAY: Simple safe display function
-  const getSafeReplayScore = (player, grid) => {
-    if (!grid || !grid[player]) return 0;
-    let upperSum = 0; let lowerSum = 0;
-    categories.forEach(cat => {
-        const val = grid[player][cat.id];
-        const num = (val !== undefined && val !== "" && !isNaN(val)) ? parseInt(val) : 0;
-        if (cat.upper && !cat.upperHeader && !cat.upperTotal && !cat.upperGrandTotal && !cat.upperDivider) { upperSum += num; }
-        if (cat.lower && !cat.lowerTotal && !cat.divider) { lowerSum += num; }
-    });
-    const bonus = upperSum >= 63 ? 35 : 0;
-    return upperSum + bonus + lowerSum;
+
+  // CHARTS (Simplified for reliability)
+  const YamsDistChart = ({stats}) => {
+      if(!stats || !stats.yamsDetails) return null;
+      const data = [1,2,3,4,5,6].map(v => ({ label:v, count: stats.yamsDetails[v]||0 }));
+      const max = Math.max(...data.map(d=>d.count), 1);
+      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🎯 Yams Réussis</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-yellow-500 font-bold">{d.label}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-yellow-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
   };
   
-  // TIMELAPSE
-  const stopPlayback = () => { if (replayIntervalRef.current) clearInterval(replayIntervalRef.current); setIsReplaying(false); setReplayGame(null); };
-  const playTimelapse = () => { if(!replayGame || !replayGame.moveLog) return; setIsReplaying(true); const log = replayGame.moveLog; const tempScores = {}; players.forEach(p => tempScores[p] = {}); let step = 0; replayIntervalRef.current = setInterval(() => { if(step >= log.length) { clearInterval(replayIntervalRef.current); setIsReplaying(false); return; } const move = log[step]; tempScores[move.player] = { ...tempScores[move.player], [categories.find(c=>c.name===move.category)?.id || move.category.toLowerCase()]: parseInt(move.value) }; setReplayGame(prev => ({...prev, grid: JSON.parse(JSON.stringify(tempScores))})); step++; }, 500); };
-
-  // REPLAY RENDERER
-  if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
-
-  // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles) - GESTION ÉGALITÉ
-  const getRank = (playerName) => {
-    // Calcul des totaux pour tous les joueurs
-    const scoresList = players.map(p => ({ name: p, score: calcTotal(p) }));
-    
-    // Tri décroissant
-    scoresList.sort((a, b) => b.score - a.score);
-
-    // Trouver le score du joueur actuel
-    const myScore = scoresList.find(s => s.name === playerName)?.score || 0;
-
-    // Le rang est 1 + le nombre de joueurs qui ont strictement plus
-    const rank = scoresList.filter(s => s.score > myScore).length + 1;
-    
-    return rank;
-  };
-
-  // CALCUL VRAIES STATS D'ECHEC (CORRECTION CRASH & DOUBLON) - DEFINE HERE
-  const calculateGlobalFailures = (target) => {
-    const failures = {};
-    playableCats.forEach(cat => failures[cat.id] = 0);
-    let totalGames = 0;
-    
-    // SAFE ACCESS: on vérifie que gameHistory existe
-    const historyToUse = statsFilterSeason === 'Toutes' ? (gameHistory || []) : (gameHistory || []).filter(g => {
-        const gSeasons = Array.isArray(g.seasons) ? g.seasons : (g.season ? [g.season] : []);
-        if(statsFilterSeason === 'Aucune') return gSeasons.length === 0;
-        return gSeasons.includes(statsFilterSeason);
-    });
-
-    if (!historyToUse || historyToUse.length === 0) return { failures: [], totalGames: 0 };
-
-    historyToUse.forEach(game => {
-        const participants = game.players || game.results || [];
-        const grid = game.grid || {};
-        participants.forEach(p => {
-            if (target === 'GLOBAL' || p.name === target) {
-                const playerGrid = grid[p.name];
-                if (playerGrid) {
-                    totalGames++;
-                    Object.keys(failures).forEach(catId => { if (playerGrid[catId] === 0) failures[catId]++; });
-                }
-            }
-        });
-    });
-    const sortedFailures = Object.entries(failures)
-        .sort(([,a], [,b]) => b - a)
-        .map(([key, value]) => ({ 
-            id: key, name: categories.find(c => c.id === key)?.name || key, count: value,
-            rate: totalGames > 0 ? Math.round((value / totalGames) * 100) : 0
-        }));
-    return { failures: sortedFailures, totalGames: Math.max(1, totalGames) };
-  };
-
-  // Yams Distribution Calc
-  const getYamsDistribution = () => {
-      const dist = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-      gameHistory.forEach(g => {
-         const grid = g.grid || {};
-         Object.values(grid).forEach(pGrid => {
-             // Checking new structure
-             if(pGrid.yamsHistory && Array.isArray(pGrid.yamsHistory)) {
-                 pGrid.yamsHistory.forEach(val => dist[val] = (dist[val] || 0) + 1);
-             }
-         });
-      });
-      return dist;
+  const HiddenYamsChart = ({stats}) => {
+      if(!stats || !stats.hiddenYams) return null;
+      const data = [{k:'ones',l:'As'},{k:'twos',l:'2'},{k:'threes',l:'3'},{k:'fours',l:'4'},{k:'fives',l:'5'},{k:'sixes',l:'6'}].map(i => ({ label:i.l, count: stats.hiddenYams[i.k]||0 }));
+      const max = Math.max(...data.map(d=>d.count), 1);
+      return <div className="mt-4 bg-black/20 p-4 rounded-xl"><h4 className="text-white text-center text-xs font-bold mb-2 uppercase">🕵️ Max Supérieur</h4>{data.map(d=><div key={d.label} className="flex items-center gap-2 text-xs mb-1"><div className="w-4 text-purple-400 font-bold">{d.label}</div><div className="flex-1 bg-white/10 h-2 rounded-full"><div className="bg-purple-500 h-full rounded-full" style={{width:`${(d.count/max)*100}%`}}></div></div><div className="text-white">{d.count}</div></div>)}</div>;
   };
 
   return (
@@ -922,7 +845,7 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
 
-      {/* MODAL TIE BREAKER (MORT SUBITE) */}
+      {/* MODAL TIE BREAKER (MORT SUBITE) - STYLISED INPUTS */}
       {tieBreakerActive && (
           <div className="fixed inset-0 bg-black/95 z-[160] flex items-center justify-center p-4 backdrop-blur-lg">
              <div className="bg-red-900/20 border-2 border-red-500 rounded-3xl p-6 w-full max-w-md text-center shadow-[0_0_50px_rgba(220,38,38,0.5)]">
@@ -932,10 +855,11 @@ export default function YamsUltimateLegacy() {
                      {tieBreakerActive.players.map(p => (
                          <div key={p} className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-red-500/30">
                              <span className="font-bold text-white text-lg">{p}</span>
+                             {/* INPUT STYLISÉ COMME LE TABLEAU */}
                              <input 
                                 type="number" 
-                                placeholder="Score dés" 
-                                className="w-24 bg-white/10 text-white text-center font-bold text-xl py-3 rounded-xl outline-none focus:ring-2 focus:ring-yellow-400 border border-white/20"
+                                placeholder="?" 
+                                className="w-20 py-3 px-2 rounded-xl font-bold text-lg text-center bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
                                 onChange={(e) => setTieBreakerData(prev => ({
                                     ...prev,
                                     scores: { ...prev.scores, [p]: parseInt(e.target.value) || 0 }
@@ -946,7 +870,7 @@ export default function YamsUltimateLegacy() {
                  </div>
                  <button 
                     onClick={resolveTieBreaker}
-                    className="w-full mt-6 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase rounded-xl shadow-lg"
+                    className="w-full mt-6 py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase rounded-xl shadow-lg transition-transform hover:scale-105"
                  >
                      Valider le Vainqueur
                  </button>
@@ -1069,7 +993,7 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option className="bg-slate-900" value="1">1</option><option className="bg-slate-900" value="2">2</option><option className="bg-slate-900" value="3">3</option><option className="bg-slate-900" value="4">4</option><option className="bg-slate-900" value="5">5</option></select></div>}</div></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-900">1</option><option value="2" className="bg-slate-900">2</option><option value="3" className="bg-slate-900">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
               {/* SAISONS DANS LES REGLAGES */}
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2 flex-wrap gap-2">
@@ -1246,11 +1170,11 @@ export default function YamsUltimateLegacy() {
                                             >
                                                 <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-transform duration-300 ${g.active ? 'left-6' : 'left-1'}`}></div>
                                             </button>
-                                            
-                                            <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
-                                                <Trash2 size={16}/>
-                                            </button>
+                                            <span className="text-white font-medium">{g.text}</span>
                                         </div>
+                                        <button onClick={() => deleteCustomGage(g.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition-colors">
+                                            <Trash2 size={16}/>
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -1276,7 +1200,7 @@ export default function YamsUltimateLegacy() {
                     <div className="mb-4">
                         <label className="text-gray-400 text-xs font-bold uppercase block mb-2">Simuler pour :</label>
                         <select value={simPlayer || ''} onChange={(e) => setSimPlayer(e.target.value)} className="w-full bg-[#1e293b] text-white p-3 rounded-xl font-bold border border-white/20">
-                            {players.map(p => <option className="bg-slate-900" key={p} value={p} className="bg-[#1e293b] text-white">{p}</option>)}
+                            {players.map(p => <option key={p} value={p} className="bg-[#1e293b] text-white">{p}</option>)}
                         </select>
                     </div>
                     <div className="flex justify-center gap-3 mb-6">
@@ -1446,7 +1370,7 @@ export default function YamsUltimateLegacy() {
                             <p className="text-gray-400 text-xs mt-1 italic pl-10">{seasonDescriptions[statsFilterSeason]}</p>
                         )}
                     </div>
-                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/30 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
+                    <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-slate-900 text-white p-2 rounded-xl text-sm font-bold border border-white/10 outline-none">
                         <option className="bg-slate-900" value="Toutes">Toutes les Saisons</option>
                         <option className="bg-slate-900" value="Aucune">Hors Saison</option>
                         {seasons.map(s=><option className="bg-slate-900" key={s} value={s}>{s}</option>)}
@@ -1602,14 +1526,14 @@ export default function YamsUltimateLegacy() {
                     <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
-                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                        <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-slate-900 text-white p-4 rounded-2xl outline-none font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
                             <option className="bg-slate-900" value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n} className="bg-slate-900">{n}</option>)}
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500">VS</div>
-                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
+                        <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-slate-900 text-white p-4 rounded-2xl outline-none font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
                             <option className="bg-slate-900" value="" disabled selected>Sélectionner...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n} className="bg-slate-900">{n}</option>)}
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
                         </select>
                     </div>
                     
@@ -1726,9 +1650,9 @@ export default function YamsUltimateLegacy() {
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Dices/> Chance aux Dés (Estimation)</h2>
                     <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
+                        <select onChange={e=>setVersus({...versus, luckPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
                             <option className="bg-slate-900" value="">Sélectionner un joueur...</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n} className="bg-slate-900">{n}</option>)}
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
                         </select>
                     </div>
                     {versus.luckPlayer && (
@@ -1740,9 +1664,9 @@ export default function YamsUltimateLegacy() {
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <h2 className="text-3xl font-black text-white flex items-center gap-3 mb-6"><Star className="text-yellow-400"/> Détail des Yams</h2>
                     <div className="mb-4">
-                        <select onChange={e=>setVersus({...versus, yamsPlayer: e.target.value})} className="w-full bg-white/10 text-white p-3 rounded-xl font-bold border border-white/20 outline-none">
+                        <select onChange={e=>setVersus({...versus, yamsPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
                             <option className="bg-slate-900" value="GLOBAL">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n} className="bg-slate-900">{n}</option>)}
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
                         </select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1786,9 +1710,9 @@ export default function YamsUltimateLegacy() {
                              <h2 className="text-3xl font-black text-white">Zone de Danger</h2>
                         </div>
                         
-                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="w-full bg-black/50 text-white p-3 rounded-xl font-bold border border-white/20 outline-none cursor-pointer hover:bg-black/60 transition-colors text-center text-lg shadow-lg">
-                            <option className="bg-slate-900" value="GLOBAL" className="bg-slate-900">🌍 GLOBAL (Tous les joueurs)</option>
-                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n} className="bg-slate-900">{n}</option>)}
+                        <select onChange={e=>setVersus({...versus, failPlayer: e.target.value})} className="bg-slate-900 text-white p-3 rounded-xl font-bold border border-white/20 outline-none w-full">
+                            <option className="bg-slate-900" value="GLOBAL">🌍 GLOBAL (Tous les joueurs)</option>
+                            {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option className="bg-slate-900" key={n} value={n}>{n}</option>)}
                         </select>
                      </div>
                      
@@ -1847,6 +1771,8 @@ export default function YamsUltimateLegacy() {
                                 if (ach.id === 'yams_king' && p.yamsCount >= 10) winners.push(p.name);
                                 if (ach.id === 'veteran' && p.games >= 50) winners.push(p.name);
                                 if (ach.id === 'bonus_hunter' && p.bonusCount >= 20) winners.push(p.name);
+                                if (ach.id === 'perfect_lose' && p.minScore <= 150 && p.games > 0) winners.push(p.name);
+                                if (ach.id === 'chaos_survivor' && p.chaosWins > 0) winners.push(p.name);
                             });
                             const unlocked = winners.length > 0;
                             return (
