@@ -94,7 +94,95 @@ const AVATAR_LIST = [
     { icon: "💀", req: "lose:1" }, { icon: "💩", req: "lose:5" }, { icon: "👽", req: "bonus:1" }, { icon: "💎", req: "bonus:10" }
 ];
 
+
+// TITRES DYNAMIQUES - Basés sur le style de jeu
+const DYNAMIC_TITLES = {
+  yams_machine: { title: "Machine à Yams", icon: "🎰", condition: (s) => s.yamsCount >= 5 },
+  mr_bonus: { title: "Mr Bonus", icon: "🎁", condition: (s) => s.bonusRate >= 60 },
+  sniper: { title: "Le Sniper", icon: "🎯", condition: (s) => s.maxScore >= 300 },
+  legend: { title: "Légende Vivante", icon: "⚡", condition: (s) => s.maxScore >= 350 },
+  regular: { title: "Le Régulier", icon: "📏", condition: (s) => s.games >= 20 && s.maxScore - (s.avgScore||0) < 30 },
+  comeback_king: { title: "Le Phénix", icon: "🔥", condition: (s) => s.currentStreak >= 3 },
+  unlucky: { title: "La Poisse", icon: "🐈‍⬛", condition: (s) => s.games >= 5 && s.wins === 0 },
+  rookie: { title: "Le Débutant", icon: "🌱", condition: (s) => s.games <= 3 },
+  veteran: { title: "Le Vétéran", icon: "🧙", condition: (s) => s.games >= 50 },
+  dominator: { title: "Le Dominateur", icon: "👑", condition: (s) => s.games >= 10 && (s.wins/s.games) >= 0.7 },
+  mid_player: { title: "L'Éternel Second", icon: "🥈", condition: (s) => s.games >= 10 && (s.wins/s.games) < 0.3 && (s.wins/s.games) > 0 },
+  barrage_king: { title: "Le Barreur Fou", icon: "❌", condition: (s) => false }, // calculated separately
+  chanceux: { title: "Le Chanceux", icon: "🍀", condition: (s) => s.games >= 5 && (s.wins/s.games) >= 0.5 && s.avgScore < 200 },
+};
+
+const getPlayerTitle = (stat) => {
+  if(!stat || !stat.games) return { title: "Nouveau Joueur", icon: "🆕" };
+  // Priority order
+  const priorities = ['legend','dominator','yams_machine','comeback_king','mr_bonus','sniper','veteran','regular','chanceux','mid_player','unlucky','rookie'];
+  for(const key of priorities) {
+    if(DYNAMIC_TITLES[key].condition(stat)) return DYNAMIC_TITLES[key];
+  }
+  return { title: "Joueur", icon: "🎲" };
+};
+
+// COMMENTATEUR IA
+const COMMENTATOR_MESSAGES = {
+  first_blood: ["Et c'est parti ! 🎬", "Le bal est ouvert ! 💃", "C'est le début de la guerre ! ⚔️"],
+  yams: ["YAAAAMS ! C'est de la folie ! 🤯", "Incroyable ! Les dés sont en feu ! 🎲🔥", "On n'y croit pas ! YAMS ! 🎰"],
+  barre: ["Aïe, un zéro... ça fait mal 😬", "Barré ! La tuile... 🧱", "Ça pique un peu là... 🌵"],
+  comeback: ["RENVERSEMENT DE SITUATION ! 🔄", "Et le phénix renaît de ses cendres ! 🔥", "On n'y croyait plus ! 😱"],
+  bonus: ["BONUS ! Les 35 points tombent ! 🎁", "Le bonus est dans la poche ! 💰", "Magnifique partie supérieure ! ⭐"],
+  bonus_lost: ["Le bonus s'envole... adieu les 35 points 😢", "C'est raté pour le bonus... 💔"],
+  halftime: ["Mi-temps ! Tout peut encore changer ! ⏱️", "On est à la moitié, ça se joue maintenant ! 🎯"],
+  last_round: ["DERNIER TOUR ! Dernière chance ! 🏁", "C'est maintenant ou jamais ! ⚡"],
+  perfect: ["Score MAXIMUM ! Perfection ! 💯", "Impossible de faire mieux ! Chef d'œuvre ! 🎨"],
+  close_game: ["Les scores sont serrés ! 😰", "Ça va se jouer à rien ! 🔥"],
+  big_lead: ["Domination totale ! 💪", "L'écart se creuse... 📈"],
+  score_300: ["300 POINTS ! Score de légende ! 🌟", "Historique ! Au-dessus des 300 ! ⚡"],
+};
+const getCommentatorMsg = (type) => {
+  const msgs = COMMENTATOR_MESSAGES[type];
+  return msgs ? msgs[Math.floor(Math.random()*msgs.length)] : '';
+};
+
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
+
+const PLAYER_TITLES = {
+  getTitle: (stats) => {
+    if(!stats || stats.games === 0) return {title: "Débutant", icon: "🐣"};
+    const wr = stats.games > 0 ? stats.wins/stats.games : 0;
+    const ypr = stats.games > 0 ? stats.yamsCount/stats.games : 0;
+    const br = stats.games > 0 ? stats.bonusCount/stats.games : 0;
+    // Special titles first
+    if(stats.maxScore >= 350) return {title: "Dieu du Yams", icon: "⚡"};
+    if(stats.yamsCount >= 20) return {title: "Machine à Yams", icon: "🎰"};
+    if(wr >= 0.8 && stats.games >= 10) return {title: "Inarrêtable", icon: "💀"};
+    if(br >= 0.7 && stats.games >= 5) return {title: "Mr Bonus", icon: "🎁"};
+    if(stats.maxConsecutiveWins >= 5) return {title: "Série Noire", icon: "🔥"};
+    if(stats.currentStreak >= 3) return {title: "En Feu", icon: "🔥"};
+    // General titles by games played
+    if(stats.games >= 50 && wr >= 0.5) return {title: "Vétéran d'Élite", icon: "🎖️"};
+    if(stats.games >= 50) return {title: "Vétéran", icon: "👴"};
+    if(wr >= 0.6 && stats.games >= 10) return {title: "Le Chanceux", icon: "🍀"};
+    if(stats.avgScore >= 250) return {title: "Score Machine", icon: "📈"};
+    if(ypr >= 0.5) return {title: "Yams Addict", icon: "🎲"};
+    // Low performance titles
+    if(wr < 0.2 && stats.games >= 5) return {title: "Le Barreur Fou", icon: "🧱"};
+    if(stats.games >= 10 && wr < 0.35) return {title: "Éternel Second", icon: "🥈"};
+    if(stats.games >= 5) return {title: "Joueur Régulier", icon: "🎯"};
+    if(stats.games >= 1) return {title: "Apprenti", icon: "📖"};
+    return {title: "Débutant", icon: "🐣"};
+  }
+};
+
+
+const PARTY_CHALLENGES = [
+  { id: 'bonus', desc: 'Obtenir le bonus (+35)', icon: '🎁', check: (grid) => { const up = ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0); return up >= 63; }},
+  { id: 'yams', desc: 'Faire un YAMS', icon: '🎲', check: (grid) => parseInt(grid.yams) === 50 },
+  { id: 'full', desc: 'Faire un Full', icon: '🃏', check: (grid) => parseInt(grid.fullHouse) === 25 },
+  { id: 'grand', desc: 'Grande Suite !', icon: '🎯', check: (grid) => parseInt(grid.largeStraight) === 40 },
+  { id: 'no_zero', desc: 'Aucun zéro', icon: '💪', check: (grid) => { const cats = ['ones','twos','threes','fours','fives','sixes','threeOfKind','fourOfKind','fullHouse','smallStraight','largeStraight','yams','chance']; return cats.every(k => grid[k] !== undefined && parseInt(grid[k]) > 0); }},
+  { id: 'over250', desc: 'Dépasser 250 pts', icon: '📈', check: (grid, total) => total >= 250 },
+  { id: 'over300', desc: 'Dépasser 300 pts', icon: '🔥', check: (grid, total) => total >= 300 },
+  { id: 'top_upper', desc: 'Score sup. > 70', icon: '⬆️', check: (grid) => { const up = ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0); return up >= 70; }},
+];
 const DEFAULT_GAGES = ["Ranger le jeu tout seul 🧹", "Servir à boire à tout le monde 🥤", "Ne plus dire 'non' pendant 10 min 🤐", "Choisir la musique pour 1h 🎵", "Imiter une poule à chaque phrase 🐔", "Faire 10 pompes (ou squats) 💪", "Appeler le gagnant 'Mon Seigneur' 👑", "Jouer la prochaine partie les yeux fermés au lancer 🙈"];
 
 // --- UTILS ---
@@ -239,13 +327,36 @@ const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
     );
 };
 
+const ThemeParticles = ({ theme: t }) => {
+  const TC = THEMES_CONFIG[t];
+  if(!TC) return null;
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {Array.from({length:12},(_,i)=>i).map(i => (
+        <div key={i} className="absolute text-lg opacity-[0.04]" style={{
+          left: `${(i*8.3+5)%100}%`,
+          top: `-20px`,
+          animation: `theme-particle-fall ${18+i*3}s linear ${i*2.5}s infinite`,
+          fontSize: `${14+i%3*8}px`
+        }}>{TC.part}</div>
+      ))}
+    </div>
+  );
+};
+
 export default function YamsUltimateLegacy() {
   const [players,setPlayers]=useState(['Joueur 1','Joueur 2']);
   const [scores,setScores]=useState({});
   const [theme,setTheme]=useState('modern');
+  const [themeTransition, setThemeTransition] = useState(false);
+  const switchTheme = (newTheme) => { setThemeTransition(true); setTimeout(()=>{setTheme(newTheme);setTimeout(()=>setThemeTransition(false),300);},200); };
   const [showSettings,setShowSettings]=useState(false);
   const [gameHistory,setGameHistory]=useState([]);
   const [currentTab,setCurrentTab]=useState('game');
+  const [prevTab,setPrevTab]=useState('game');
+  const [tabDirection,setTabDirection]=useState('right');
+  const tabOrder=['game','rules','trophies','history','stats','gages'];
+  const switchTab=(newTab)=>{const oldIdx=tabOrder.indexOf(currentTab);const newIdx=tabOrder.indexOf(newTab);setTabDirection(newIdx>=oldIdx?'right':'left');setPrevTab(currentTab);setCurrentTab(newTab);};
   const [showEndGameModal,setShowEndGameModal]=useState(false);
   const [lastPlayerToPlay,setLastPlayerToPlay]=useState(null);
   const [showTurnWarning,setShowTurnWarning]=useState(null);
@@ -429,20 +540,36 @@ export default function YamsUltimateLegacy() {
         setGlobalXP(prev => prev + valInt);
         // FIRST BLOOD
         if(moveLog.length === 0 && !editMode) {
-            pushNotif({icon:'🩸',title:'FIRST BLOOD !',description:player+' ouvre le score avec '+valInt+' pts'});
+            pushNotif({icon:'🩸',title:'FIRST BLOOD !',description:getCommentatorMsg('first_blood')});
             
+        }
+        // PERSONAL RECORD DETECTION
+        if(!editMode && valInt > 0) {
+            const catId = category;
+            let prevBest = 0;
+            (gameHistory||[]).forEach(g => {
+                const grid = g.grid || {};
+                if(grid[player] && grid[player][catId] !== undefined) {
+                    const v = parseInt(grid[player][catId]) || 0;
+                    if(v > prevBest) prevBest = v;
+                }
+            });
+            if(valInt > prevBest && prevBest > 0) {
+                pushNotif({icon:'🏅',title:'RECORD PERSO !',description:player+' bat son record sur '+catName+' ('+prevBest+' → '+valInt+')'});
+            }
         }
         // PERFECT SCORE on a category (max possible)
         const catObj = categories.find(c=>c.id===category);
         if(catObj && catObj.max && valInt === catObj.max && !editMode && !showBonusFullscreen) {
-            pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'});
-            
+            pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'}, 4500);
+            showComment(getCommentatorMsg('perfect'));
         }
     }
     if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
     
     // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
+        showComment(getCommentatorMsg('yams'));
         setPendingYamsDetail({ player });
         setConfetti('gold');
         setShakeAnimation('yams');
@@ -451,13 +578,14 @@ export default function YamsUltimateLegacy() {
     } else if(value==='0') {
         setConfetti('sad'); 
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
+        showComment(getCommentatorMsg('barre'));
         setTimeout(()=>setConfetti(null),4000); 
     } else { 
         setConfetti(null); 
     }
 
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);}
+    if(oldUp<63&&newUp>=63){setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});showComment(getCommentatorMsg('bonus'));setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);}
     
     // BONUS LOST DETECTION
     if(categories.find(c=>c.id===category)?.upper && value !== '') {
@@ -467,7 +595,7 @@ export default function YamsUltimateLegacy() {
       const currentUpperSum = filledUpper.reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
       const allUpperFilled = emptyUpper.length === 0;
       if(allUpperFilled && currentUpperSum < 63) {
-        setShowBonusFullscreen({player,type:'lost'});
+        setShowBonusFullscreen({player,type:'lost'});showComment(getCommentatorMsg('bonus_lost'));
         setConfetti('sad');
         setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);
       } else if(!allUpperFilled && currentUpperSum < 63) {
@@ -493,6 +621,18 @@ export default function YamsUltimateLegacy() {
             }
         }
     }
+    // CLOSE GAME DETECTION
+    if(players.length>=2 && value !== '' && !editMode) {
+      const allTotals = players.map(p=>({name:p,total:categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[p]?.[c.id]||0),0)+categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[p]?.[c.id]||0),0)+(categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[p]?.[c.id]||0),0)>=63?35:0)})).sort((a,b)=>b.total-a.total);
+      const filledPct = players.reduce((s,p)=>s+playableCats.filter(c=>ns[p]?.[c.id]!==undefined).length,0) / (players.length*playableCats.length);
+      if(filledPct > 0.7 && allTotals.length >= 2 && allTotals[0].total - allTotals[1].total <= 10 && allTotals[0].total > 100) {
+        pushNotif({icon:'😰',title:'MATCH SERRÉ !',description:getCommentatorMsg('close_game')});
+      }
+      // BIG LEAD DETECTION
+      if(filledPct > 0.5 && allTotals.length >= 2 && allTotals[0].total - allTotals[1].total >= 50 && allTotals[0].name === player) {
+        pushNotif({icon:'💪',title:player+' DOMINE !',description:getCommentatorMsg('big_lead')});
+      }
+    }
     // COMEBACK DETECTION
     if(players.length>=2 && value !== '' && !editMode) {
       const oldLeader = players.reduce((best,p)=>calcTotal(p)>calcTotal(best)?p:best,players[0]);
@@ -501,10 +641,14 @@ export default function YamsUltimateLegacy() {
       if(newLeader.name === player && oldLeader !== player && newTotals.length > 1) {
         const wasLeading = newTotals.filter(p=>p.name!==player).some(p=>p.total<newLeader.total);
         if(wasLeading && !showBonusFullscreen) {
-          pushNotif({icon:'🔄',title:'COMEBACK !',description:player+' prend la tête !'});
+          pushNotif({icon:'🔄',title:'COMEBACK !',description:player+' — '+getCommentatorMsg('comeback')});
           
         }
       }
+      // BIG LEAD / CLOSE GAME detection
+      const gap = newLeader.total - newTotals.filter(p=>p.name!==newLeader.name).reduce((best,p)=>Math.max(best,p.total),0);
+      if(gap >= 80 && !showBonusFullscreen) { showComment(getCommentatorMsg('big_lead')); }
+      else if(gap <= 15 && gap > 0 && newTotals.every(p=>p.total>50) && !showBonusFullscreen) { showComment(getCommentatorMsg('close_game')); }
     }
     setScores(ns);saveCurrentGame(ns);
     if(editMode){ } else { 
@@ -512,6 +656,8 @@ export default function YamsUltimateLegacy() {
             setLastPlayerToPlay(player);
             setLastModifiedCell(cellKey);
             if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
+      // Random challenge
+      setGameChallenge(CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)]);
         } else {
             setLastPlayerToPlay(null);
             setLastModifiedCell(null);
@@ -538,13 +684,17 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null) => { 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);setCountdownMode(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
       // CHAOS MODE START ACTION FOR 1ST PLAYER
       if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
       saveCurrentGame({});
+      // Draw random challenge
+      const ch = PARTY_CHALLENGES[Math.floor(Math.random()*PARTY_CHALLENGES.length)];
+      setActiveChallenge(ch);
+      pushNotif({icon: ch.icon, title:'DÉFI DE LA PARTIE', description: ch.desc}, 5500);
   };
 
   const updateGameSeason = (id, newSeason) => {
@@ -573,14 +723,38 @@ export default function YamsUltimateLegacy() {
     const pct=filledCells/totalCells;
     if(pct>=0.5&&pct<0.55&&!showBonusFullscreen){
       const leader=players.reduce((best,p)=>calcTotal(p)>calcTotal(best)?p:best,players[0]);
-      pushNotif({icon:'⏱️',title:'MI-TEMPS !',description:leader+' mène avec '+calcTotal(leader)+' pts'});
+      const gap = calcTotal(leader) - calcTotal(players.filter(p=>p!==leader).reduce((best,p)=>calcTotal(p)>calcTotal(best)?p:best,players.filter(p=>p!==leader)[0]||leader));
+      const predPct = Math.min(95, Math.max(50, 50 + gap));
+      pushNotif({icon:'⏱️',title:'MI-TEMPS !',description:leader+' mène avec '+calcTotal(leader)+' pts — Prédiction: '+predPct+'% de chances de victoire'});
       
     }
   },[scores]);
 
   const [gameEndShown, setGameEndShown] = useState(false);
+  const [activeChallenge, setActiveChallenge] = useState(null);
+  const [countdownMode, setCountdownMode] = useState(false);
+  const [commentatorMsg, setCommentatorMsg] = useState(null);
+  const showComment = (msg) => { setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
+  const isHotStreak = (player) => {
+    const playerMoves = moveLog.filter(m=>m.player===player);
+    if(playerMoves.length < 3) return false;
+    const last3 = playerMoves.slice(-3);
+    return last3.every(m => parseInt(m.value) >= 15);
+  };
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal&&!showSuddenDeath&&!gameEndShown&&!showVictoryAnimation){
     setGameEndShown(true);
+    // Check challenges
+    if(activeChallenge) {
+      players.forEach(p => {
+        const grid = scores[p] || {};
+        const total = calcTotal(p);
+        try {
+          if(activeChallenge.check(grid, total)) {
+            pushNotif({icon:'🏆',title:'DÉFI RÉUSSI !',description:p+' a complété : '+activeChallenge.desc}, 5500);
+          }
+        } catch(e) {}
+      });
+    }
     const winners = getWinner();
     if(winners.length > 1 && players.length > 1) {
       // TIE! SUDDEN DEATH
@@ -620,6 +794,11 @@ export default function YamsUltimateLegacy() {
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
       const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0,suddenDeathWin:suddenDeathWinner===p,suddenDeathScore:scores[p]?.suddenDeathScore||null})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog)), suddenDeath: suddenDeathWinner ? true : false, suddenDeathWinner: suddenDeathWinner || null}; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
+      // MILESTONE CHECK
+      const gCount = nh.length;
+      if([10,25,50,100,200].includes(gCount)) {
+        setTimeout(()=>pushNotif({icon:'🎉',title:gCount+'ème PARTIE !',description:'Bravo, vous avez joué '+gCount+' parties au total !'},5500),1500);
+      }
       setGlobalXP(prev => prev + 100);
       resetGame(l ? l.name : null); 
   };
@@ -702,6 +881,32 @@ export default function YamsUltimateLegacy() {
       setLastPlayerBeforeEdit(lastPlayerToPlay);
   };
   
+
+  // GAME STORY GENERATOR
+  const generateGameStory = () => {
+    if(!moveLog || moveLog.length < 2) return [];
+    const moments = [];
+    const runningScores = {};
+    players.forEach(p => runningScores[p] = 0);
+    let leader = null;
+    moveLog.forEach((m, i) => {
+      runningScores[m.player] = (runningScores[m.player]||0) + (parseInt(m.value)||0);
+      const newLeader = Object.entries(runningScores).sort((a,b)=>b[1]-a[1])[0][0];
+      if(leader && newLeader !== leader && i > 0) {
+        moments.push({type:'lead',icon:'🔄',text:`${newLeader} prend la tête !`,detail:`${runningScores[newLeader]} pts`,turn:i});
+      }
+      leader = newLeader;
+      if(m.category === 'Yams') moments.push({type:'yams',icon:'🎲',text:`${m.player} fait un YAMS !`,detail:'+50 pts',turn:i});
+      if(parseInt(m.value) === 0) moments.push({type:'zero',icon:'❌',text:`${m.player} barre ${m.category}`,detail:'0 pts',turn:i});
+      if(parseInt(m.value) >= 25 && m.category !== 'Yams') moments.push({type:'big',icon:'💥',text:`${m.player} marque gros !`,detail:`+${m.value} pts sur ${m.category}`,turn:i});
+    });
+    // Keep max 6 highlights
+    return moments.sort((a,b) => {
+      const prio = {yams:3,lead:2,big:1,zero:0};
+      return (prio[b.type]||0) - (prio[a.type]||0);
+    }).slice(0, 6).sort((a,b) => a.turn - b.turn);
+  };
+
   // FIX REPLAY: Simple safe display function
   const getSafeReplayScore = (player, grid) => {
     if (!grid || !grid[player]) return 0;
@@ -722,6 +927,41 @@ export default function YamsUltimateLegacy() {
 
   // REPLAY RENDERER
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
+
+
+  // DYNAMIC PLAYER TITLES
+  const getPlayerTitle = (name) => {
+    const ps = playerStats.find(s=>s.name===name);
+    if(!ps || ps.games === 0) return {title:'Débutant',icon:'🆕'};
+    // Check specific strengths from history
+    const catTotals = {};
+    (filteredHistory||[]).forEach(g => {
+      const grid = g.grid || {};
+      if(grid[name]) {
+        Object.entries(grid[name]).forEach(([k,v]) => {
+          if(typeof v === 'number') catTotals[k] = (catTotals[k]||0) + v;
+        });
+      }
+    });
+    const bestCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
+    const catNames = {ones:'As',twos:'Deux',threes:'Trois',fours:'Quatre',fives:'Cinq',sixes:'Six',threeOfKind:'Brelan',fourOfKind:'Carré',fullHouse:'Full',smallStraight:'P.Suite',largeStraight:'G.Suite',yams:'Yams',chance:'Chance'};
+    
+    if(ps.currentStreak >= 5) return {title:'Inarrêtable',icon:'🔥'};
+    if(ps.maxScore >= 350) return {title:'Dieu du Yams',icon:'⚡'};
+    if(ps.maxScore >= 300) return {title:'Légende',icon:'🌟'};
+    if(ps.yamsCount >= 10) return {title:'Maître Yams',icon:'🎲'};
+    if(ps.wins >= 20) return {title:'Grand Champion',icon:'👑'};
+    if(ps.bonusCount >= ps.games * 0.7 && ps.games >= 5) return {title:'Chasseur de Bonus',icon:'🎁'};
+    if(ps.currentStreak >= 3) return {title:'En série',icon:'🔥'};
+    if(ps.wins >= 10) return {title:'Champion',icon:'🏆'};
+    if(ps.avgScore >= 220) return {title:'Stratège',icon:'🧠'};
+    if(bestCat && catNames[bestCat[0]]) return {title:'Roi des '+catNames[bestCat[0]],icon:'👑'};
+    if(ps.wins >= 5) return {title:'Compétiteur',icon:'⚔️'};
+    if(ps.games >= 20) return {title:'Vétéran',icon:'🛡️'};
+    if(ps.games >= 10) return {title:'Habitué',icon:'🎮'};
+    if(ps.wins >= 1) return {title:'Vainqueur',icon:'🥇'};
+    return {title:'Apprenti',icon:'📚'};
+  };
 
   // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles) - GESTION ÉGALITÉ
   const getRank = (playerName) => {
@@ -793,7 +1033,8 @@ export default function YamsUltimateLegacy() {
   };
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden'}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden '+(themeTransition?'opacity-0 scale-[0.99]':'opacity-100 scale-100')}>
+      <ThemeParticles theme={theme}/>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
         <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 modal-backdrop">
@@ -823,7 +1064,9 @@ export default function YamsUltimateLegacy() {
       )}
 
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
-      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=><div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{confetti==='gold'?['🎉','🎊','⭐','✨','🎯','🏆','👑','🥇'][Math.floor(Math.random()*8)]:confetti==='bonus'?['🎁','💰','✨','⭐','💎','🎊'][Math.floor(Math.random()*6)]:['💸','💵','💰','🤑'][Math.floor(Math.random()*4)]}</div>)}</div>}
+      {/* AMBIENT THEME PARTICLES */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-20">{[...Array(8)].map((_,i)=><div key={i} className="absolute text-lg" style={{left:Math.random()*100+'%',top:Math.random()*100+'%',animation:`float ${8+Math.random()*12}s ease-in-out ${Math.random()*8}s infinite alternate`,fontSize:(10+Math.random()*14)+'px'}}>{T.part}</div>)}</div>
+      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=><div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{confetti==='gold'?[T.part,'🎉','🎊','⭐','✨',T.part,'🏆',T.part][Math.floor(Math.random()*8)]:confetti==='bonus'?['🎁',T.part,'✨','⭐','💎',T.part][Math.floor(Math.random()*6)]:[T.part,'💸','💰',T.part][Math.floor(Math.random()*4)]}</div>)}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
       <style>{`
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
@@ -866,6 +1109,8 @@ export default function YamsUltimateLegacy() {
   @keyframes glow-pulse{0%,100%{box-shadow:0 0 5px var(--glow-color,rgba(255,255,255,0.1))}50%{box-shadow:0 0 25px var(--glow-color,rgba(255,255,255,0.15)),0 0 50px var(--glow-color,rgba(255,255,255,0.05))}}
   @keyframes gradient-x{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
   .gradient-x{background-size:200% 200%;animation:gradient-x 3s ease infinite}
+  @keyframes versus-glow{0%,100%{border-color:rgba(239,68,68,0.3)}50%{border-color:rgba(59,130,246,0.3)}}
+  .versus-glow{animation:versus-glow 3s ease-in-out infinite}
   @keyframes reveal-up{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0 0 0 0)}}
   .reveal-up{animation:reveal-up 0.6s cubic-bezier(0.22,1,0.36,1)}
   @keyframes bar-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -875,10 +1120,18 @@ export default function YamsUltimateLegacy() {
   .counter-roll{animation:counter-roll 0.5s cubic-bezier(0.22,1,0.36,1)}
   @keyframes card-lift{from{transform:translateY(0) scale(1);box-shadow:0 0 0 transparent}to{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 40px rgba(0,0,0,0.3)}}
   .hover-lift{transition:all 0.3s cubic-bezier(0.22,1,0.36,1)}.hover-lift:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 40px rgba(0,0,0,0.3)}
+  @keyframes pulse-ring{0%{box-shadow:0 0 0 0 var(--ring-color,rgba(168,85,247,0.4))}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .pulse-ring{animation:pulse-ring 2s infinite}
+  @keyframes slide-in-up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .slide-in-up{animation:slide-in-up 0.4s cubic-bezier(0.22,1,0.36,1)}
+  .countdown-active{animation:pulse-ring 1.5s infinite;--ring-color:rgba(239,68,68,0.3)}
   @keyframes sparkle{0%,100%{opacity:0;transform:scale(0) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(180deg)}}
   @keyframes text-reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
   .text-reveal{animation:text-reveal 0.8s cubic-bezier(0.22,1,0.36,1)}
-  .tab-enter{animation:stagger-in 0.45s cubic-bezier(0.22,1,0.36,1);}
+  .tab-enter{animation:tab-slide-in 0.4s cubic-bezier(0.22,1,0.36,1);}
+  @keyframes tab-slide-right{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes tab-slide-left{from{transform:translateX(-30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes tab-slide-in{from{transform:translateY(12px) scale(0.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
   @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
   @keyframes bounce-in{0%{transform:scale(0)}40%{transform:scale(1.15)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
   @keyframes modal-backdrop{from{backdrop-filter:blur(0px);opacity:0}to{backdrop-filter:blur(16px);opacity:1}}
@@ -889,6 +1142,8 @@ export default function YamsUltimateLegacy() {
   @keyframes winner-glow{0%,100%{text-shadow:0 0 20px rgba(250,204,21,0.5)}50%{text-shadow:0 0 40px rgba(250,204,21,0.8),0 0 80px rgba(250,204,21,0.3)}}
   .winner-glow{animation:winner-glow 2s ease-in-out infinite;}
   @keyframes dice-roll{0%{transform:rotate(0deg) scale(1)}25%{transform:rotate(90deg) scale(0.8)}50%{transform:rotate(180deg) scale(1.1)}75%{transform:rotate(270deg) scale(0.9)}100%{transform:rotate(360deg) scale(1)}}
+  @keyframes countdown-pulse{0%{border-color:rgba(239,68,68,0.3);box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{border-color:rgba(239,68,68,0.6);box-shadow:0 0 30px 0 rgba(239,68,68,0.2)}100%{border-color:rgba(239,68,68,0.3);box-shadow:0 0 0 0 rgba(239,68,68,0.4)}}
+  .countdown-active{animation:countdown-pulse 1.5s ease-in-out infinite}
   @keyframes ring-pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)}100%{box-shadow:0 0 0 14px rgba(74,222,128,0)}}
   .ring-pulse{animation:ring-pulse 1.5s infinite;}
   @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.3)}50%{box-shadow:0 0 40px rgba(255,215,0,0.6),0 0 80px rgba(255,215,0,0.2)}}
@@ -903,16 +1158,25 @@ export default function YamsUltimateLegacy() {
   @keyframes victory-text{0%{transform:scale(0) rotate(-10deg);opacity:0}50%{transform:scale(1.1) rotate(2deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
   @keyframes gradient-x{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
   .gradient-animate{background-size:200% 200%;animation:gradient-x 3s ease infinite;}
+  @keyframes theme-particle-fall{0%{transform:translateY(0) rotate(0deg);opacity:0.04}10%{opacity:0.06}50%{transform:translateY(50vh) rotate(180deg) translateX(30px);opacity:0.05}90%{opacity:0.04}100%{transform:translateY(110vh) rotate(360deg) translateX(-20px);opacity:0}}
   @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(1080deg);opacity:0}}
   @keyframes sad-pulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.2);opacity:0.8}}
+  @keyframes fire-glow{0%,100%{box-shadow:0 0 10px rgba(249,115,22,0.3),0 0 20px rgba(249,115,22,0.1)}50%{box-shadow:0 0 20px rgba(249,115,22,0.5),0 0 40px rgba(249,115,22,0.2)}}
+  .hot-streak{animation:fire-glow 1.5s ease-in-out infinite;border-color:rgba(249,115,22,0.5)!important}
   .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
   .glass-strong{background:rgba(255,255,255,0.06);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.12)}
   ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.25)}
   select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
   .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
 `}</style>
-      {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
-      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>🏆</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div></div></div>}
+      {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
+      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/85"><div className="text-center max-w-md">
+        <div className="relative inline-block mb-6"><div className="text-9xl" style={{animation:'trophy-float 2s ease-in-out infinite'}}>{playerAvatars[getWinner()[0]]||'🏆'}</div><div className="absolute -top-4 -left-4 text-3xl" style={{animation:'sparkle 2s ease-in-out infinite'}}>✨</div><div className="absolute -top-2 -right-6 text-2xl" style={{animation:'sparkle 2s ease-in-out infinite 0.5s'}}>⭐</div><div className="absolute -bottom-2 -right-2 text-3xl" style={{animation:'sparkle 2s ease-in-out infinite 1s'}}>✨</div></div>
+        <div className="text-5xl sm:text-6xl font-black text-white mb-3" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div>
+        <div className="text-3xl font-bold winner-glow mb-4" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div>
+        <div className="text-gray-400 text-sm" style={{animation:'fade-in-scale 0.4s ease-out 0.8s backwards'}}>{calcTotal(getWinner()[0])} points{getWinner().length===1&&playerStats.length>0?' — '+getPlayerTitle(playerStats.find(s=>s.name===getWinner()[0])||{}).title:''}</div>
+        <div className="flex justify-center gap-3 mt-6" style={{animation:'fade-in-scale 0.4s ease-out 1s backwards'}}>{['🎉','🎊','⭐','🏆','👑'].map((e,i)=><span key={i} className="text-3xl" style={{animation:`float ${1.5+i*0.3}s ease-in-out infinite ${i*0.2}s`}}>{e}</span>)}</div>
+      </div></div>}
 
       {/* ═══ SUDDEN DEATH MODAL ═══ */}
       {showSuddenDeath&&(
@@ -997,7 +1261,8 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 gradient-animate" style={{backgroundSize:'200% 200%'}}></div>
                   <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
                   <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
-                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-2">{getWinner()[0] || "..."}</div>
+                  {(()=>{const w=getWinner()[0];const pSt=playerStats.find(s=>s.name===w);const t=PLAYER_TITLES.getTitle(pSt);return <div className="text-sm font-bold text-yellow-300/70 mb-4 flex items-center justify-center gap-1"><span>{t.icon}</span>{t.title}</div>;})()}
                   
                   <div className="space-y-3 mb-8">
                     {players.map(p => (
@@ -1058,12 +1323,27 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
                   <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}><Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/></div>
                   <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>{suddenDeathWinner ? '⚔️ MORT SUBITE - WINNER' : 'THE WINNER IS'}</h2>
-                  <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
+                  <div className="text-4xl font-black uppercase mb-4 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
                   <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
                       <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
                       <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
                   </div>
                   {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
+                  {/* GAME STORY */}
+                  {generateGameStory().length > 0 && (
+                    <div className="mb-4 bg-white/5 rounded-2xl p-4 border border-white/10 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.65s backwards'}}>
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-center">📖 Moments Forts</div>
+                      <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                        {generateGameStory().map((m,mi)=>(
+                          <div key={mi} className="flex items-center gap-2 text-xs" style={{animation:`fade-in-scale 0.3s ease-out ${0.7+mi*0.08}s backwards`}}>
+                            <span className="text-base shrink-0">{m.icon}</span>
+                            <span className="text-gray-300 flex-1 truncate">{m.text}</span>
+                            <span className="text-white font-bold text-[10px] bg-white/10 px-2 py-0.5 rounded shrink-0">{m.detail}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.7s backwards'}}>
                       <button onClick={saveGameFromModal} className="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-black rounded-2xl shadow-xl hover:scale-[1.03] transition-all duration-200 hover:shadow-yellow-500/40 hover:shadow-2xl active:scale-[0.98]">✨ ENREGISTRER</button>
                       <div className="grid grid-cols-2 gap-2">
@@ -1079,7 +1359,7 @@ export default function YamsUltimateLegacy() {
 
       <div className="max-w-7xl mx-auto space-y-4">
         {/* HEADER + TABS */}
-        <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
+        <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6 '+(countdownMode?'countdown-active border-red-500/30':'border-white/10')}>
           {isGameStarted() && !isGameComplete() && !hideTotals && !fogMode && <div className={`h-1 w-full rounded-t-3xl ${getTensionColor()}`}></div>}
           <div className="flex items-center justify-between flex-wrap gap-4 mb-4 mt-2">
             <div className="flex items-center gap-4"><div className="text-5xl float-anim">🎲</div><div><h1 className="text-3xl sm:text-4xl font-black text-white bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent" style={{letterSpacing:'-0.02em'}}>YAMS</h1>
@@ -1091,7 +1371,7 @@ export default function YamsUltimateLegacy() {
             </div>
           </div>
           
-          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>setTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
+          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>switchTheme(k)} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
@@ -1174,12 +1454,12 @@ export default function YamsUltimateLegacy() {
               </div></div></div>}
           
           <div className="flex gap-2 mt-4 flex-wrap">
-            <button onClick={()=>setCurrentTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='game'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
-            <button onClick={()=>setCurrentTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='rules'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
-            <button onClick={()=>setCurrentTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='trophies'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
-            <button onClick={()=>setCurrentTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='history'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
-            <button onClick={()=>setCurrentTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='stats'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
-            <button onClick={()=>setCurrentTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='gages'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
+            <button onClick={()=>switchTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='game'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
+            <button onClick={()=>switchTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='rules'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
+            <button onClick={()=>switchTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='trophies'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
+            <button onClick={()=>switchTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='history'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
+            <button onClick={()=>switchTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='stats'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+            <button onClick={()=>switchTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='gages'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
           </div>
         </div>
 
@@ -1433,6 +1713,16 @@ export default function YamsUltimateLegacy() {
             </div>
 
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
+              
+            {/* CHALLENGE BANNER */}
+            {gameChallenge && !isGameComplete() && (
+              <div className={'bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 backdrop-blur-xl border border-amber-500/30 rounded-3xl p-4 flex items-center gap-4'} style={{animation:'card-appear 0.5s ease-out'}}>
+                <span className="text-4xl">{gameChallenge.icon}</span>
+                <div className="flex-1"><div className="text-amber-400 text-[10px] font-black uppercase tracking-widest">🎯 Défi de la Partie</div><div className="text-white font-black text-lg">{gameChallenge.name}</div><div className="text-gray-400 text-xs">{gameChallenge.desc}</div></div>
+                {players.map(p=>{const done=gameChallenge.check(scores,p,calcTotal,calcUpper);return <div key={p} className={`text-center px-3 py-2 rounded-xl ${done?'bg-green-500/20 border border-green-500/30':'bg-white/5 border border-white/10'}`}><div className="text-sm">{playerAvatars[p]||'👤'}</div><div className={`text-xs font-bold ${done?'text-green-400':'text-gray-500'}`}>{done?'✅':'⏳'}</div></div>;})}
+              </div>
+            )}
+
               <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                 <h2 className="text-2xl font-black text-white flex items-center gap-3" style={{animation:"fade-in-scale 0.4s ease-out 0.1s backwards"}}><span className="text-3xl">📝</span>Feuille de score</h2>
                 <div className="flex gap-2 flex-wrap items-center">
@@ -1441,14 +1731,25 @@ export default function YamsUltimateLegacy() {
                 </div>
               </div>
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
+              {activeChallenge && isGameStarted() && !isGameComplete() && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-400/30 rounded-2xl backdrop-blur-sm" style={{animation:'card-appear 0.5s ease-out'}}>
+                    <div className="flex items-center gap-3"><span className="text-xl">{activeChallenge.icon}</span><div><span className="text-amber-300 font-bold text-xs uppercase tracking-wider">Défi en cours</span><span className="text-white font-semibold text-sm ml-2">{activeChallenge.desc}</span></div></div>
+                </div>
+              )}
               {/* PANNEAU INFORMATION JOUEUR */}
+              {/* COMMENTATEUR IA */}
+              {commentatorMsg && (
+                  <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 via-fuchsia-500/10 to-purple-500/10 border border-purple-400/30 rounded-2xl backdrop-blur-sm" style={{animation:'card-appear 0.4s ease-out'}}>
+                      <div className="flex items-center gap-3"><span className="text-2xl">🎙️</span><span className="text-purple-300 font-semibold text-sm italic">{commentatorMsg}</span></div>
+                  </div>
+              )}
               {!editMode && !isGameComplete() && (
                   <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                           <div className="flex items-center gap-3">
                               <span className="text-2xl">🎯</span>
                               <div>
-                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black">{getNextPlayer()}</span></div>
+                                  <div className="text-white font-bold">Prochain joueur: <span className="text-green-400 text-xl font-black" style={{animation:'fade-in-scale 0.3s ease-out'}}>{getNextPlayer()}</span></div>
                                   {getEmptyCells(getNextPlayer()).length>0 && (
                                       <div className="text-gray-400 text-sm mt-1">Il reste: <span className="text-orange-400 font-semibold">{getEmptyCells(getNextPlayer()).map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span></div>
                                   )}
@@ -1463,7 +1764,7 @@ export default function YamsUltimateLegacy() {
 
               <div className="overflow-x-auto"><table className="w-full table-fixed"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className="border-b border-white/20">
                 <th className="text-left p-3 text-white font-bold sticky left-0 bg-gradient-to-r from-slate-900 to-slate-800 z-10">Catégorie</th>
-                {players.map((p,i)=><th key={i} className={`p-0 transition-all duration-500 ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50 shadow-lg shadow-yellow-400/10':''}`}>
+                {players.map((p,i)=><th key={i} className={`p-0 transition-all duration-500 ${getNextPlayer()===p&&!editMode?'bg-white/10 ring-2 ring-inset ring-yellow-400/50 shadow-lg shadow-yellow-400/10':''} ${isHotStreak(p)?'hot-streak':''}`}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {/* REAL-TIME RANKING BADGE - LEFT OF AVATAR */}
                         <div className="flex items-center justify-center gap-2">
@@ -1481,6 +1782,7 @@ export default function YamsUltimateLegacy() {
                         </div>
                         
                         <div className="text-sm mt-1">{p}</div>
+                        {playerStats.length>0&&<div className="text-[9px] text-gray-500 font-semibold">{(()=>{const t=getPlayerTitle(playerStats.find(s=>s.name===p)||{});return t.icon+' '+t.title;})()}</div>}
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
                         {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
                     </div>
@@ -1508,7 +1810,7 @@ export default function YamsUltimateLegacy() {
           <div className="space-y-4 tab-enter"><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2 items-center"><select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="bg-black/40 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none hover:bg-black/60 transition-colors"><option value="Toutes">🌍 Toutes Saisons</option><option value="Aucune">Hors Saison</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {filteredHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredHistory[filteredHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredHistory[0]?.date}</div></div></div>}
-            {filteredHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm hover-lift">
+            {filteredHistory.length===0?<div className="text-center py-20" style={{animation:"card-appear 0.5s ease-out"}}><div className="text-8xl mb-6 opacity-20" style={{animation:"trophy-float 4s ease-in-out infinite"}}>📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm hover-lift">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
@@ -1547,7 +1849,7 @@ export default function YamsUltimateLegacy() {
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
                 {g.moveLog && g.moveLog.length > 1 && <GameFlowChartMini moveLog={g.moveLog} gamePlayers={g.players||g.results}/>}
-                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="flex items-baseline gap-1.5"><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>{pl.suddenDeathScore&&<span className="text-sm font-bold text-red-400">({pl.suddenDeathScore})</span>}</span></div>})}</div></div>)}</div>}
+                <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl" style={{animation:'trophy-float 2s ease-in-out infinite'}}>👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="flex items-baseline gap-1.5"><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>{pl.suddenDeathScore&&<span className="text-sm font-bold text-red-400">({pl.suddenDeathScore})</span>}</span></div>})}</div></div>)}</div>}
           </div></div>
         )}
 
@@ -1627,6 +1929,8 @@ export default function YamsUltimateLegacy() {
                                         </div>
                                         <div className="mb-4">
                                             <h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3>
+                                            {(()=>{const pSt=playerStats.find(s=>s.name===entry.name);const t=PLAYER_TITLES.getTitle(pSt);return <div className="text-xs font-bold opacity-70 flex items-center gap-1" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}><span>{t.icon}</span>{t.title}</div>;})()}
+                                            <div className="flex items-center gap-1.5 flex-wrap"><span className="text-sm">{getPlayerTitle(pStat).icon}</span><span className="text-xs text-gray-400 font-bold italic">{getPlayerTitle(pStat).title}</span></div>
                                             <div className="flex items-baseline gap-2">
                                                 <span className="text-4xl font-black counter-roll" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span>
                                                 <span className="text-gray-400 text-sm font-semibold">victoires</span>
@@ -1655,6 +1959,7 @@ export default function YamsUltimateLegacy() {
                 )}
 
                 {/* 3. RECORDS & STATS (GRILLE DE 4) - SAFE MODE */}
+                {/* Staggered card-appear applied */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-blue-400"/> Records & Stats</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1679,6 +1984,56 @@ export default function YamsUltimateLegacy() {
                         );
                     })()}
                   </div>
+                </div>
+
+                {/* 3b. HEATMAP DES SCORES */}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-black text-white flex items-center gap-3">🗺️ Carte des Performances</h2>
+                        <span className="text-xs text-gray-500 flex items-center gap-2">🟢 Bon <span className="w-3 h-3 rounded bg-green-500/60 inline-block"></span> 🔴 Faible <span className="w-3 h-3 rounded bg-red-500/60 inline-block"></span></span>
+                    </div>
+                    {(()=>{
+                        const pNames = [...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))].slice(0,6);
+                        const heatData = {};
+                        pNames.forEach(name => { heatData[name] = {}; });
+                        playableCats.forEach(cat => {
+                            pNames.forEach(name => {
+                                let sum=0, count=0;
+                                filteredHistory.forEach(g => {
+                                    const grid = g.grid || {};
+                                    if(grid[name] && grid[name][cat.id] !== undefined) {
+                                        sum += parseInt(grid[name][cat.id]) || 0;
+                                        count++;
+                                    }
+                                });
+                                heatData[name][cat.id] = count > 0 ? Math.round(sum/count) : null;
+                            });
+                        });
+                        if(pNames.length === 0) return <div className="text-gray-500 text-center py-4">Jouez des parties pour voir la heatmap</div>;
+                        return (
+                        <div className="overflow-x-auto -mx-2">
+                            <table className="w-full text-xs">
+                                <thead><tr><th className="p-1.5 text-left text-gray-500 font-bold">Cat.</th>{pNames.map(n=><th key={n} className="p-1.5 text-center text-gray-400 font-bold">{playerAvatars[n]||'👤'}<div className="text-[9px] truncate max-w-[50px]">{n}</div></th>)}</tr></thead>
+                                <tbody>{playableCats.map((cat,ci)=>{
+                                    const maxVal = cat.max || 30;
+                                    return (
+                                    <tr key={cat.id} style={{animation:`card-appear 0.3s ease-out ${ci*0.03}s backwards`}}>
+                                        <td className="p-1.5 text-gray-400 font-bold whitespace-nowrap"><span className="mr-1">{cat.icon}</span>{cat.name}</td>
+                                        {pNames.map(n=>{
+                                            const avg = heatData[n]?.[cat.id];
+                                            if(avg === null) return <td key={n} className="p-1 text-center"><div className="w-full h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-700">—</div></td>;
+                                            const pct = Math.min(1, avg / maxVal);
+                                            const r = Math.round(239 * (1-pct) + 34 * pct);
+                                            const g = Math.round(68 * (1-pct) + 197 * pct);
+                                            const b = Math.round(68 * (1-pct) + 94 * pct);
+                                            return <td key={n} className="p-1 text-center"><div className="w-full h-8 rounded-lg flex items-center justify-center font-black text-white transition-all duration-300 hover:scale-110" style={{backgroundColor:`rgba(${r},${g},${b},0.5)`,border:`1px solid rgba(${r},${g},${b},0.3)`}}>{avg}</div></td>;
+                                        })}
+                                    </tr>);
+                                })}</tbody>
+                            </table>
+                        </div>
+                        );
+                    })()}
                 </div>
 
                 {/* 4. YAMS STATS & YAMS CACHÉS */}
@@ -1843,9 +2198,58 @@ export default function YamsUltimateLegacy() {
                     </div>
                 )}
 
-                {/* 5. FACE A FACE V2 (SAFE MODE) */}
+                {/* 5. FACE A FACE V2 + RIVALITÉS (SAFE MODE) */}
+                {/* AUTO-RIVALRY DETECTION */}
+                {(()=>{
+                    if(!filteredHistory || filteredHistory.length < 5) return null;
+                    const pairs = {};
+                    filteredHistory.forEach(g => {
+                        const ps = (g.players||g.results||[]);
+                        for(let i=0;i<ps.length;i++) for(let j=i+1;j<ps.length;j++) {
+                            const key = [ps[i].name,ps[j].name].sort().join(' vs ');
+                            if(!pairs[key]) pairs[key] = {games:0,p1:ps[i].name,p2:ps[j].name,p1w:0,p2w:0};
+                            pairs[key].games++;
+                            if(ps[i].isWinner) pairs[key].p1w++;
+                            if(ps[j].isWinner) pairs[key].p2w++;
+                        }
+                    });
+                    const topRivalry = Object.values(pairs).sort((a,b)=>b.games-a.games)[0];
+                    if(!topRivalry || topRivalry.games < 3) return null;
+                    const closeness = (1 - Math.abs(topRivalry.p1w-topRivalry.p2w)/topRivalry.games)*100;
+                    return (
+                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'} style={{animation:'card-appear 0.5s ease-out'}}>
+                        <h2 className="text-xl font-black text-white mb-4 flex items-center gap-3">🔥 Rivalité la Plus Intense</h2>
+                        <div className="flex items-center justify-between bg-gradient-to-r from-red-500/10 via-transparent to-blue-500/10 p-4 rounded-2xl border border-white/5">
+                            <div className="text-center flex-1">
+                                <div className="text-3xl mb-1">{playerAvatars[topRivalry.p1]||'👤'}</div>
+                                <div className="text-white font-bold text-sm">{topRivalry.p1}</div>
+                                <div className="text-2xl font-black" style={{color:T.primary}}>{topRivalry.p1w}</div>
+                            </div>
+                            <div className="text-center px-4">
+                                <div className="text-4xl font-black text-white/20 mb-1">⚡</div>
+                                <div className="text-xs text-gray-400">{topRivalry.games} matchs</div>
+                                <div className="text-xs font-bold mt-1 px-2 py-0.5 rounded-full" style={{backgroundColor:closeness>=70?'rgba(239,68,68,0.2)':'rgba(59,130,246,0.2)',color:closeness>=70?'#fca5a5':'#93c5fd'}}>{Math.round(closeness)}% serré</div>
+                            </div>
+                            <div className="text-center flex-1">
+                                <div className="text-3xl mb-1">{playerAvatars[topRivalry.p2]||'👤'}</div>
+                                <div className="text-white font-bold text-sm">{topRivalry.p2}</div>
+                                <div className="text-2xl font-black" style={{color:T.secondary}}>{topRivalry.p2w}</div>
+                            </div>
+                        </div>
+                    </div>
+                    );
+                })()}
+
                 <div className={'bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 backdrop-blur-xl rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
+                    <h2 className="text-3xl font-black text-white mb-4 flex items-center gap-3"><Swords className="text-blue-400"/> Duel : Face-à-Face V2</h2>
+                    {(()=>{
+                        if(!versus.p1 || !versus.p2 || versus.p1===versus.p2) return null;
+                        const games = filteredHistory.filter(g=>{const ps=(g.players||g.results||[]).map(p=>p.name);return ps.includes(versus.p1)&&ps.includes(versus.p2);});
+                        if(games.length < 3) return null;
+                        const avgGap = Math.round(games.reduce((s,g)=>{const ps=g.players||g.results||[];const s1=(ps.find(p=>p.name===versus.p1)||{}).score||0;const s2=(ps.find(p=>p.name===versus.p2)||{}).score||0;return s+Math.abs(s1-s2);},0)/games.length);
+                        const intensity = avgGap < 15 ? '🔥🔥🔥' : avgGap < 30 ? '🔥🔥' : '🔥';
+                        return <div className="mb-4 p-3 bg-gradient-to-r from-red-500/10 via-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl text-center versus-glow" style={{animation:'card-appear 0.4s ease-out'}}><span className="text-orange-400 font-black text-sm">RIVALITÉ {intensity}</span><span className="text-gray-400 text-xs ml-3">Écart moyen: {avgGap} pts sur {games.length} duels</span></div>;
+                    })()}
                     
                     <div className="flex gap-4 items-center justify-center mb-8">
                         <select onChange={e=>setVersus({...versus, p1: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
@@ -1853,6 +2257,14 @@ export default function YamsUltimateLegacy() {
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500" style={{animation:"float 2s ease-in-out infinite",textShadow:"0 0 20px rgba(255,255,255,0.1)"}}>VS</div>
+                                {(()=>{
+                                    const total = p1Wins+p2Wins;
+                                    if(total < 3) return null;
+                                    const closeness = total > 0 ? (1 - Math.abs(p1Wins-p2Wins)/total) : 0;
+                                    const intensity = Math.round(closeness * 100);
+                                    const label = intensity >= 80 ? '🔥 Rivalité Intense' : intensity >= 50 ? '⚡ Bonne Rivalité' : '📊 Duel en cours';
+                                    return <div className="text-[10px] font-bold text-center px-2 py-0.5 rounded-full bg-white/5 border border-white/10 mt-1" style={{animation:'fade-in-scale 0.5s ease-out 0.5s backwards'}}>{label} ({intensity}%)</div>;
+                                })()}
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
                             <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
@@ -1956,6 +2368,136 @@ export default function YamsUltimateLegacy() {
 
                 
                 
+
+                {/* 6. HEATMAP DES SCORES */}
+                {filteredHistory.length > 0 && (
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6 card-appear'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><BarChart3 className="text-emerald-400"/> Heatmap des Scores</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead><tr><th className="p-2 text-left text-gray-400 font-bold">Catégorie</th>
+                            {[...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))].slice(0,6).map(n=><th key={n} className="p-2 text-center text-gray-400 font-bold">{n}</th>)}
+                            </tr></thead>
+                            <tbody>{playableCats.filter(c=>c.name).map(cat=>{
+                                const allPlayers = [...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))].slice(0,6);
+                                const avgByCat = {};
+                                allPlayers.forEach(name => {
+                                    let sum=0, count=0;
+                                    filteredHistory.forEach(g=>{const grid=g.grid||{};if(grid[name]&&grid[name][cat.id]!==undefined){sum+=parseInt(grid[name][cat.id])||0;count++;}});
+                                    avgByCat[name] = count > 0 ? Math.round(sum/count) : null;
+                                });
+                                const maxVal = cat.max || Math.max(1,...Object.values(avgByCat).filter(v=>v!==null));
+                                return (<tr key={cat.id} className="border-t border-white/5">
+                                    <td className="p-2 font-bold text-white flex items-center gap-2"><span>{cat.icon}</span>{cat.name}</td>
+                                    {allPlayers.map(name=>{
+                                        const v = avgByCat[name];
+                                        if(v===null) return <td key={name} className="p-2 text-center text-gray-700">-</td>;
+                                        const pct = Math.min(100,Math.round((v/maxVal)*100));
+                                        const hue = pct < 30 ? 0 : pct < 60 ? 40 : 120;
+                                        return <td key={name} className="p-2 text-center">
+                                            <div className="mx-auto w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm transition-all hover:scale-110" style={{backgroundColor:`hsla(${hue},70%,40%,${0.3+pct*0.007})`,color:`hsl(${hue},80%,75%)`}}>{v}</div>
+                                        </td>;
+                                    })}
+                                </tr>);
+                            })}</tbody>
+                        </table>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mt-4 text-[10px] text-gray-500">
+                        <span>Faible</span>
+                        <div className="flex gap-0.5">{[0,25,50,75,100].map(p=><div key={p} className="w-4 h-3 rounded-sm" style={{backgroundColor:`hsla(${p<30?0:p<60?40:120},70%,40%,${0.3+p*0.007})`}}></div>)}</div>
+                        <span>Fort</span>
+                        <span className="ml-3 text-gray-600">(moyenne par partie)</span>
+                    </div>
+                </div>
+                )}
+
+                {/* 7. RECORDS PAR CATÉGORIE */}
+                {filteredHistory.length > 0 && (
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6 card-appear'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Trophy className="text-orange-400"/> Records par Catégorie</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {playableCats.filter(c=>c.name).map((cat,ci) => {
+                            let bestScore = 0, bestPlayer = null;
+                            filteredHistory.forEach(g => {
+                                const grid = g.grid || {};
+                                Object.entries(grid).forEach(([name, pGrid]) => {
+                                    if(pGrid[cat.id] !== undefined && parseInt(pGrid[cat.id]) > bestScore) {
+                                        bestScore = parseInt(pGrid[cat.id]);
+                                        bestPlayer = name;
+                                    }
+                                });
+                            });
+                            const isPerfect = cat.max && bestScore === cat.max;
+                            return (
+                                <div key={cat.id} className={`p-3 rounded-2xl border text-center transition-all duration-300 hover-lift ${isPerfect?'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-500/30':'bg-white/5 border-white/10'}`} style={{animation:`card-appear 0.35s cubic-bezier(0.22,1,0.36,1) ${ci*0.04}s backwards`}}>
+                                    <div className="text-2xl mb-1">{cat.icon}</div>
+                                    <div className="text-[10px] text-gray-400 font-bold uppercase">{cat.name}</div>
+                                    <div className={`text-2xl font-black ${isPerfect?'text-yellow-400':'text-white'}`}>{bestScore > 0 ? bestScore : '-'}</div>
+                                    {bestPlayer && <div className="text-[10px] font-bold mt-1" style={{color:T.primary}}>{playerAvatars[bestPlayer]||'👤'} {bestPlayer}</div>}
+                                    {isPerfect && <div className="text-[9px] text-yellow-400 font-black mt-0.5">💯 MAX</div>}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                )}
+
+                {/* 8. ÉVOLUTION DES SCORES */}
+                {filteredHistory.length >= 3 && (
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6 card-appear'}>
+                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-cyan-400"/> Évolution des Scores</h2>
+                    {(()=>{
+                        const allPlayers = [...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))].slice(0,6);
+                        const last20 = filteredHistory.slice(0,20).reverse();
+                        const colors = ['#6366f1','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899'];
+                        const w=600, h=200, px=35, py=25;
+                        let maxS=0;
+                        const seriesData = allPlayers.map(name => {
+                            return last20.map(g => {
+                                const p = (g.players||g.results||[]).find(pp=>pp.name===name);
+                                const s = p ? p.score : null;
+                                if(s && s > maxS) maxS = s;
+                                return s;
+                            });
+                        });
+                        maxS = Math.max(maxS, 100);
+                        return (
+                        <div>
+                            <div className="w-full bg-black/20 rounded-2xl p-3 border border-white/5">
+                            <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{height:'180px'}} preserveAspectRatio="none">
+                                {[0,0.25,0.5,0.75,1].map(p=>{const y=py+p*(h-2*py);return <g key={p}><line x1={px} y1={y} x2={w-px} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/><text x={px-5} y={y+4} fontSize="9" fill="rgba(255,255,255,0.2)" textAnchor="end">{Math.round(maxS*(1-p))}</text></g>;})}
+                                {allPlayers.map((name,pi)=>{
+                                    const data = seriesData[pi];
+                                    const points = data.map((val,i) => {
+                                        if(val === null) return null;
+                                        const x = px + (i/(last20.length-1)) * (w-2*px);
+                                        const y = (h-py) - ((val/maxS)*(h-2*py));
+                                        return {x,y,val};
+                                    }).filter(Boolean);
+                                    if(points.length < 2) return null;
+                                    const pts = points.map(p=>`${p.x},${p.y}`).join(' ');
+                                    const color = colors[pi%colors.length];
+                                    const last = points[points.length-1];
+                                    return (<g key={name}>
+                                        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{filter:`drop-shadow(0 0 4px ${color}40)`}}/>
+                                        {points.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="3" fill={color} stroke="#0f172a" strokeWidth="1.5" className="opacity-0 hover:opacity-100 transition-opacity"/>)}
+                                        <circle cx={last.x} cy={last.y} r="4" fill={color} stroke="#fff" strokeWidth="1.5"/>
+                                        <text x={last.x+8} y={last.y+4} fontSize="10" fill={color} fontWeight="bold">{last.val}</text>
+                                    </g>);
+                                })}
+                            </svg>
+                            </div>
+                            <div className="flex justify-center gap-4 mt-3 flex-wrap">
+                                {allPlayers.map((n,i)=><div key={n} className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full" style={{backgroundColor:colors[i%colors.length]}}></div><span className="text-xs text-gray-400 font-bold">{n}</span></div>)}
+                            </div>
+                            <div className="text-center text-[10px] text-gray-600 mt-2">Dernières {Math.min(20, filteredHistory.length)} parties</div>
+                        </div>
+                        );
+                    })()}
+                </div>
+                )}
+
+
                 {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group card-appear">
                      <div className="mb-6 relative z-10">
