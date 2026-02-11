@@ -167,33 +167,6 @@ const getCommentatorMsg = (type) => {
 
 const playableCats = categories.filter(c=>!c.upperTotal&&!c.bonus&&!c.divider&&!c.upperGrandTotal&&!c.lowerTotal&&!c.upperDivider&&!c.upperHeader);
 
-const PLAYER_TITLES = {
-  getTitle: (stats) => {
-    if(!stats || stats.games === 0) return {title: "Débutant", icon: "🐣"};
-    const wr = stats.games > 0 ? stats.wins/stats.games : 0;
-    const ypr = stats.games > 0 ? stats.yamsCount/stats.games : 0;
-    const br = stats.games > 0 ? stats.bonusCount/stats.games : 0;
-    // Special titles first
-    if(stats.maxScore >= 350) return {title: "Dieu du Yams", icon: "⚡"};
-    if(stats.yamsCount >= 20) return {title: "Machine à Yams", icon: "🎰"};
-    if(wr >= 0.8 && stats.games >= 10) return {title: "Inarrêtable", icon: "💀"};
-    if(br >= 0.7 && stats.games >= 5) return {title: "Mr Bonus", icon: "🎁"};
-    if(stats.maxConsecutiveWins >= 5) return {title: "Série Noire", icon: "🔥"};
-    if(stats.currentStreak >= 3) return {title: "En Feu", icon: "🔥"};
-    // General titles by games played
-    if(stats.games >= 50 && wr >= 0.5) return {title: "Vétéran d'Élite", icon: "🎖️"};
-    if(stats.games >= 50) return {title: "Vétéran", icon: "👴"};
-    if(wr >= 0.6 && stats.games >= 10) return {title: "Le Chanceux", icon: "🍀"};
-    if(stats.avgScore >= 250) return {title: "Score Machine", icon: "📈"};
-    if(ypr >= 0.5) return {title: "Yams Addict", icon: "🎲"};
-    // Low performance titles
-    if(wr < 0.2 && stats.games >= 5) return {title: "Le Barreur Fou", icon: "🧱"};
-    if(stats.games >= 10 && wr < 0.35) return {title: "Éternel Second", icon: "🥈"};
-    if(stats.games >= 5) return {title: "Joueur Régulier", icon: "🎯"};
-    if(stats.games >= 1) return {title: "Apprenti", icon: "📖"};
-    return {title: "Débutant", icon: "🐣"};
-  }
-};
 
 
 const PARTY_CHALLENGES = [
@@ -406,6 +379,7 @@ export default function YamsUltimateLegacy() {
     setNotifQueue(prev => [...prev.slice(-2), {...notif, id}]);
     setTimeout(() => setNotifQueue(prev => prev.filter(n => n.id !== id)), duration);
   };
+  const showComment = (msg) => { if(!msg) return; setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
   const [confetti,setConfetti]=useState(null);
   const [shakeAnimation,setShakeAnimation]=useState(null);
   const [hideTotals,setHideTotals]=useState(false);
@@ -769,8 +743,6 @@ export default function YamsUltimateLegacy() {
     }
   },[scores]);
 
-  const showComment = (msg) => { if(!msg) return; setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
-
   const isHotStreak = (player) => {
     const playerMoves = moveLog.filter(m=>m.player===player);
     if(playerMoves.length < 3) return false;
@@ -965,39 +937,6 @@ export default function YamsUltimateLegacy() {
   if(replayGame) { const replayPlayers = Object.keys(replayGame.grid || {}); return ( <div className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6'}> <div className="max-w-7xl mx-auto space-y-4"> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 flex justify-between items-center'}> <div className="flex items-center gap-4"> <button onClick={stopPlayback} className="p-2 bg-white/10 rounded-full hover:bg-white/20"><ArrowLeft /></button> <div><h2 className="text-xl font-bold text-white">Replay du {replayGame.date}</h2><p className="text-sm text-gray-400">Lecture seule</p></div> </div> {replayGame.moveLog && <button onClick={playTimelapse} disabled={isReplaying} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">{isReplaying ? <Pause size={18}/> : <Play size={18}/>} Timelapse</button>} </div> <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 overflow-x-auto'}> <table className="w-full table-fixed"> <thead><tr className="border-b border-white/20"><th className="text-left p-3 text-white">Catégorie</th>{replayPlayers.map(p=><th key={p} className="p-3 text-center text-white">{p}</th>)}</tr></thead> <tbody>{categories.map(cat => {if(cat.upperHeader || cat.upperDivider || cat.divider) return null;if(cat.upperTotal || cat.bonus || cat.upperGrandTotal || cat.lowerTotal) return null;return (<tr key={cat.id} className="border-b border-white/10 hover:bg-white/5"><td className="p-3 text-gray-300 font-bold">{cat.name}</td>{replayPlayers.map(p => (<td key={p} className="p-2 text-center font-bold text-white">{(replayGame.grid && replayGame.grid[p] && replayGame.grid[p][cat.id] !== undefined) ? replayGame.grid[p][cat.id] : '-'}</td>))}</tr>);})}<tr className="bg-white/10 font-black"><td className="p-4 text-white">TOTAL</td>{replayPlayers.map(p=><td key={p} className="p-4 text-center text-white text-xl">{getSafeReplayScore(p, replayGame.grid)}</td>)}</tr></tbody> </table> </div> </div> </div> ); }
 
 
-  // DYNAMIC PLAYER TITLES
-  const getPlayerTitle = (name) => {
-    const ps = playerStats.find(s=>s.name===name);
-    if(!ps || ps.games === 0) return {title:'Débutant',icon:'🆕'};
-    // Check specific strengths from history
-    const catTotals = {};
-    (filteredHistory||[]).forEach(g => {
-      const grid = g.grid || {};
-      if(grid[name]) {
-        Object.entries(grid[name]).forEach(([k,v]) => {
-          if(typeof v === 'number') catTotals[k] = (catTotals[k]||0) + v;
-        });
-      }
-    });
-    const bestCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
-    const catNames = {ones:'As',twos:'Deux',threes:'Trois',fours:'Quatre',fives:'Cinq',sixes:'Six',threeOfKind:'Brelan',fourOfKind:'Carré',fullHouse:'Full',smallStraight:'P.Suite',largeStraight:'G.Suite',yams:'Yams',chance:'Chance'};
-    
-    if(ps.currentStreak >= 5) return {title:'Inarrêtable',icon:'🔥'};
-    if(ps.maxScore >= 350) return {title:'Dieu du Yams',icon:'⚡'};
-    if(ps.maxScore >= 300) return {title:'Légende',icon:'🌟'};
-    if(ps.yamsCount >= 10) return {title:'Maître Yams',icon:'🎲'};
-    if(ps.wins >= 20) return {title:'Grand Champion',icon:'👑'};
-    if(ps.bonusCount >= ps.games * 0.7 && ps.games >= 5) return {title:'Chasseur de Bonus',icon:'🎁'};
-    if(ps.currentStreak >= 3) return {title:'En série',icon:'🔥'};
-    if(ps.wins >= 10) return {title:'Champion',icon:'🏆'};
-    if(ps.avgScore >= 220) return {title:'Stratège',icon:'🧠'};
-    if(bestCat && catNames[bestCat[0]]) return {title:'Roi des '+catNames[bestCat[0]],icon:'👑'};
-    if(ps.wins >= 5) return {title:'Compétiteur',icon:'⚔️'};
-    if(ps.games >= 20) return {title:'Vétéran',icon:'🛡️'};
-    if(ps.games >= 10) return {title:'Habitué',icon:'🎮'};
-    if(ps.wins >= 1) return {title:'Vainqueur',icon:'🥇'};
-    return {title:'Apprenti',icon:'📚'};
-  };
 
   // CALCULER LE CLASSEMENT TEMPS RÉEL (Pour les médailles) - GESTION ÉGALITÉ
   const getRank = (playerName) => {
@@ -1299,7 +1238,7 @@ export default function YamsUltimateLegacy() {
                   <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
                   <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
                   <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-2">{getWinner()[0] || "..."}</div>
-                  {(()=>{const w=getWinner()[0];const pSt=playerStats.find(s=>s.name===w);const t=PLAYER_TITLES.getTitle(pSt);return <div className="text-sm font-bold text-yellow-300/70 mb-4 flex items-center justify-center gap-1"><span>{t.icon}</span>{t.title}</div>;})()}
+                  {(()=>{const w=getWinner()[0];const pSt=playerStats.find(s=>s.name===w);const t=getPlayerTitle(pSt);return <div className="text-sm font-bold text-yellow-300/70 mb-4 flex items-center justify-center gap-1"><span>{t.icon}</span>{t.title}</div>;})()}
                   
                   <div className="space-y-3 mb-8">
                     {players.map(p => (
@@ -1966,8 +1905,7 @@ export default function YamsUltimateLegacy() {
                                         </div>
                                         <div className="mb-4">
                                             <h3 className="text-2xl font-black text-white mb-1">{entry.name}</h3>
-                                            {(()=>{const pSt=playerStats.find(s=>s.name===entry.name);const t=PLAYER_TITLES.getTitle(pSt);return <div className="text-xs font-bold opacity-70 flex items-center gap-1" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}><span>{t.icon}</span>{t.title}</div>;})()}
-                                            <div className="flex items-center gap-1.5 flex-wrap"><span className="text-sm">{getPlayerTitle(pStat).icon}</span><span className="text-xs text-gray-400 font-bold italic">{getPlayerTitle(pStat).title}</span></div>
+                                            {(()=>{const pSt=playerStats.find(s=>s.name===entry.name);const t=getPlayerTitle(pSt);return <div className="text-xs font-bold opacity-70 flex items-center gap-1" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}><span>{t.icon}</span>{t.title}</div>;})()}
                                             <div className="flex items-baseline gap-2">
                                                 <span className="text-4xl font-black counter-roll" style={{color:isTop?'#fbbf24':COLORS[idx%COLORS.length]}}>{entry.value}</span>
                                                 <span className="text-gray-400 text-sm font-semibold">victoires</span>
