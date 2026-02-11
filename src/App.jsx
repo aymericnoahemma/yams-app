@@ -1,26 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-
-class YamsErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',padding:'2rem',fontFamily:'sans-serif'}}>
-          <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🎲</div>
-          <h1 style={{color:'#fff',fontSize:'1.5rem',fontWeight:'900',marginBottom:'0.5rem'}}>Oups ! Erreur YAMS</h1>
-          <p style={{color:'#94a3b8',marginBottom:'1rem',textAlign:'center'}}>Une erreur est survenue. Essayez de rafraîchir la page.</p>
-          <pre style={{color:'#f87171',fontSize:'0.7rem',maxWidth:'90vw',overflow:'auto',background:'#1e293b',padding:'1rem',borderRadius:'0.75rem',marginBottom:'1rem'}}>{this.state.error?.toString()}</pre>
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            <button onClick={()=>window.location.reload()} style={{padding:'0.75rem 1.5rem',background:'#6366f1',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Rafraîchir</button>
-            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{padding:'0.75rem 1.5rem',background:'#dc2626',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Reset Total</button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
@@ -31,6 +9,29 @@ import {
   Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel,
   Heart, Terminal, Snowflake
 } from "lucide-react";
+
+class YamsErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('YAMS Error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',padding:'2rem',fontFamily:'sans-serif'}}>
+          <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🎲</div>
+          <h1 style={{color:'#fff',fontSize:'1.5rem',fontWeight:'900',marginBottom:'0.5rem'}}>Oups ! Erreur YAMS</h1>
+          <p style={{color:'#94a3b8',marginBottom:'1rem',textAlign:'center'}}>Une erreur est survenue. Essayez de rafraîchir la page.</p>
+          <pre style={{color:'#f87171',fontSize:'0.7rem',maxWidth:'90vw',overflow:'auto',background:'#1e293b',padding:'1rem',borderRadius:'0.75rem',marginBottom:'1rem',whiteSpace:'pre-wrap'}}>{this.state.error?.toString()}{'\n'}{this.state.error?.stack}</pre>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <button onClick={()=>window.location.reload()} style={{padding:'0.75rem 1.5rem',background:'#6366f1',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Rafraîchir</button>
+            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{padding:'0.75rem 1.5rem',background:'#dc2626',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Reset Total</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // --- CONFIGURATION ---
 const categories = [
