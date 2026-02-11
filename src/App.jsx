@@ -1,4 +1,26 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+
+class YamsErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',padding:'2rem',fontFamily:'sans-serif'}}>
+          <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🎲</div>
+          <h1 style={{color:'#fff',fontSize:'1.5rem',fontWeight:'900',marginBottom:'0.5rem'}}>Oups ! Erreur YAMS</h1>
+          <p style={{color:'#94a3b8',marginBottom:'1rem',textAlign:'center'}}>Une erreur est survenue. Essayez de rafraîchir la page.</p>
+          <pre style={{color:'#f87171',fontSize:'0.7rem',maxWidth:'90vw',overflow:'auto',background:'#1e293b',padding:'1rem',borderRadius:'0.75rem',marginBottom:'1rem'}}>{this.state.error?.toString()}</pre>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <button onClick={()=>window.location.reload()} style={{padding:'0.75rem 1.5rem',background:'#6366f1',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Rafraîchir</button>
+            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{padding:'0.75rem 1.5rem',background:'#dc2626',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Reset Total</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { 
   Plus, Trash2, RotateCcw, Settings, Edit3, Check, X, Download, Share2, 
   Undo2, BookOpen, Dices, Eye, ArrowLeft, Trophy, Medal, Activity, Lock, 
@@ -278,11 +300,23 @@ const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
     const pNames = gamePlayers.map(p => p.name || p);
     const history = [];
     const currentScores = {};
-    pNames.forEach(p => currentScores[p] = 0);
+    const upperSums = {};
+    const bonusAdded = {};
+    pNames.forEach(p => { currentScores[p] = 0; upperSums[p] = 0; bonusAdded[p] = false; });
     history.push({ ...currentScores });
     moveLog.forEach((move) => {
         if(currentScores[move.player] !== undefined) {
-            currentScores[move.player] += parseInt(move.value) || 0;
+            const val = parseInt(move.value) || 0;
+            currentScores[move.player] += val;
+            // Track upper section for bonus
+            const catObj = categories.find(c => c.name === move.category);
+            if(catObj && catObj.upper) {
+                upperSums[move.player] += val;
+                if(upperSums[move.player] >= 63 && !bonusAdded[move.player]) {
+                    bonusAdded[move.player] = true;
+                    currentScores[move.player] += 35;
+                }
+            }
             history.push({ ...currentScores });
         }
     });
@@ -429,6 +463,10 @@ export default function YamsUltimateLegacy() {
   const [showBonusFullscreen, setShowBonusFullscreen] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [gameEndShown, setGameEndShown] = useState(false);
+  const [activeChallenge, setActiveChallenge] = useState(null);
+  const [countdownMode, setCountdownMode] = useState(false);
+  const [commentatorMsg, setCommentatorMsg] = useState(null);
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
 
@@ -730,11 +768,8 @@ export default function YamsUltimateLegacy() {
     }
   },[scores]);
 
-  const [gameEndShown, setGameEndShown] = useState(false);
-  const [activeChallenge, setActiveChallenge] = useState(null);
-  const [countdownMode, setCountdownMode] = useState(false);
-  const [commentatorMsg, setCommentatorMsg] = useState(null);
-  const showComment = (msg) => { setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
+  const showComment = (msg) => { if(!msg) return; setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
+
   const isHotStreak = (player) => {
     const playerMoves = moveLog.filter(m=>m.player===player);
     if(playerMoves.length < 3) return false;
@@ -1033,6 +1068,7 @@ export default function YamsUltimateLegacy() {
   };
 
   return (
+    <YamsErrorBoundary>
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden '+(themeTransition?'opacity-0 scale-[0.99]':'opacity-100 scale-100')}>
       <ThemeParticles theme={theme}/>
       {/* MODAL YAMS DETAIL */}
@@ -2117,7 +2153,7 @@ export default function YamsUltimateLegacy() {
                             </div>
 
                             {/* Barres horizontales */}
-                            <div className="space-y-3 mb-6">
+                            <div className="space-y-3">
                                 {upperCatConfig.map((cat,ci) => {
                                     const count = globalHidden[cat.id]||0;
                                     const pct = Math.round((count/maxHidden)*100);
@@ -2134,31 +2170,6 @@ export default function YamsUltimateLegacy() {
                                     );
                                 })}
                             </div>
-
-                            {/* Per player cards */}
-                            {sortedPlayers.length > 0 && target !== 'GLOBAL' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {sortedPlayers.map(([name, data], idx) => (
-                                    <div key={name} className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/5" style={{animation:`card-appear 0.4s cubic-bezier(0.22,1,0.36,1) ${idx*0.08}s backwards`}}>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-white font-bold flex items-center gap-2"><span className="text-xl">{playerAvatars[name]||'👤'}</span> {name}</span>
-                                            <span className="text-purple-400 font-black text-lg">{data.total}</span>
-                                        </div>
-                                        <div className="flex gap-1.5">
-                                            {upperCatConfig.map(cat => {
-                                                const c = data.details[cat.id]||0;
-                                                return (
-                                                <div key={cat.id} className={`flex-1 text-center py-2 rounded-xl text-xs font-bold transition-all duration-300 ${c > 0 ? 'bg-gradient-to-b from-purple-500/30 to-purple-500/10 text-purple-300 border border-purple-500/30 shadow-sm shadow-purple-500/10' : 'bg-black/20 text-gray-700 border border-white/5'}`}>
-                                                    <div className="text-sm">{cat.icon}</div>
-                                                    <div className="font-black">{c}</div>
-                                                </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            )}
                         </div>
                         </>
                         );
@@ -2554,5 +2565,6 @@ export default function YamsUltimateLegacy() {
 
       </div>
     </div>
+    </YamsErrorBoundary>
   );
 }
