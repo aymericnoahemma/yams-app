@@ -10,29 +10,6 @@ import {
   Heart, Terminal, Snowflake
 } from "lucide-react";
 
-class YamsErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error('YAMS Error:', error, info); }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',padding:'2rem',fontFamily:'sans-serif'}}>
-          <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🎲</div>
-          <h1 style={{color:'#fff',fontSize:'1.5rem',fontWeight:'900',marginBottom:'0.5rem'}}>Oups ! Erreur YAMS</h1>
-          <p style={{color:'#94a3b8',marginBottom:'1rem',textAlign:'center'}}>Une erreur est survenue. Essayez de rafraîchir la page.</p>
-          <pre style={{color:'#f87171',fontSize:'0.7rem',maxWidth:'90vw',overflow:'auto',background:'#1e293b',padding:'1rem',borderRadius:'0.75rem',marginBottom:'1rem',whiteSpace:'pre-wrap'}}>{this.state.error?.toString()}</pre>
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            <button onClick={()=>window.location.reload()} style={{padding:'0.75rem 1.5rem',background:'#6366f1',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Rafraîchir</button>
-            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{padding:'0.75rem 1.5rem',background:'#dc2626',color:'#fff',border:'none',borderRadius:'0.75rem',fontWeight:'700',cursor:'pointer'}}>Reset Total</button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 // --- CONFIGURATION ---
 const categories = [
   { id:"upperHeader", upperHeader:true },
@@ -57,62 +34,40 @@ const categories = [
   { id:"lowerTotal", name:"Total Inf.", lowerTotal:true, icon:"🔽", color:"#ec4899" }
 ];
 
-// COMMENTATEUR IA
-const COMMENTATOR_MESSAGES = {
-  first_blood: ["Et c'est parti ! 🎬", "Le bal est ouvert ! 💃", "Premier sang ! ⚔️"],
-  yams: ["YAAAAMS ! C'est de la folie ! 🤯", "Incroyable ! Les dés sont en feu ! 🎲🔥", "On n'y croit pas ! YAMS ! 🎰"],
-  barre: ["Aïe, un zéro... ça fait mal 😬", "Barré ! La tuile... 🧱", "Ça pique un peu là... 🌵"],
-  comeback: ["RENVERSEMENT ! 🔄", "Le phénix renaît ! 🔥", "On n'y croyait plus ! 😱"],
-  bonus: ["BONUS ! +35 points ! 🎁", "Le bonus est dans la poche ! 💰", "Magnifique partie sup ! ⭐"],
-  bonus_lost: ["Le bonus s'envole... 😢", "Raté pour le bonus... 💔"],
-  halftime: ["Mi-temps ! Tout peut changer ! ⏱️", "À la moitié, ça se joue maintenant ! 🎯"],
-  last_round: ["DERNIER TOUR ! Dernière chance ! 🏁", "C'est maintenant ou jamais ! ⚡"],
-  perfect: ["Score MAXIMUM ! Perfection ! 💯", "Impossible de faire mieux ! 🎨"],
-  close_game: ["Les scores sont serrés ! 😰", "Ça va se jouer à rien ! 🔥"],
-  big_lead: ["Domination totale ! 💪", "L'écart se creuse... 📈"],
-  score_300: ["300 POINTS ! Légendaire ! 🌟", "Historique ! Au-dessus des 300 ! ⚡"],
-  record: ["RECORD PERSONNEL battu ! 🏅", "Nouveau record ! Impressionnant ! 📈"],
-};
-const getCommentatorMsg = (type) => {
-  const msgs = COMMENTATOR_MESSAGES[type];
-  return msgs ? msgs[Math.floor(Math.random()*msgs.length)] : '';
-};
-
-// TITRES DYNAMIQUES
-const DYNAMIC_TITLES = {
-  legend: { title: "Légende Vivante", icon: "⚡", condition: (s) => s.maxScore >= 350 },
-  dominator: { title: "Le Dominateur", icon: "👑", condition: (s) => s.games >= 10 && (s.wins/s.games) >= 0.7 },
-  yams_machine: { title: "Machine à Yams", icon: "🎰", condition: (s) => s.yamsCount >= 5 },
-  comeback_king: { title: "Le Phénix", icon: "🔥", condition: (s) => s.currentStreak >= 3 },
-  mr_bonus: { title: "Mr Bonus", icon: "🎁", condition: (s) => s.bonusRate >= 60 },
-  sniper: { title: "Le Sniper", icon: "🎯", condition: (s) => s.maxScore >= 300 },
-  regular: { title: "Le Régulier", icon: "📏", condition: (s) => s.games >= 20 },
-  chanceux: { title: "Le Chanceux", icon: "🍀", condition: (s) => s.games >= 5 && (s.wins/s.games) >= 0.5 && (s.avgScore||0) < 200 },
-  veteran: { title: "Le Vétéran", icon: "🧙", condition: (s) => s.games >= 50 },
-  unlucky: { title: "La Poisse", icon: "🐈‍⬛", condition: (s) => s.games >= 5 && s.wins === 0 },
-  mid_player: { title: "Éternel Second", icon: "🥈", condition: (s) => s.games >= 10 && (s.wins/s.games) < 0.3 && s.wins > 0 },
-  rookie: { title: "Le Débutant", icon: "🌱", condition: (s) => s.games <= 3 },
-};
-const getPlayerTitle = (stat) => {
-  if(!stat || !stat.games) return { title: "Nouveau", icon: "🆕" };
-  const order = ['legend','dominator','yams_machine','comeback_king','mr_bonus','sniper','veteran','regular','chanceux','mid_player','unlucky','rookie'];
-  for(const key of order) {
-    try { if(DYNAMIC_TITLES[key].condition(stat)) return DYNAMIC_TITLES[key]; } catch(e) {}
-  }
-  return { title: "Joueur", icon: "🎲" };
-};
-
 // DÉFIS DE PARTIE
 const PARTY_CHALLENGES = [
-  { id: 'bonus', desc: 'Obtenir le bonus (+35)', icon: '🎁', check: (grid) => { const up = ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0); return up >= 63; }},
-  { id: 'yams', desc: 'Faire un YAMS', icon: '🎲', check: (grid) => parseInt(grid.yams) === 50 },
-  { id: 'full', desc: 'Faire un Full', icon: '🃏', check: (grid) => parseInt(grid.fullHouse) === 25 },
-  { id: 'grand', desc: 'Grande Suite', icon: '🎯', check: (grid) => parseInt(grid.largeStraight) === 40 },
-  { id: 'no_zero', desc: 'Aucun zéro !', icon: '💪', check: (grid) => { const cats = ['ones','twos','threes','fours','fives','sixes','threeOfKind','fourOfKind','fullHouse','smallStraight','largeStraight','yams','chance']; return cats.every(k => grid[k] !== undefined && parseInt(grid[k]) > 0); }},
-  { id: 'over250', desc: 'Dépasser 250 pts', icon: '📈', check: (grid, total) => total >= 250 },
-  { id: 'over300', desc: 'Dépasser 300 pts', icon: '🔥', check: (grid, total) => total >= 300 },
-  { id: 'top_upper', desc: 'Score sup. > 70', icon: '⬆️', check: (grid) => { const up = ['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0); return up >= 70; }},
+  { id:'bonus', desc:'Obtenir le bonus (+35)', icon:'🎁', check:(grid)=>{const up=['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0);return up>=63;}},
+  { id:'yams', desc:'Faire un YAMS', icon:'🎲', check:(grid)=>parseInt(grid.yams)===50},
+  { id:'full', desc:'Faire un Full', icon:'🃏', check:(grid)=>parseInt(grid.fullHouse)===25},
+  { id:'grand', desc:'Grande Suite', icon:'🎯', check:(grid)=>parseInt(grid.largeStraight)===40},
+  { id:'no_zero', desc:'Aucun zéro !', icon:'💪', check:(grid)=>{const cats=['ones','twos','threes','fours','fives','sixes','threeOfKind','fourOfKind','fullHouse','smallStraight','largeStraight','yams','chance'];return cats.every(k=>grid[k]!==undefined&&parseInt(grid[k])>0);}},
+  { id:'over250', desc:'Dépasser 250 pts', icon:'📈', check:(g,t)=>t>=250},
+  { id:'over300', desc:'Dépasser 300 pts', icon:'🔥', check:(g,t)=>t>=300},
+  { id:'top_upper', desc:'Score sup. > 70', icon:'⬆️', check:(grid)=>{const up=['ones','twos','threes','fours','fives','sixes'].reduce((s,k)=>s+(parseInt(grid[k])||0),0);return up>=70;}},
 ];
+
+// TITRES DYNAMIQUES
+const getPlayerTitle = (stat) => {
+  if(!stat || !stat.games) return {title:"Nouveau",icon:"🆕"};
+  const wr = stat.games>0 ? stat.wins/stat.games : 0;
+  const br = stat.bonusRate||0;
+  const mcw = stat.maxConsecutiveWins||0;
+  if(stat.maxScore>=350) return {title:"Dieu du Yams",icon:"⚡"};
+  if((stat.yamsCount||0)>=20) return {title:"Machine à Yams",icon:"🎰"};
+  if(wr>=0.8&&stat.games>=10) return {title:"Inarrêtable",icon:"💀"};
+  if(br>=70&&stat.games>=5) return {title:"Mr Bonus",icon:"🎁"};
+  if(mcw>=5) return {title:"Série Noire",icon:"🔥"};
+  if((stat.currentStreak||0)>=3) return {title:"En Feu",icon:"🔥"};
+  if(stat.games>=50&&wr>=0.5) return {title:"Vétéran d'Élite",icon:"🎖️"};
+  if(stat.games>=50) return {title:"Vétéran",icon:"🧙"};
+  if(wr>=0.6&&stat.games>=10) return {title:"Le Chanceux",icon:"🍀"};
+  if((stat.avgScore||0)>=250) return {title:"Score Machine",icon:"📈"};
+  if(wr<0.2&&stat.games>=5) return {title:"Le Barreur Fou",icon:"🧱"};
+  if(stat.games>=10&&wr<0.35) return {title:"Éternel Second",icon:"🥈"};
+  if(stat.games>=5) return {title:"Joueur Régulier",icon:"🎯"};
+  if(stat.games>=1) return {title:"Apprenti",icon:"📖"};
+  return {title:"Débutant",icon:"🐣"};
+};
 
 const THEMES_CONFIG = {
   modern: { name: "Modern Dark", primary: "#6366f1", secondary: "#8b5cf6", bg: "from-slate-950 via-indigo-950 to-slate-950", card: "from-slate-900/90 to-slate-800/90", glow: "shadow-indigo-500/20", icon: <Monitor size={16}/>, part: "✨" },
@@ -271,22 +226,10 @@ const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
     const history = [];
     const currentScores = {};
     pNames.forEach(p => currentScores[p] = 0);
-    const upperSums = {};
-    const bonusAdded = {};
-    pNames.forEach(p => { upperSums[p] = 0; bonusAdded[p] = false; });
     history.push({ ...currentScores });
     moveLog.forEach((move) => {
         if(currentScores[move.player] !== undefined) {
-            const val = parseInt(move.value) || 0;
-            currentScores[move.player] += val;
-            const catObj = categories.find(ct => ct.name === move.category);
-            if(catObj && catObj.upper) {
-                upperSums[move.player] += val;
-                if(upperSums[move.player] >= 63 && !bonusAdded[move.player]) {
-                    bonusAdded[move.player] = true;
-                    currentScores[move.player] += 35;
-                }
-            }
+            currentScores[move.player] += parseInt(move.value) || 0;
             history.push({ ...currentScores });
         }
     });
@@ -331,19 +274,17 @@ const GameFlowChartMini = ({ moveLog, gamePlayers }) => {
     );
 };
 
-
-const ThemeParticles = ({ themeKey }) => {
-  const T = THEMES_CONFIG[themeKey];
-  if(!T) return null;
+const ThemeParticles = ({themeKey}) => {
+  const TC = THEMES_CONFIG[themeKey];
+  if(!TC) return null;
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {Array.from({length:12},(_,i)=>i).map(i => (
+      {Array.from({length:12},(_,i)=>i).map(i=>(
         <div key={i} className="absolute opacity-[0.04]" style={{
-          left: `${(i*8.3+5)%100}%`,
-          top: '-20px',
-          animation: `theme-particle-fall ${18+i*3}s linear ${i*2.5}s infinite`,
-          fontSize: `${14+i%3*8}px`
-        }}>{T.part}</div>
+          left:`${(i*8.3+5)%100}%`,top:'-20px',
+          animation:`theme-particle-fall ${18+i*3}s linear ${i*2.5}s infinite`,
+          fontSize:`${14+i%3*8}px`
+        }}>{TC.part}</div>
       ))}
     </div>
   );
@@ -369,22 +310,6 @@ export default function YamsUltimateLegacy() {
     const id = Date.now() + Math.random();
     setNotifQueue(prev => [...prev.slice(-2), {...notif, id}]);
     setTimeout(() => setNotifQueue(prev => prev.filter(n => n.id !== id)), duration);
-  };
-  const showComment = (msg) => { if(!msg) return; setCommentatorMsg(msg); setTimeout(()=>setCommentatorMsg(null), 5000); };
-  const playSound = (type) => {
-    if(!soundEnabled) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      gain.gain.value = 0.1;
-      if(type === 'yams') { osc.frequency.value = 880; gain.gain.value = 0.15; }
-      else if(type === 'popup') { osc.frequency.value = 660; }
-      else if(type === 'victory') { osc.frequency.value = 523; }
-      else { osc.frequency.value = 440; }
-      osc.start(); osc.stop(ctx.currentTime + 0.15);
-    } catch(e) {}
   };
   const [confetti,setConfetti]=useState(null);
   const [shakeAnimation,setShakeAnimation]=useState(null);
@@ -445,10 +370,8 @@ export default function YamsUltimateLegacy() {
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [gameEndShown, setGameEndShown] = useState(false);
-  const [commentatorMsg, setCommentatorMsg] = useState(null);
   const [activeChallenge, setActiveChallenge] = useState(null);
   const [themeTransition, setThemeTransition] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
 
@@ -548,7 +471,7 @@ export default function YamsUltimateLegacy() {
       const filledAfter = players.reduce((s,p)=>s+playableCats.filter(c=>afterScores[p]?.[c.id]!==undefined).length,0);
       const totalCells = players.length * playableCats.length;
       if(totalCells - filledAfter <= players.length && totalCells - filledAfter > 0) {
-        setTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});showComment(getCommentatorMsg('last_round'));},800);
+        setTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});},800);
       }
     }
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
@@ -561,29 +484,18 @@ export default function YamsUltimateLegacy() {
         // FIRST BLOOD
         if(moveLog.length === 0 && !editMode) {
             pushNotif({icon:'🩸',title:'FIRST BLOOD !',description:player+' ouvre le score avec '+valInt+' pts'});
-        }
-        // PERSONAL RECORD DETECTION
-        if(!editMode && valInt > 0) {
-            const catId = category;
-            let prevBest = 0;
-            (gameHistory||[]).forEach(g => {
-                const grid = g.grid || {};
-                if(grid[player] && grid[player][catId] !== undefined) {
-                    const v = parseInt(grid[player][catId]) || 0;
-                    if(v > prevBest) prevBest = v;
-                }
-            });
-            if(valInt > prevBest && prevBest > 0) {
-                pushNotif({icon:'🏅',title:'RECORD PERSO !',description:player+' bat son record sur '+catName+' ('+prevBest+' → '+valInt+')'});
-                showComment(getCommentatorMsg('record'));
-            }
             
+        }
+        // PERSONAL RECORD per category
+        if(!editMode && valInt > 0) {
+            let prevBest = 0;
+            (gameHistory||[]).forEach(g=>{const grid=g.grid||{};if(grid[player]&&grid[player][category]!==undefined){const v=parseInt(grid[player][category])||0;if(v>prevBest)prevBest=v;}});
+            if(valInt>prevBest&&prevBest>0) pushNotif({icon:'🏅',title:'RECORD PERSO !',description:player+' bat son record sur '+catName+' ('+prevBest+' → '+valInt+')'},4500);
         }
         // PERFECT SCORE on a category (max possible)
         const catObj = categories.find(c=>c.id===category);
         if(catObj && catObj.max && valInt === catObj.max && !editMode && !showBonusFullscreen) {
             pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'});
-            showComment(getCommentatorMsg('perfect'));
             
         }
     }
@@ -591,7 +503,6 @@ export default function YamsUltimateLegacy() {
     
     // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
-        showComment(getCommentatorMsg('yams')); playSound('yams');
         setPendingYamsDetail({ player });
         setConfetti('gold');
         setShakeAnimation('yams');
@@ -599,15 +510,14 @@ export default function YamsUltimateLegacy() {
         setTimeout(()=>{setConfetti(null);setShakeAnimation(null);},4500);
     } else if(value==='0') {
         setConfetti('sad'); 
-        showComment(getCommentatorMsg('barre'));
-            pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
+        pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
         setTimeout(()=>setConfetti(null),4000); 
     } else { 
         setConfetti(null); 
     }
 
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'}); showComment(getCommentatorMsg('bonus'));setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);}
+    if(oldUp<63&&newUp>=63){setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);}
     
     // BONUS LOST DETECTION
     if(categories.find(c=>c.id===category)?.upper && value !== '') {
@@ -617,7 +527,7 @@ export default function YamsUltimateLegacy() {
       const currentUpperSum = filledUpper.reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
       const allUpperFilled = emptyUpper.length === 0;
       if(allUpperFilled && currentUpperSum < 63) {
-        setShowBonusFullscreen({player,type:'lost'}); showComment(getCommentatorMsg('bonus_lost'));
+        setShowBonusFullscreen({player,type:'lost'});
         setConfetti('sad');
         setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);
       } else if(!allUpperFilled && currentUpperSum < 63) {
@@ -652,7 +562,6 @@ export default function YamsUltimateLegacy() {
         const wasLeading = newTotals.filter(p=>p.name!==player).some(p=>p.total<newLeader.total);
         if(wasLeading && !showBonusFullscreen) {
           pushNotif({icon:'🔄',title:'COMEBACK !',description:player+' prend la tête !'});
-          showComment(getCommentatorMsg('comeback'));
           
         }
       }
@@ -696,10 +605,9 @@ export default function YamsUltimateLegacy() {
       // CHAOS MODE START ACTION FOR 1ST PLAYER
       if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
       saveCurrentGame({});
-      // Draw random challenge
       const ch = PARTY_CHALLENGES[Math.floor(Math.random()*PARTY_CHALLENGES.length)];
       setActiveChallenge(ch);
-      pushNotif({icon: ch.icon, title:'DÉFI DE LA PARTIE', description: ch.desc}, 5500);
+      pushNotif({icon:ch.icon,title:'DÉFI DE LA PARTIE',description:ch.desc},5500);
   };
 
   const updateGameSeason = (id, newSeason) => {
@@ -729,20 +637,14 @@ export default function YamsUltimateLegacy() {
     if(pct>=0.5&&pct<0.55&&!showBonusFullscreen){
       const leader=players.reduce((best,p)=>calcTotal(p)>calcTotal(best)?p:best,players[0]);
       pushNotif({icon:'⏱️',title:'MI-TEMPS !',description:leader+' mène avec '+calcTotal(leader)+' pts'});
-      showComment(getCommentatorMsg('halftime'));
       
     }
   },[scores]);
 
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal&&!showSuddenDeath&&!gameEndShown&&!showVictoryAnimation){
     setGameEndShown(true);
-    if(activeChallenge) {
-      players.forEach(p => {
-        const grid = scores[p] || {};
-        const total = calcTotal(p);
-        try { if(activeChallenge.check(grid, total)) pushNotif({icon:'🏆',title:'DÉFI RÉUSSI !',description:p+' : '+activeChallenge.desc}, 5500); } catch(e) {}
-      });
-    }
+    // Check challenges
+    if(activeChallenge){players.forEach(p=>{try{const grid=scores[p]||{};const total=calcTotal(p);if(activeChallenge.check(grid,total))pushNotif({icon:'🏆',title:'DÉFI RÉUSSI !',description:p+' : '+activeChallenge.desc},5500);}catch(e){}});}
     const winners = getWinner();
     if(winners.length > 1 && players.length > 1) {
       // TIE! SUDDEN DEATH
@@ -955,8 +857,7 @@ export default function YamsUltimateLegacy() {
   };
 
   return (
-    <YamsErrorBoundary>
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden '+(themeTransition?'opacity-0 scale-[0.99]':'opacity-100 scale-100')+''}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden '+(themeTransition?'opacity-0 scale-[0.99]':'opacity-100 scale-100')}>
       <ThemeParticles themeKey={theme}/>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
@@ -1077,8 +978,7 @@ export default function YamsUltimateLegacy() {
   .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
 `}</style>
       {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
-      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>{playerAvatars[getWinner()[0]]||'🏆'}</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div>
-        {getWinner().length===1&&<div className="text-gray-400 text-sm mt-1" style={{animation:'fade-in-scale 0.4s ease-out 0.8s backwards'}}>{(()=>{const t=getPlayerTitle(playerStats.find(s=>s.name===getWinner()[0]));return t.icon+' '+t.title;})()}</div>}</div></div>}
+      {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>{playerAvatars[getWinner()[0]]||'🏆'}</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div>{getWinner().length===1&&<div className="text-gray-400 text-sm mt-2" style={{animation:'fade-in-scale 0.4s ease-out 0.8s backwards'}}>{(()=>{const t=getPlayerTitle(playerStats.find(s=>s.name===getWinner()[0]));return t.icon+' '+t.title;})()}</div>}</div></div>}
 
       {/* ═══ SUDDEN DEATH MODAL ═══ */}
       {showSuddenDeath&&(
@@ -1163,7 +1063,8 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 gradient-animate" style={{backgroundSize:'200% 200%'}}></div>
                   <div className="flex justify-center mb-4"><div className="p-4 bg-white/5 rounded-full border border-white/10"><Crown size={48} className="text-yellow-400"/></div></div>
                   <h2 className="text-3xl font-black text-white mb-1 uppercase tracking-widest">Vainqueur</h2>
-                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-6">{getWinner()[0] || "..."}</div>
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 mb-2">{getWinner()[0] || "..."}</div>
+                  {(()=>{const w=getWinner()[0];const t=getPlayerTitle(playerStats.find(s=>s.name===w));return <div className="text-sm font-bold text-yellow-300/70 mb-4 flex items-center justify-center gap-1"><span>{t.icon}</span>{t.title}</div>;})()}
                   
                   <div className="space-y-3 mb-8">
                     {players.map(p => (
@@ -1261,7 +1162,6 @@ export default function YamsUltimateLegacy() {
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">🔊</div><div><div className="text-white font-bold">Sons</div><div className="text-gray-400 text-xs">Effets sonores</div></div></div><button onClick={()=>setSoundEnabled(!soundEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(soundEnabled?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(soundEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400"><Timer size={20}/></div><div><div className="text-white font-bold">Speed Run</div><div className="text-gray-400 text-xs">Chrono 30s par tour</div></div></div><button onClick={()=>setSpeedMode(!speedMode)} className={'relative w-12 h-6 rounded-full transition-all '+(speedMode?'bg-red-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(speedMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
@@ -1607,14 +1507,9 @@ export default function YamsUltimateLegacy() {
                   <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
                 </div>
               </div>
-              {commentatorMsg && (
-                <div className="p-3 bg-gradient-to-r from-purple-500/15 via-pink-500/10 to-purple-500/15 border border-purple-400/30 rounded-2xl mb-3 backdrop-blur-sm" style={{animation:'card-appear 0.5s ease-out'}}>
-                    <div className="flex items-center gap-3"><span className="text-2xl">🎙️</span><span className="text-purple-300 font-semibold text-sm italic">{commentatorMsg}</span></div>
-                </div>
-              )}
-              {activeChallenge && isGameStarted() && !isGameComplete() && (
+              {activeChallenge&&isGameStarted()&&!isGameComplete()&&(
                 <div className="mb-3 p-3 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-400/30 rounded-2xl backdrop-blur-sm" style={{animation:'card-appear 0.5s ease-out'}}>
-                    <div className="flex items-center gap-3"><span className="text-xl">{activeChallenge.icon}</span><div><span className="text-amber-300 font-bold text-xs uppercase tracking-wider">Défi en cours</span><span className="text-white font-semibold text-sm ml-2">{activeChallenge.desc}</span></div></div>
+                  <div className="flex items-center gap-3"><span className="text-xl">{activeChallenge.icon}</span><div><span className="text-amber-300 font-bold text-xs uppercase tracking-wider">Défi en cours</span><span className="text-white font-semibold text-sm ml-2">{activeChallenge.desc}</span></div></div>
                 </div>
               )}
               {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
@@ -2031,13 +1926,6 @@ export default function YamsUltimateLegacy() {
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
                         </select>
                         <div className="text-2xl font-black italic text-gray-500" style={{animation:"float 2s ease-in-out infinite",textShadow:"0 0 20px rgba(255,255,255,0.1)"}}>VS</div>
-                                {(()=>{
-                                    const total = p1Wins+p2Wins;
-                                    if(total < 3) return null;
-                                    const closeness = Math.round((1 - Math.abs(p1Wins-p2Wins)/total)*100);
-                                    const label = closeness >= 80 ? '🔥 Rivalité Intense' : closeness >= 50 ? '⚡ Bonne Rivalité' : '📊 Duel en cours';
-                                    return <div className="text-[10px] font-bold text-center px-2 py-0.5 rounded-full bg-white/5 border border-white/10 mt-1">{label} ({closeness}%)</div>;
-                                })()}
                         <select onChange={e=>setVersus({...versus, p2: e.target.value})} className="bg-white/5 p-4 rounded-2xl outline-none text-white font-bold border border-white/10 focus:border-white/30 w-1/3 text-center">
                             <option value="" disabled selected>Sélectionner...</option>
                             {Object.keys(playerStats.reduce((acc,s)=>{acc[s.name]=s; return acc},{})).map(n=><option key={n} value={n} className="bg-slate-900">{n}</option>)}
@@ -2141,158 +2029,7 @@ export default function YamsUltimateLegacy() {
 
                 
                 
-                
-                {/* HEATMAP DES SCORES */}
-                {filteredHistory.length >= 3 && (
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><BarChart3 className="text-emerald-400"/> Heatmap des Scores</h2>
-                    {(()=>{
-                        const pNames = [...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))];
-                        const heatData = {};
-                        pNames.forEach(name => { heatData[name] = {}; });
-                        playableCats.forEach(cat => {
-                            pNames.forEach(name => {
-                                let sum=0, count=0;
-                                filteredHistory.forEach(g => {
-                                    const grid = g.grid || {};
-                                    if(grid[name] && grid[name][cat.id] !== undefined) {
-                                        sum += parseInt(grid[name][cat.id]) || 0;
-                                        count++;
-                                    }
-                                });
-                                heatData[name][cat.id] = count > 0 ? Math.round(sum/count) : null;
-                            });
-                        });
-                        if(pNames.length === 0) return <div className="text-gray-500 text-center py-4">Jouez des parties pour voir la heatmap</div>;
-                        return (
-                        <div className="overflow-x-auto -mx-2">
-                            <table className="w-full text-xs">
-                                <thead><tr><th className="p-1.5 text-left text-gray-500 font-bold">Cat.</th>{pNames.map(n=><th key={n} className="p-1.5 text-center text-gray-400 font-bold">{playerAvatars[n]||'👤'}<div className="text-[9px] truncate max-w-[50px]">{n}</div></th>)}</tr></thead>
-                                <tbody>{playableCats.map((cat,ci)=>{
-                                    const maxVal = cat.max || 30;
-                                    return (
-                                    <tr key={cat.id} style={{animation:`card-appear 0.3s ease-out ${ci*0.03}s backwards`}}>
-                                        <td className="p-1.5 text-gray-400 font-bold whitespace-nowrap"><span className="mr-1">{cat.icon}</span>{cat.name}</td>
-                                        {pNames.map(n=>{
-                                            const avg = heatData[n]?.[cat.id];
-                                            if(avg === null) return <td key={n} className="p-1 text-center"><div className="w-full h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-700">—</div></td>;
-                                            const pct = Math.min(1, avg / maxVal);
-                                            const r = Math.round(239 * (1-pct) + 34 * pct);
-                                            const g = Math.round(68 * (1-pct) + 197 * pct);
-                                            const b = Math.round(68 * (1-pct) + 94 * pct);
-                                            return <td key={n} className="p-1 text-center"><div className="w-full h-8 rounded-lg flex items-center justify-center font-black text-white transition-all duration-300 hover:scale-110" style={{backgroundColor:`rgba(${r},${g},${b},0.5)`,border:`1px solid rgba(${r},${g},${b},0.3)`}}>{avg}</div></td>;
-                                        })}
-                                    </tr>);
-                                })}</tbody>
-                            </table>
-                        </div>
-                        );
-                    })()}
-                </div>
-                )}
-
-                {/* RIVALITÉ LA PLUS INTENSE */}
-                {(()=>{
-                    if(!filteredHistory || filteredHistory.length < 5) return null;
-                    const pairs = {};
-                    filteredHistory.forEach(g => {
-                        const ps = (g.players||g.results||[]);
-                        for(let i=0;i<ps.length;i++) for(let j=i+1;j<ps.length;j++) {
-                            const key = [ps[i].name,ps[j].name].sort().join(' vs ');
-                            if(!pairs[key]) pairs[key] = {games:0,p1:ps[i].name,p2:ps[j].name,p1w:0,p2w:0};
-                            pairs[key].games++;
-                            if(ps[i].isWinner) pairs[key].p1w++;
-                            if(ps[j].isWinner) pairs[key].p2w++;
-                        }
-                    });
-                    const topRivalry = Object.values(pairs).sort((a,b)=>b.games-a.games)[0];
-                    if(!topRivalry || topRivalry.games < 3) return null;
-                    const closeness = Math.round((1 - Math.abs(topRivalry.p1w-topRivalry.p2w)/topRivalry.games)*100);
-                    return (
-                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'} style={{animation:'card-appear 0.5s ease-out'}}>
-                        <h2 className="text-xl font-black text-white mb-4 flex items-center gap-3">🔥 Rivalité la Plus Intense</h2>
-                        <div className="flex items-center justify-between bg-gradient-to-r from-red-500/10 via-transparent to-blue-500/10 p-4 rounded-2xl border border-white/5">
-                            <div className="text-center flex-1">
-                                <div className="text-3xl mb-1">{playerAvatars[topRivalry.p1]||'👤'}</div>
-                                <div className="text-white font-bold text-sm">{topRivalry.p1}</div>
-                                <div className="text-2xl font-black" style={{color:T.primary}}>{topRivalry.p1w}</div>
-                            </div>
-                            <div className="text-center px-4">
-                                <div className="text-4xl font-black text-white/20 mb-1">⚡</div>
-                                <div className="text-xs text-gray-400">{topRivalry.games} matchs</div>
-                                <div className="text-xs font-bold mt-1 px-2 py-0.5 rounded-full" style={{backgroundColor:closeness>=70?'rgba(239,68,68,0.2)':'rgba(59,130,246,0.2)',color:closeness>=70?'#fca5a5':'#93c5fd'}}>{closeness}% serré</div>
-                            </div>
-                            <div className="text-center flex-1">
-                                <div className="text-3xl mb-1">{playerAvatars[topRivalry.p2]||'👤'}</div>
-                                <div className="text-white font-bold text-sm">{topRivalry.p2}</div>
-                                <div className="text-2xl font-black" style={{color:T.secondary}}>{topRivalry.p2w}</div>
-                            </div>
-                        </div>
-                    </div>
-                    );
-                })()}
-
-
-                {/* ÉVOLUTION DES SCORES */}
-                {filteredHistory.length >= 3 && (
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Activity className="text-cyan-400"/> Évolution des Moyennes</h2>
-                    {(()=>{
-                        const pNames = [...new Set(filteredHistory.flatMap(g=>(g.players||g.results||[]).map(p=>p.name)))];
-                        const chunkSize = Math.max(1, Math.floor(filteredHistory.length / 8));
-                        const chunks = [];
-                        const sorted = [...filteredHistory].reverse();
-                        for(let i=0; i<sorted.length; i+=chunkSize) {
-                            chunks.push(sorted.slice(i, i+chunkSize));
-                        }
-                        if(chunks.length < 2) return <div className="text-gray-500 text-center">Pas assez de données</div>;
-                        const data = chunks.map((chunk, ci) => {
-                            const point = { label: 'P'+(ci+1) };
-                            pNames.forEach(name => {
-                                let sum=0, count=0;
-                                chunk.forEach(g => {
-                                    const p = (g.players||g.results||[]).find(pp=>pp.name===name);
-                                    if(p) { sum += p.score||0; count++; }
-                                });
-                                point[name] = count > 0 ? Math.round(sum/count) : 0;
-                            });
-                            return point;
-                        });
-                        const maxVal = Math.max(...data.flatMap(d => pNames.map(n => d[n]||0)), 1);
-                        const w = 600, h = 180, px = 40, py = 25;
-                        const colors = ["#6366f1","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899"];
-                        return (
-                        <div>
-                            <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{height:'160px'}} preserveAspectRatio="none">
-                                {[0,0.25,0.5,0.75,1].map(p=>{const y=py+p*(h-2*py);return <g key={p}><line x1={px} y1={y} x2={w-px} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/><text x={px-5} y={y+4} fontSize="9" fill="rgba(255,255,255,0.3)" textAnchor="end">{Math.round(maxVal*(1-p))}</text></g>;})}
-                                {pNames.map((name, ni) => {
-                                    const color = colors[ni%colors.length];
-                                    const pts = data.map((d, i) => {
-                                        const x = px + (i/(data.length-1)) * (w-2*px);
-                                        const y = (h-py) - (((d[name]||0)/maxVal) * (h-2*py));
-                                        return `${x},${y}`;
-                                    }).join(' ');
-                                    const last = data[data.length-1];
-                                    const lx = px + ((data.length-1)/(data.length-1)) * (w-2*px);
-                                    const ly = (h-py) - (((last[name]||0)/maxVal) * (h-2*py));
-                                    return <g key={name}><polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{filter:`drop-shadow(0 0 3px ${color}40)`}}/><circle cx={lx} cy={ly} r="3.5" fill={color} stroke="#fff" strokeWidth="1"/><text x={lx+6} y={ly+3} fontSize="9" fill={color} fontWeight="bold">{last[name]||0}</text></g>;
-                                })}
-                            </svg>
-                            <div className="flex justify-center gap-4 mt-2">
-                                {pNames.map((p, i) => (
-                                    <div key={p} className="flex items-center gap-1.5">
-                                        <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:colors[i%colors.length]}}></div>
-                                        <span className="text-[10px] text-gray-400 font-bold">{p}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        );
-                    })()}
-                </div>
-                )}
-
-{/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
+                {/* 9. STATISTIQUES DE RAYAGE (FAILURES) - DESIGN HALL OF FAME BLEU */}
                 <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group card-appear">
                      <div className="mb-6 relative z-10">
                         <div className="flex items-center gap-3 mb-6">
@@ -2348,6 +2085,5 @@ export default function YamsUltimateLegacy() {
 
       </div>
     </div>
-    </YamsErrorBoundary>
   );
 }
