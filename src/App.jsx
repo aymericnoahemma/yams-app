@@ -167,9 +167,11 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
   if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
   const cat = categories.find(c=>c.id===category);
   const vals = cat?.values || Array.from({length:31},(_,i)=>i);
+  const hasValue = value !== undefined && value !== '' && value !== null;
+  const isZero = hasValue && parseInt(value) === 0;
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10':isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?(isZero?'cursor-not-allowed opacity-50 bg-red-500/10 text-red-400/60 border border-red-500/20':'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10 cell-alive'):isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5 cell-empty-wave'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -212,7 +214,12 @@ const VisualDie = ({ value, onClick, skin }) => {
 };
 
 const FloatingScore = ({ x, y, value }) => {
-    return <div className="fixed pointer-events-none text-green-400 font-black text-2xl z-[100]" style={{ left: x, top: y, animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>;
+    return (
+      <div className="fixed pointer-events-none z-[100]" style={{ left: x, top: y }}>
+        <div className="text-green-400 font-black text-2xl" style={{ animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>
+        <div className="absolute inset-0 text-green-400/30 font-black text-2xl score-trail" style={{ fontFamily: 'JetBrains Mono, monospace', filter:'blur(4px)' }}>+{value}</div>
+      </div>
+    );
 };
 
 // --- NOUVEAUX COMPOSANTS STATS ---
