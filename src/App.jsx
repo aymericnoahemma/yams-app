@@ -372,6 +372,13 @@ export default function YamsUltimateLegacy() {
   const [gameEndShown, setGameEndShown] = useState(false);
   const [activeChallenge, setActiveChallenge] = useState(null);
   const [themeTransition, setThemeTransition] = useState(false);
+  const [shakeScreen, setShakeScreen] = useState(false);
+  const [tensionMode, setTensionMode] = useState(false);
+  const [quickStatsPlayer, setQuickStatsPlayer] = useState(null);
+  const [shockwavePos, setShockwavePos] = useState(null);
+  const [emojiRain, setEmojiRain] = useState(null);
+  const [showDiceAnim, setShowDiceAnim] = useState(false);
+  const [streaks, setStreaks] = useState({});
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
 
@@ -481,6 +488,9 @@ export default function YamsUltimateLegacy() {
         const catName = categories.find(c=>c.id===category)?.name || category;
         setMoveLog([...moveLog, { player, category: catName, value: valInt, time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }]);
         setGlobalXP(prev => prev + valInt);
+        // STREAK TRACKING
+        if(!editMode&&valInt>=15){setStreaks(prev=>{const n=(prev[player]||0)+1;return{...prev,[player]:n};});}
+        else if(!editMode){setStreaks(prev=>({...prev,[player]:0}));}
         // FIRST BLOOD
         if(moveLog.length === 0 && !editMode) {
             pushNotif({icon:'🩸',title:'FIRST BLOOD !',description:player+' ouvre le score avec '+valInt+' pts'});
@@ -496,6 +506,7 @@ export default function YamsUltimateLegacy() {
         const catObj = categories.find(c=>c.id===category);
         if(catObj && catObj.max && valInt === catObj.max && !editMode && !showBonusFullscreen) {
             pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'});
+            if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});setTimeout(()=>setShockwavePos(null),800);}
             
         }
     }
@@ -506,11 +517,16 @@ export default function YamsUltimateLegacy() {
         setPendingYamsDetail({ player });
         setConfetti('gold');
         setShakeAnimation('yams');
+        setShowDiceAnim(true);
+        setEmojiRain('🎲');
+        if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});}
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); 
-        setTimeout(()=>{setConfetti(null);setShakeAnimation(null);},4500);
+        setTimeout(()=>{setConfetti(null);setShakeAnimation(null);setShowDiceAnim(false);setEmojiRain(null);setShockwavePos(null);},4500);
     } else if(value==='0') {
         setConfetti('sad'); 
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
+        setShakeScreen(true); setTimeout(()=>setShakeScreen(false),500);
+        setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),3000);
         setTimeout(()=>setConfetti(null),4000); 
     } else { 
         setConfetti(null); 
@@ -639,6 +655,11 @@ export default function YamsUltimateLegacy() {
       pushNotif({icon:'⏱️',title:'MI-TEMPS !',description:leader+' mène avec '+calcTotal(leader)+' pts'});
       
     }
+    // TENSION MODE: last 25% + gap <= 20pts
+    if(pct>=0.75&&players.length>=2){
+      const sorted=players.map(p=>calcTotal(p)).sort((a,b)=>b-a);
+      if(sorted[0]-sorted[1]<=20) setTensionMode(true); else setTensionMode(false);
+    } else { setTensionMode(false); }
   },[scores]);
 
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal&&!showSuddenDeath&&!gameEndShown&&!showVictoryAnimation){
@@ -691,6 +712,20 @@ export default function YamsUltimateLegacy() {
   const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(navigator.share){try{await navigator.share({text:t});}catch(e){navigator.clipboard.writeText(t);alert('Score copié!');}}else{navigator.clipboard.writeText(t);alert('Score copié!');}};
   const exportData=()=>{const b=new Blob([JSON.stringify({gameHistory,exportDate:new Date().toISOString(),version:'1.0'},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
+
+  // DYNAMIC BACKGROUND based on game state
+  const dynamicBgStyle = useMemo(()=>{
+    if(!isGameStarted()||isGameComplete()) return {};
+    const totalCells=players.length*playableCats.length;
+    if(totalCells===0) return {};
+    const filled=players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);
+    const pct=filled/totalCells;
+    const maxScore=Math.max(...players.map(p=>calcTotal(p)),1);
+    if(maxScore>=300) return {boxShadow:'inset 0 0 200px rgba(250,204,21,0.04)'};
+    if(tensionMode) return {boxShadow:'inset 0 0 200px rgba(239,68,68,0.06)'};
+    if(pct>0.75) return {boxShadow:'inset 0 0 200px rgba(249,115,22,0.04)'};
+    return {};
+  },[scores,tensionMode,players]);
 
   // Filtrer l'historique par saison active (POUR STATS)
   const filteredHistory = useMemo(() => {
@@ -857,7 +892,7 @@ export default function YamsUltimateLegacy() {
   };
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-all duration-500 overflow-x-hidden '+(themeTransition?'opacity-0 scale-[0.99]':'opacity-100 scale-100')}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-opacity duration-300 overflow-x-hidden '+(themeTransition?'opacity-0':'opacity-100')+(shakeScreen?' shake-active':'')+(tensionMode?' tension-pulse':'')} style={dynamicBgStyle}>
       <ThemeParticles themeKey={theme}/>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
@@ -969,6 +1004,37 @@ export default function YamsUltimateLegacy() {
   @keyframes gradient-x{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
   .gradient-animate{background-size:200% 200%;animation:gradient-x 3s ease infinite;}
   @keyframes theme-particle-fall{0%{transform:translateY(0) rotate(0deg);opacity:0.04}50%{transform:translateY(50vh) rotate(180deg) translateX(30px);opacity:0.05}100%{transform:translateY(110vh) rotate(360deg) translateX(-20px);opacity:0}}
+  @keyframes shake-screen{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-3px)}20%,40%,60%,80%{transform:translateX(3px)}}
+  .shake-active{animation:shake-screen 0.4s ease-in-out}
+  @keyframes score-counter{0%{transform:translateY(100%);opacity:0}50%{transform:translateY(-10%);opacity:1}100%{transform:translateY(0);opacity:1}}
+  .score-counter-anim{animation:score-counter 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+  @keyframes cell-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 8px 2px rgba(255,255,255,0.06)}}
+  .cell-alive{animation:cell-pulse 3s ease-in-out infinite}
+  @keyframes cell-idle{0%,100%{opacity:0.4}50%{opacity:0.6}}
+  .cell-empty-wave{animation:cell-idle 4s ease-in-out infinite}
+  @keyframes trail-up{0%{transform:translateY(0) scale(1);opacity:1;filter:blur(0)}100%{transform:translateY(-60px) scale(0.5);opacity:0;filter:blur(4px)}}
+  .score-trail{animation:trail-up 1s ease-out forwards}
+  @keyframes shockwave{0%{transform:scale(0.5);opacity:0.6;border-width:3px}100%{transform:scale(4);opacity:0;border-width:0px}}
+  .shockwave{animation:shockwave 0.7s ease-out forwards}
+  @keyframes dice-roll{0%{transform:rotateX(0) rotateY(0) scale(0.3);opacity:0}50%{transform:rotateX(720deg) rotateY(360deg) scale(1.2);opacity:1}100%{transform:rotateX(1080deg) rotateY(720deg) scale(1);opacity:1}}
+  .dice-roll-anim{animation:dice-roll 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+  @keyframes firework-burst{0%{transform:translate(0,0) scale(1);opacity:1}100%{opacity:0}}
+  @keyframes streak-fire{0%,100%{transform:scaleY(1);opacity:0.8}50%{transform:scaleY(1.3);opacity:1}}
+  .streak-fire{animation:streak-fire 0.5s ease-in-out infinite}
+  @keyframes bg-pulse-tension{0%,100%{background-color:transparent}50%{background-color:rgba(239,68,68,0.05)}}
+  .tension-pulse{animation:bg-pulse-tension 2s ease-in-out infinite}
+  @keyframes emoji-rain{0%{transform:translateY(-100%) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+  @keyframes avatar-dance{0%,100%{transform:rotate(0deg) scale(1)}25%{transform:rotate(-8deg) scale(1.1)}75%{transform:rotate(8deg) scale(1.1)}}
+  @keyframes avatar-cry{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+  @keyframes avatar-idle{0%,100%{transform:scale(1)}50%{transform:scale(0.95)}}
+  .avatar-dance{animation:avatar-dance 0.6s ease-in-out infinite}
+  .avatar-cry{animation:avatar-cry 0.3s ease-in-out 3}
+  .avatar-idle{animation:avatar-idle 4s ease-in-out infinite}
+  @keyframes podium-rise{0%{transform:translateY(40px) scaleY(0.3);opacity:0}100%{transform:translateY(0) scaleY(1);opacity:1}}
+  @keyframes podium-crown{0%{transform:scale(0) rotate(-20deg)}100%{transform:scale(1) rotate(0deg)}}
+  @keyframes lightning{0%{opacity:0;transform:translateX(-50%) scaleY(0)}10%{opacity:1;transform:translateX(-50%) scaleY(1)}30%{opacity:1}100%{opacity:0}}
+  @keyframes total-breathe{0%,100%{text-shadow:0 0 10px rgba(255,255,255,0.1)}50%{text-shadow:0 0 20px rgba(255,255,255,0.3)}}
+  .total-breathe{animation:total-breathe 3s ease-in-out infinite}
   @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(1080deg);opacity:0}}
   @keyframes sad-pulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.2);opacity:0.8}}
   .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
@@ -978,6 +1044,16 @@ export default function YamsUltimateLegacy() {
   .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
 `}</style>
       {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
+      {/* SHOCKWAVE EFFECT */}
+      {shockwavePos&&<div className="fixed z-[100] pointer-events-none" style={{left:shockwavePos.x-50,top:shockwavePos.y-50}}><div className="w-[100px] h-[100px] rounded-full border-4 border-white/40 shockwave"></div></div>}
+      {/* EMOJI RAIN */}
+      {emojiRain&&<div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">{Array.from({length:30},(_,i)=>i).map(i=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-30px',animation:`emoji-rain ${2+Math.random()*3}s linear ${Math.random()*2}s both`}}>{emojiRain==='🎲'?['🎲','🎲','🎲','⭐','✨','🎯'][i%6]:['💀','😱','🧱','💔','😬','❌'][i%6]}</div>)}</div>}
+      {/* DICE 3D ANIMATION */}
+      {showDiceAnim&&<div className="fixed inset-0 pointer-events-none z-[70] flex items-center justify-center gap-4">{[1,2,3,4,5].map(d=><div key={d} className="text-6xl dice-roll-anim" style={{animationDelay:d*0.12+'s'}}>🎲</div>)}</div>}
+      {/* TENSION MODE INDICATOR */}
+      {tensionMode&&isGameStarted()&&!isGameComplete()&&<div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none"><div className="px-4 py-1.5 bg-red-500/20 border border-red-400/40 rounded-full backdrop-blur-sm" style={{animation:'bg-pulse-tension 1.5s ease-in-out infinite'}}><span className="text-red-400 font-black text-sm tracking-widest">⚡ TENSION ⚡</span></div></div>}
+      {/* QUICK STATS POPUP */}
+      {quickStatsPlayer&&<div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60" onClick={()=>setQuickStatsPlayer(null)}><div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-3xl p-6 w-80 max-w-[90vw] modal-content" onClick={e=>e.stopPropagation()}>{(()=>{const ps=playerStats.find(s=>s.name===quickStatsPlayer);if(!ps)return <div className="text-gray-400 text-center">Pas de stats</div>;const t=getPlayerTitle(ps);return(<div className="text-center"><div className="text-5xl mb-2">{playerAvatars[quickStatsPlayer]||'👤'}</div><div className="text-xl font-black text-white mb-1">{quickStatsPlayer}</div><div className="text-sm font-bold mb-4" style={{color:T.primary}}>{t.icon} {t.title}</div><div className="grid grid-cols-2 gap-2 text-sm">{[['🎮 Parties',ps.games],['🏆 Victoires',ps.wins],['📊 Moyenne',ps.avgScore||0],['🔝 Max',ps.maxScore],['🎲 Yams',ps.yamsCount||0],['🎁 Bonus %',(ps.bonusRate||0)+'%']].map(([l,v],i)=><div key={i} className="bg-white/5 rounded-xl p-2"><div className="text-gray-500 text-xs">{l}</div><div className="text-white font-bold">{v}</div></div>)}</div></div>);})()}</div></div>}
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/80"><div className="text-center"><div className="text-9xl mb-8" style={{animation:'trophy-float 2s ease-in-out infinite'}}>{playerAvatars[getWinner()[0]]||'🏆'}</div><div className="text-6xl font-black text-white mb-4" style={{animation:'victory-text 0.8s cubic-bezier(0.34,1.56,0.64,1)'}}>PARTIE TERMINÉE !</div><div className="text-3xl font-bold winner-glow" style={{color:T.primary,animation:'fade-in-scale 0.6s ease-out 0.4s backwards'}}>{getWinner().join(' & ')}</div>{getWinner().length===1&&<div className="text-gray-400 text-sm mt-2" style={{animation:'fade-in-scale 0.4s ease-out 0.8s backwards'}}>{(()=>{const t=getPlayerTitle(playerStats.find(s=>s.name===getWinner()[0]));return t.icon+' '+t.title;})()}</div>}</div></div>}
 
       {/* ═══ SUDDEN DEATH MODAL ═══ */}
@@ -1549,9 +1625,9 @@ export default function YamsUltimateLegacy() {
                                     )}
                                 </div>
                             )}
-                            <div className="text-3xl cursor-pointer hover:scale-110 transition-transform" onClick={() => openAvatarSelector(i)}>{playerAvatars[p] || "👤"}</div>
+                            <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform '+(lastPlayerToPlay===p?'avatar-dance':getNextPlayer()===p?'avatar-idle':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}</div>
                         </div>
-                        
+                        {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
                         <div className="text-sm mt-1">{p}</div>
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
                         {jokersEnabled && jokers[p] > 0 && <button onClick={()=>useJoker(p)} className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded border border-purple-500/50 flex items-center gap-1 hover:bg-purple-500 hover:text-white"><Wand2 size={10}/> {jokers[p]}</button>}
@@ -1569,7 +1645,7 @@ export default function YamsUltimateLegacy() {
                   :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
                   </td>)}</tr>;
                 })}
-                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
+                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl total-breathe score-counter-anim" style={{color:getWinner().includes(p)?T.primary:'#fff',textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":calcTotal(p)}</div>}</td>)}</tr>
               </tbody></table></div>
             </div>
           </div>
@@ -1675,10 +1751,45 @@ export default function YamsUltimateLegacy() {
                   })()}
                 </div>
 
-                {/* 2. PALMARES (PODIUM) - SAFE MODE */}
+                {/* 2. PODIUM 3D */}
                 {getPieData().length > 0 && (
-                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
-                    <h2 className="text-3xl font-black text-white mb-6 flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2>
+                <div id="podium-capture" className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-3xl font-black text-white flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2>
+                      <button onClick={async()=>{try{const el=document.getElementById('podium-capture');if(!el)return;const html2canvas=(await import('html2canvas')).default;const canvas=await html2canvas(el,{backgroundColor:null,scale:2});const link=document.createElement('a');link.download='yams-podium-'+new Date().toISOString().slice(0,10)+'.png';link.href=canvas.toDataURL();link.click();pushNotif({icon:'📸',title:'Photo sauvée !',description:'Podium capturé en image'});}catch(e){pushNotif({icon:'❌',title:'Erreur capture',description:'Impossible de capturer le podium'});}}} className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-sm font-bold transition-all"><Share2 size={16}/>📸 Photo</button>
+                    </div>
+                    {/* 3D PODIUM VIEW */}
+                    {(()=>{
+                      const sorted = getPieData().sort((a,b)=>b.value-a.value);
+                      const podiumOrder = sorted.length >= 3 ? [sorted[1],sorted[0],sorted[2]] : sorted.length === 2 ? [sorted[1],sorted[0]] : [sorted[0]];
+                      const heights = sorted.length >= 3 ? [100,140,70] : sorted.length === 2 ? [100,140] : [140];
+                      const medals = sorted.length >= 3 ? ['🥈','🥇','🥉'] : sorted.length === 2 ? ['🥈','🥇'] : ['🥇'];
+                      const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
+                      return (
+                      <div className="flex items-end justify-center gap-2 sm:gap-4 mb-6" style={{perspective:'800px'}}>
+                        {podiumOrder.map((entry,pi)=>{
+                          if(!entry) return null;
+                          const realIdx = sorted.indexOf(entry);
+                          const isFirst = realIdx === 0;
+                          const color = isFirst ? '#fbbf24' : COLORS[(realIdx)%COLORS.length];
+                          const pStat = playerStats.find(s=>s.name===entry.name);
+                          const title = getPlayerTitle(pStat);
+                          return (
+                          <div key={entry.name} className="flex flex-col items-center" style={{animation:`podium-rise 0.6s cubic-bezier(0.34,1.56,0.64,1) ${pi*0.2}s backwards`}}>
+                            <div className={'text-4xl sm:text-5xl mb-2 '+(isFirst?'avatar-dance':'')} style={isFirst?{animation:'podium-crown 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.8s backwards'}:{}}>{playerAvatars[entry.name]||'👤'}</div>
+                            <div className="text-white font-black text-sm sm:text-base mb-0.5 text-center max-w-[80px] sm:max-w-[100px] truncate">{entry.name}</div>
+                            <div className="text-[10px] font-bold mb-1 opacity-70" style={{color}}>{title.icon} {title.title}</div>
+                            <div className="text-lg font-black mb-2" style={{color}}>{entry.value}W</div>
+                            <div className="w-20 sm:w-28 rounded-t-xl relative overflow-hidden" style={{height:heights[pi]+'px',background:`linear-gradient(180deg, ${color}40, ${color}15)`,borderTop:`3px solid ${color}`,transform:'rotateX(2deg)',transformOrigin:'bottom'}}>
+                              <div className="absolute inset-0" style={{background:`linear-gradient(180deg, rgba(255,255,255,0.1), transparent)`}}></div>
+                              <div className="absolute top-3 left-1/2 -translate-x-1/2 text-3xl">{medals[pi]}</div>
+                              {pStat&&<div className="absolute bottom-2 left-0 right-0 text-center"><div className="text-[9px] text-white/60 font-bold">Moy: {pStat.avgScore}</div><div className="text-[9px] text-white/60 font-bold">Max: {pStat.maxScore}</div></div>}
+                            </div>
+                          </div>);
+                        })}
+                      </div>);
+                    })()}
+                    {/* DETAILED CARDS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
                             const pStat = playerStats.find(s => s.name === entry.name);
