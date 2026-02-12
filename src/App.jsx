@@ -459,7 +459,6 @@ export default function YamsUltimateLegacy() {
   const [tabDirection, setTabDirection] = useState('l');
   const [prevTab, setPrevTab] = useState('game');
   const [cinemaStage, setCinemaStage] = useState(0);
-  const [lightningEffect, setLightningEffect] = useState(null);
   const [prevRanks, setPrevRanks] = useState({});
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
@@ -576,19 +575,6 @@ export default function YamsUltimateLegacy() {
     const valInt = value === '' ? 0 : parseInt(value);
     // HIGHLIGHT LAST CELL
     if(!editMode && value !== '') { setLastCellKey(player+'-'+category); setTimeout(()=>setLastCellKey(null),2000); }
-    // RANK CHANGE DETECTION for lightning
-    if(!editMode && value !== '' && players.length >= 2) {
-      const oldRanks = {};
-      players.forEach(p => { oldRanks[p] = players.filter(o => calcTotal(o) > calcTotal(p)).length + 1; });
-      setTimeout(() => {
-        const newRanks = {};
-        players.forEach(p => { const t = p===player ? (calcTotal(p) - (parseInt(scores[p]?.[category])||0) + valInt) : calcTotal(p); newRanks[p] = 0; players.forEach(o => { const to = o===player ? (calcTotal(o) - (parseInt(scores[o]?.[category])||0) + (o===player?valInt:0)) : calcTotal(o); if(to > t) newRanks[p]++; }); newRanks[p]++; });
-        if(oldRanks[player] > 1 && (newRanks[player]||99) < oldRanks[player]) {
-          setLightningEffect(player);
-          setTimeout(()=>setLightningEffect(null), 1200);
-        }
-      }, 100);
-    }
     
     if(value !== '') {
         const catName = categories.find(c=>c.id===category)?.name || category;
@@ -1165,14 +1151,6 @@ export default function YamsUltimateLegacy() {
   .confetti-piece{position:fixed;z-index:9999;pointer-events:none}
 `}</style>
       {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
-      {/* LIGHTNING EFFECT */}
-      {lightningEffect&&<div className="fixed inset-0 pointer-events-none z-[80]">
-        <div className="absolute inset-0" style={{background:'radial-gradient(ellipse at 50% 50%, rgba(250,204,21,0.08), transparent 70%)',animation:'lightning-flash 1.2s ease-out forwards'}}></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center" style={{animation:'cinema-spotlight 0.3s ease-out'}}>
-          <div className="text-4xl mb-1">{playerAvatars[lightningEffect]||'⚡'}</div>
-          <div className="text-yellow-400 text-xs font-black tracking-wider">⚡ DÉPASSEMENT ⚡</div>
-        </div>
-      </div>}
       {/* SHOCKWAVE EFFECT */}
       {shockwavePos&&<div className="fixed z-[100] pointer-events-none" style={{left:shockwavePos.x-50,top:shockwavePos.y-50}}><div className="w-[100px] h-[100px] rounded-full border-4 border-white/40 shockwave"></div></div>}
       {/* EMOJI RAIN */}
@@ -1798,7 +1776,7 @@ export default function YamsUltimateLegacy() {
                   :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
                   </td>)}</tr>;
                 })}
-                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="py-3 px-2 rounded-2xl total-breathe"><div className="text-4xl font-black" style={{textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":(<FlipCounter value={calcTotal(p)} color={getWinner().includes(p)?T.primary:'#fff'}/>)}</div><div className="mt-2 h-1.5 w-full bg-black/30 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-700" style={{width:Math.min(100,Math.round(calcUpper(p)/63*100))+'%',background:calcUpper(p)>=63?'linear-gradient(90deg,#fbbf24,#f59e0b)':calcUpper(p)>=50?'linear-gradient(90deg,#22c55e,#16a34a)':calcUpper(p)>=35?'linear-gradient(90deg,#86efac,#22c55e)':'linear-gradient(90deg,#bbf7d0,#86efac)'}}/></div><div className="text-[9px] font-bold mt-0.5" style={{color:calcUpper(p)>=63?'#fbbf24':calcUpper(p)>=50?'#22c55e':'#94a3b8'}}>{calcUpper(p)>=63?'✅ Bonus':calcUpper(p)+'/63'}</div></div>}</td>)}</tr>
+                <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className="p-4 sticky left-0 bg-gradient-to-r from-slate-800 to-slate-700 z-10"><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className="text-white font-black text-xl">TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl total-breathe" style={{textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":(<FlipCounter value={calcTotal(p)} color={getWinner().includes(p)?T.primary:'#fff'}/>)}</div>}</td>)}</tr>
               </tbody></table></div>
             </div>
           </div>
@@ -2116,31 +2094,6 @@ export default function YamsUltimateLegacy() {
                                     );
                                 })}
                             </div>
-
-                            {/* Per player cards */}
-                            {sortedPlayers.length > 0 && target !== 'GLOBAL' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {sortedPlayers.map(([name, data], idx) => (
-                                    <div key={name} className="bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/5" style={{animation:`card-appear 0.4s cubic-bezier(0.22,1,0.36,1) ${idx*0.08}s backwards`}}>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-white font-bold flex items-center gap-2"><span className="text-xl">{playerAvatars[name]||'👤'}</span> {name}</span>
-                                            <span className="text-purple-400 font-black text-lg">{data.total}</span>
-                                        </div>
-                                        <div className="flex gap-1.5">
-                                            {upperCatConfig.map(cat => {
-                                                const c = data.details[cat.id]||0;
-                                                return (
-                                                <div key={cat.id} className={`flex-1 text-center py-2 rounded-xl text-xs font-bold transition-all duration-300 ${c > 0 ? 'bg-gradient-to-b from-purple-500/30 to-purple-500/10 text-purple-300 border border-purple-500/30 shadow-sm shadow-purple-500/10' : 'bg-black/20 text-gray-700 border border-white/5'}`}>
-                                                    <div className="text-sm">{cat.icon}</div>
-                                                    <div className="font-black">{c}</div>
-                                                </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            )}
                         </div>
                         </>
                         );
