@@ -892,7 +892,7 @@ export default function YamsUltimateLegacy() {
   };
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-opacity duration-300 overflow-x-hidden '+(themeTransition?'opacity-0':'opacity-100')+(shakeScreen?' shake-active':'')+(tensionMode?' tension-pulse':'')} style={dynamicBgStyle}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-opacity duration-300 overflow-x-hidden '+(themeTransition?'opacity-0':'opacity-100')+(tensionMode?' tension-pulse':'')} style={dynamicBgStyle}>
       <ThemeParticles themeKey={theme}/>
       {/* MODAL YAMS DETAIL */}
       {pendingYamsDetail && (
@@ -1567,7 +1567,7 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: GAME */}
         {currentTab==='game'&&(
-          <div className="space-y-4 tab-enter">
+          <div className={'space-y-4 tab-enter'+(shakeScreen?' shake-active':'')}>
             {speedMode && timeLeft > 0 && <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${timeLeft<10?'bg-red-500':'bg-green-500'}`} style={{width: `${(timeLeft/30)*100}%`}}></div></div>}
             
             <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
@@ -1756,7 +1756,7 @@ export default function YamsUltimateLegacy() {
                 <div id="podium-capture" className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-3xl font-black text-white flex items-center gap-3"><Medal className="text-yellow-400"/>Palmarès</h2>
-                      <button onClick={async()=>{try{const el=document.getElementById('podium-capture');if(!el)return;const html2canvas=(await import('html2canvas')).default;const canvas=await html2canvas(el,{backgroundColor:null,scale:2});const link=document.createElement('a');link.download='yams-podium-'+new Date().toISOString().slice(0,10)+'.png';link.href=canvas.toDataURL();link.click();pushNotif({icon:'📸',title:'Photo sauvée !',description:'Podium capturé en image'});}catch(e){pushNotif({icon:'❌',title:'Erreur capture',description:'Impossible de capturer le podium'});}}} className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-sm font-bold transition-all"><Share2 size={16}/>📸 Photo</button>
+                      <button onClick={async()=>{try{const el=document.getElementById('podium-capture');if(!el)return;const range=document.createRange();range.selectNode(el);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);try{document.execCommand('copy');}catch(e){}sel.removeAllRanges();if(navigator.share){await navigator.share({text:'🏆 Podium YAMS ! '+getPieData().sort((a,b)=>b.value-a.value).map((e,i)=>['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'][i]+' '+e.name+': '+e.value+'W').join(' | ')});}else{await navigator.clipboard.writeText('🏆 Podium YAMS ! '+getPieData().sort((a,b)=>b.value-a.value).map((e,i)=>['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'][i]+' '+e.name+': '+e.value+'W').join(' | '));pushNotif({icon:'📋',title:'Copié !',description:'Podium copié dans le presse-papier'});}}catch(e){pushNotif({icon:'❌',title:'Erreur',description:'Partage non disponible'});}}} className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-sm font-bold transition-all"><Share2 size={16}/>📤 Partager</button>
                     </div>
                     {/* 3D PODIUM VIEW */}
                     {(()=>{
