@@ -191,6 +191,48 @@ const getSplashFunStat = (history, stats) => {
     return funStats.length > 0 ? funStats[Math.floor(Math.random() * funStats.length)] : "Bienvenue dans YAMS ! 🎲";
 };
 
+// FUN QUOTES
+const FUN_QUOTES = [
+    "La chance sourit aux audacieux ! 🍀","C'est pas fini tant que c'est pas fini 💪","Les dés sont jetés ! 🎲",
+    "Quel coup de maître ! 🎯","On n'arrête pas un joueur en forme 🔥","La roue tourne toujours ⚡",
+    "Stratégie ou chance ? Un peu des deux 🧠","Le suspense est à son comble ! 😱",
+    "Un grand pouvoir implique une grande responsabilité 🦸","Impossible n'est pas YAMS 💎",
+    "La pression, c'est pour les pneus 😎","Qui ne risque rien n'a rien 🎰",
+    "Les légendes ne meurent jamais ⭐","C'est dans les moments difficiles qu'on voit les champions 🏆",
+    "Le comeback est en marche ! 🔄","Ça sent la victoire ! 👑","Aïe, ça fait mal 💀",
+    "La tension est palpable ⚡","Masterclass en cours 📚","Coup dur... mais rien n'est perdu ! 💪"
+];
+
+// DYNAMIC IN-GAME TITLES
+const getDynamicTitle = (player, players, scores, calcTotal, lastPlayerToPlay, moveLog) => {
+    if (!players || players.length < 2) return null;
+    const totals = players.map(p => ({ name: p, total: calcTotal(p) })).sort((a,b) => b.total - a.total);
+    const rank = totals.findIndex(t => t.name === player) + 1;
+    const gap = totals[0].total - totals[totals.length - 1].total;
+    const isLeader = rank === 1;
+    const isLast = rank === totals.length;
+    // Was this player previously not leading but now is?
+    const recentMoves = moveLog.filter(m => m.player === player).length;
+    if (isLeader && gap > 40) return { text: "Intouchable", icon: "👑", color: "#fbbf24" };
+    if (isLeader && gap > 20) return { text: "Roi provisoire", icon: "👑", color: "#fbbf24" };
+    if (isLeader && gap <= 10) return { text: "Leader fragile", icon: "😰", color: "#fb923c" };
+    if (isLeader) return { text: "En tête", icon: "🏅", color: "#fbbf24" };
+    if (rank === 2 && totals[0].total - totals[1].total <= 15) return { text: "Challenger", icon: "⚔️", color: "#60a5fa" };
+    if (isLast && gap > 50) return { text: "En galère", icon: "😬", color: "#ef4444" };
+    if (isLast && recentMoves > 5) return { text: "Comeback Kid", icon: "🔄", color: "#a78bfa" };
+    if (isLast) return { text: "Roi déchu", icon: "📉", color: "#f87171" };
+    return { text: "En course", icon: "🏃", color: "#94a3b8" };
+};
+
+// FONT OPTIONS
+const FONT_OPTIONS = {
+    default: { name: "Par défaut", family: "system-ui, -apple-system, sans-serif" },
+    outfit: { name: "Outfit", family: "'Outfit', sans-serif", url: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" },
+    jetbrains: { name: "JetBrains", family: "'JetBrains Mono', monospace", url: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" },
+    poppins: { name: "Poppins", family: "'Poppins', sans-serif", url: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" },
+    space: { name: "Space Grotesk", family: "'Space Grotesk', sans-serif", url: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" }
+};
+
 const CHAOS_EVENTS = [
     { title: "Mains de Beurre", desc: "Vous n'avez droit qu'à 2 lancers ce tour-ci.", icon: "🧈" },
     { title: "Braquage", desc: "Volez 5 points imaginaires au joueur précédent.", icon: "💰" },
@@ -304,11 +346,12 @@ const VisualDie = ({ value, onClick, skin }) => {
     );
 };
 
-const FloatingScore = ({ x, y, value }) => {
+const FloatingScore = ({ x, y, value, color }) => {
+    const c = color || '#4ade80';
     return (
       <div className="fixed pointer-events-none z-[100]" style={{ left: x, top: y }}>
-        <div className="text-green-400 font-black text-2xl" style={{ animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace' }}>+{value}</div>
-        <div className="absolute inset-0 text-green-400/30 font-black text-2xl score-trail" style={{ fontFamily: 'JetBrains Mono, monospace', filter:'blur(4px)' }}>+{value}</div>
+        <div className="font-black text-2xl" style={{ animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace', color: c, textShadow: `0 0 12px ${c}, 0 0 24px ${c}40` }}>+{value}</div>
+        <div className="absolute inset-0 font-black text-2xl score-trail" style={{ fontFamily: 'JetBrains Mono, monospace', color: c, filter:'blur(6px)', opacity:0.5 }}>+{value}</div>
       </div>
     );
 };
@@ -560,6 +603,13 @@ export default function YamsUltimateLegacy() {
   const [showPodium3D, setShowPodium3D] = useState(false);
   const [weatherEffects, setWeatherEffects] = useState(true);
   const [splashFunStat, setSplashFunStat] = useState('');
+  const [hotSeatPlayer, setHotSeatPlayer] = useState(null);
+  const [massacreScreen, setMassacreScreen] = useState(null);
+  const [scoreParticles, setScoreParticles] = useState([]);
+  const [consecutiveZeros, setConsecutiveZeros] = useState({});
+  const [gameNote, setGameNote] = useState('');
+  const [funQuote, setFunQuote] = useState(null);
+  const [customFont, setCustomFont] = useState('default');
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
   const tabOrder = ['game','rules','trophies','history','stats','gages'];
@@ -602,9 +652,10 @@ export default function YamsUltimateLegacy() {
   }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();loadNewSettings();},[]);
-  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));}catch(e){}};
+  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);}catch(e){}};
   useEffect(()=>{localStorage.setItem('yamsGridSkin',gridSkin);},[gridSkin]);
   useEffect(()=>{localStorage.setItem('yamsPlayerColors',JSON.stringify(playerColors));},[playerColors]);
+  useEffect(()=>{localStorage.setItem('yamsCustomFont',customFont);const f=FONT_OPTIONS[customFont];if(f&&f.url){const existing=document.getElementById('yams-font-link');if(existing)existing.remove();const link=document.createElement('link');link.id='yams-font-link';link.rel='stylesheet';link.href=f.url;document.head.appendChild(link);}document.documentElement.style.fontFamily=FONT_OPTIONS[customFont]?.family||'';},[customFont]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
@@ -705,7 +756,36 @@ export default function YamsUltimateLegacy() {
             
         }
     }
-    if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
+    if(value !== '' && value !== '0' && event) { const rect = event.target.getBoundingClientRect(); const id = Date.now(); const pc = getPlayerColor(player, players.indexOf(player)); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt, color: pc.hex }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
+    // SCORE PARTICLES
+    if(value !== '' && event && !editMode) {
+        const rect = event.target.getBoundingClientRect();
+        const pc = getPlayerColor(player, players.indexOf(player));
+        const newParticles = Array.from({length: valInt > 20 ? 12 : 6}, (_, i) => ({
+            id: Date.now() + i, x: rect.left + rect.width/2, y: rect.top + rect.height/2,
+            color: pc.hex, dx: (Math.random()-0.5)*120, dy: -30 - Math.random()*80
+        }));
+        setScoreParticles(prev => [...prev, ...newParticles]);
+        setTimeout(() => setScoreParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id))), 1200);
+    }
+    // CONSECUTIVE ZEROS → MASSACRE
+    if(value === '0' && !editMode) {
+        const newZeros = {...consecutiveZeros, [player]: (consecutiveZeros[player]||0)+1};
+        setConsecutiveZeros(newZeros);
+        if(newZeros[player] >= 3) {
+            setMassacreScreen(player);
+            setTimeout(() => setMassacreScreen(null), 2500);
+            setConsecutiveZeros({...newZeros, [player]: 0});
+        }
+    } else if(value !== '' && !editMode) {
+        setConsecutiveZeros(prev => ({...prev, [player]: 0}));
+    }
+    // FUN QUOTE on notable moves
+    if(!editMode && value !== '' && (valInt >= 25 || valInt === 0 || valInt === 50)) {
+        const q = FUN_QUOTES[Math.floor(Math.random() * FUN_QUOTES.length)];
+        setFunQuote(q);
+        setTimeout(() => setFunQuote(null), 3000);
+    }
     
     // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
@@ -783,6 +863,12 @@ export default function YamsUltimateLegacy() {
             setLastPlayerToPlay(player);
             setLastModifiedCell(cellKey);
             if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
+            // HOT SEAT: flash next player
+            const nextP = players[(players.indexOf(player)+1)%players.length];
+            if(players.length >= 2 && !isGameComplete()) {
+                setHotSeatPlayer(nextP);
+                setTimeout(() => setHotSeatPlayer(null), 1800);
+            }
         } else {
             setLastPlayerToPlay(null);
             setLastModifiedCell(null);
@@ -898,11 +984,11 @@ export default function YamsUltimateLegacy() {
 
   const saveGameFromModal=()=>{ 
       const w=getWinner(); const l=getLoser(); 
-      // Save active seasons as array
       const currentSeasons = activeSeason && activeSeason !== 'Aucune' ? [activeSeason] : [];
-      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0,suddenDeathWin:suddenDeathWinner===p,suddenDeathScore:scores[p]?.suddenDeathScore||null})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog)), suddenDeath: suddenDeathWinner ? true : false, suddenDeathWinner: suddenDeathWinner || null}; 
+      const game={id:Date.now(),seasons:currentSeasons,date:new Date().toLocaleDateString('fr-FR'),time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),players:players.map(p=>({name:p,score:calcTotal(p),isWinner:w.includes(p),yamsCount:scores[p]?.yams===50?1:0,suddenDeathWin:suddenDeathWinner===p,suddenDeathScore:scores[p]?.suddenDeathScore||null})), grid: JSON.parse(JSON.stringify(scores)), moveLog: JSON.parse(JSON.stringify(moveLog)), suddenDeath: suddenDeathWinner ? true : false, suddenDeathWinner: suddenDeathWinner || null, note: gameNote || null}; 
       const nh=[game,...gameHistory]; setGameHistory(nh); saveHistory(nh); 
       setGlobalXP(prev => prev + 100);
+      setGameNote('');
       resetGame(l ? l.name : null); 
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
@@ -918,9 +1004,11 @@ export default function YamsUltimateLegacy() {
     const filled=players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);
     const pct=filled/totalCells;
     const maxScore=Math.max(...players.map(p=>calcTotal(p)),1);
-    if(maxScore>=300) return {boxShadow:'inset 0 0 200px rgba(250,204,21,0.04)'};
-    if(tensionMode) return {boxShadow:'inset 0 0 200px rgba(239,68,68,0.06)'};
-    if(pct>0.75) return {boxShadow:'inset 0 0 200px rgba(249,115,22,0.04)'};
+    const breathIntensity = Math.round(pct * 8); // 0-8 intensity
+    if(maxScore>=300) return {boxShadow:'inset 0 0 200px rgba(250,204,21,0.04)',animation:`bg-breathe ${3-pct}s ease-in-out infinite`};
+    if(tensionMode) return {boxShadow:'inset 0 0 200px rgba(239,68,68,0.06)',animation:'bg-breathe 1.5s ease-in-out infinite'};
+    if(pct>0.75) return {boxShadow:'inset 0 0 200px rgba(249,115,22,0.04)',animation:'bg-breathe 2s ease-in-out infinite'};
+    if(pct>0.25) return {animation:`bg-breathe ${4-pct*2}s ease-in-out infinite`};
     return {};
   },[scores,tensionMode,players]);
 
@@ -1280,9 +1368,31 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
 
-      {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} />)}
+      {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} color={fs.color} />)}
       {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=confetti==='gold'?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
+      {/* HOT SEAT OVERLAY */}
+      {hotSeatPlayer&&<div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
+        <div className="text-center" style={{animation:'hotseat-pulse 1.5s ease-in-out'}}>
+          <div className="text-6xl mb-2" style={{animation:'hotseat-bell 0.4s ease-in-out 0.2s both'}}>🔔</div>
+          <div className="text-xl font-black text-white/80 mb-1 tracking-widest uppercase">À ton tour</div>
+          <div className="text-5xl sm:text-7xl font-black text-white" style={{textShadow:`0 0 40px ${getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer)).hex}`,animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s backwards'}}>{playerAvatars[hotSeatPlayer]||'👤'} {hotSeatPlayer}</div>
+        </div>
+      </div>}
+      {/* MASSACRE SCREEN */}
+      {massacreScreen&&<div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/80 pointer-events-none" style={{animation:'massacre-in 0.3s ease-out'}}>
+        <div className="text-center" style={{animation:'massacre-shake 0.5s ease-in-out'}}>
+          <div className="text-9xl mb-4" style={{animation:'massacre-skull 0.6s cubic-bezier(0.34,1.56,0.64,1)',filter:'drop-shadow(0 0 30px rgba(239,68,68,0.8))'}}>💀</div>
+          <div className="text-4xl sm:text-5xl font-black text-red-500 tracking-widest" style={{textShadow:'0 0 20px rgba(239,68,68,0.5)',animation:'massacre-text 0.4s ease-out 0.2s backwards'}}>MASSACRE</div>
+          <div className="text-lg text-red-300 font-bold mt-2">{massacreScreen} enchaîne 3 zéros !</div>
+        </div>
+      </div>}
+      {/* SCORE PARTICLES */}
+      {scoreParticles.length>0&&<div className="fixed inset-0 pointer-events-none z-[80]">{scoreParticles.map(p=><div key={p.id} className="absolute w-2 h-2 rounded-full" style={{left:p.x,top:p.y,backgroundColor:p.color,animation:'score-particle 1s ease-out forwards',['--dx']:p.dx+'px',['--dy']:p.dy+'px',boxShadow:`0 0 6px ${p.color}`}}/>)}</div>}
+      {/* FUN QUOTE */}
+      {funQuote&&<div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[90] pointer-events-none" style={{animation:'funquote-in 0.4s cubic-bezier(0.34,1.56,0.64,1)'}}>
+        <div className="bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl px-6 py-3 max-w-sm text-center"><span className="text-white text-sm font-bold italic">{funQuote}</span></div>
+      </div>}
       {/* WEATHER EFFECTS */}
       {weatherEffects&&isGameStarted()&&!isGameComplete()&&(()=>{
         const hasRain = players.some(p=>getPlayerWeather(p)==='rain');
@@ -1462,6 +1572,22 @@ export default function YamsUltimateLegacy() {
   .grid-vintage{filter:sepia(0.08)}
   .grid-chalk td{border-color:rgba(34,197,94,0.1)!important;font-family:'Courier New',monospace}
   .grid-pixel td{border-color:rgba(168,85,247,0.1)!important;image-rendering:pixelated}
+  @keyframes bg-breathe{0%,100%{filter:brightness(1)}50%{filter:brightness(1.02)}}
+  @keyframes hotseat-in{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(8px)}}
+  @keyframes hotseat-pulse{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+  @keyframes hotseat-bell{0%{transform:rotate(0) scale(0)}30%{transform:rotate(15deg) scale(1.3)}60%{transform:rotate(-15deg) scale(1.1)}100%{transform:rotate(0) scale(1)}}
+  @keyframes hotseat-name{0%{transform:scale(0.3) translateY(30px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+  @keyframes massacre-in{0%{opacity:0}100%{opacity:1}}
+  @keyframes massacre-skull{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.3) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+  @keyframes massacre-text{0%{transform:scaleX(0);letter-spacing:30px;opacity:0}100%{transform:scaleX(1);letter-spacing:6px;opacity:1}}
+  @keyframes massacre-shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
+  @keyframes score-particle{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+  @keyframes funquote-in{0%{transform:translateX(-50%) translateY(20px) scale(0.8);opacity:0}100%{transform:translateX(-50%) translateY(0) scale(1);opacity:1}}
+  @keyframes score-trail{0%{box-shadow:0 0 0 transparent}30%{box-shadow:0 0 15px var(--trail-color,rgba(255,255,255,0.3))}100%{box-shadow:0 0 0 transparent}}
+  .score-trail-effect{animation:score-trail 1s ease-out}
+  @keyframes badge-shelf-3d{0%{transform:perspective(600px) rotateY(-8deg) translateZ(-20px);opacity:0}100%{transform:perspective(600px) rotateY(0) translateZ(0);opacity:1}}
+  @keyframes stats-counter-in{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+  @keyframes history-cascade{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
 `}</style>
       {notifQueue.length>0&&<div className="fixed top-20 right-4 z-50 flex flex-col gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
       {/* SHOCKWAVE EFFECT */}
@@ -1747,6 +1873,7 @@ export default function YamsUltimateLegacy() {
                   </div>
                   {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
                   <div className="space-y-2 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.7s backwards'}}>
+                      <input type="text" value={gameNote} onChange={e=>setGameNote(e.target.value)} placeholder="📝 Ajouter une note... (optionnel)" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 outline-none focus:border-yellow-400/50 transition-colors mb-1" maxLength={100}/>
                       <button onClick={saveGameFromModal} className="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-black rounded-2xl shadow-xl hover:scale-[1.03] transition-all duration-200 hover:shadow-yellow-500/40 hover:shadow-2xl active:scale-[0.98]">✨ ENREGISTRER</button>
                       <button onClick={()=>{
                         const lines = ['🎲 YAMS - Récapitulatif de partie','═'.repeat(40),'📅 '+new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}),'','🏆 CLASSEMENT:'];
@@ -1796,6 +1923,7 @@ export default function YamsUltimateLegacy() {
           {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTimeout(()=>{setTheme(k);setThemeTransition(false);},300);}}} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Image size={14}/> Skin de Grille</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.keys(GRID_SKINS).map(k=>{const s=GRID_SKINS[k];return <button key={k} onClick={()=>setGridSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${gridSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
+              <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Terminal size={14}/> Police d'écriture</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.entries(FONT_OPTIONS).map(([k,f])=><button key={k} onClick={()=>setCustomFont(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${customFont===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`} style={{fontFamily:f.family}}>{f.name}</button>)}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Couleur par Joueur</h3><div className="space-y-2">{players.map((p,pi)=>{const current=playerColors[p]||PLAYER_COLORS[pi%PLAYER_COLORS.length].id;return <div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold flex-1 text-sm">{playerAvatars[p]||'👤'} {p}</span><div className="flex gap-1.5">{PLAYER_COLORS.map(c=><button key={c.id} onClick={()=>setPlayerColors({...playerColors,[p]:c.id})} className={'w-7 h-7 rounded-full border-2 transition-all hover:scale-110 '+(current===c.id?'border-white scale-110':'border-transparent')} style={{background:c.hex}} title={c.name}/>)}</div></div>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
@@ -1998,11 +2126,12 @@ export default function YamsUltimateLegacy() {
         
         {/* TAB: TROPHIES & CAREER */}
         {currentTab==='trophies'&&(
-            <div className={"space-y-4 tab-slide-"+tabDirection}>
+            <div className={"space-y-4 tab-slide-"+tabDirection} style={{animation:'badge-shelf-3d 0.5s cubic-bezier(0.22,1,0.36,1)'}}>
                 <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
                     <h2 className="text-3xl font-black text-white mb-2 flex items-center gap-3"><Award className="text-yellow-400"/> Galerie des Trophées</h2>
                     <p className="text-gray-400 text-sm mb-6">{ACHIEVEMENTS.filter(ach=>{let w=false;playerStats.forEach(p=>{if(ach.id==='first_win'&&p.wins>0)w=true;if(ach.id==='score_300'&&p.maxScore>=300)w=true;if(ach.id==='score_350'&&p.maxScore>=350)w=true;if(ach.id==='yams_king'&&p.yamsCount>=10)w=true;if(ach.id==='veteran'&&p.games>=50)w=true;if(ach.id==='bonus_hunter'&&p.bonusCount>=20)w=true;});return w;}).length} / {ACHIEVEMENTS.length} débloqués</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{perspective:'1000px'}}>
+                    {/* 3D SHELF BADGE WALL */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{perspective:'1200px'}}>
                         {ACHIEVEMENTS.map((ach,achIdx) => {
                             let winners = [];
                             playerStats.forEach(p => {
@@ -2015,9 +2144,11 @@ export default function YamsUltimateLegacy() {
                             });
                             const unlocked = winners.length > 0;
                             return (
-                                <div key={ach.id} className={`relative group p-5 rounded-2xl border flex flex-col items-center text-center transition-all duration-500 cursor-pointer ${unlocked ? 'bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-orange-500/10 border-yellow-500/40 shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/30 hover:scale-105 hover:-translate-y-1' : 'bg-black/30 border-white/5 hover:bg-black/40 hover:border-white/10'}`} style={{animation:`card-appear 0.5s cubic-bezier(0.22,1,0.36,1) ${achIdx*0.06}s backwards`,transformStyle:'preserve-3d'}}>
+                                <div key={ach.id} className={`relative group p-5 rounded-2xl border flex flex-col items-center text-center transition-all duration-500 cursor-pointer ${unlocked ? 'bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-orange-500/10 border-yellow-500/40 shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/30 hover:scale-105 hover:-translate-y-2' : 'bg-black/30 border-white/5 hover:bg-black/40 hover:border-white/10'}`} style={{animation:`badge-shelf-3d 0.5s cubic-bezier(0.22,1,0.36,1) ${achIdx*0.08}s backwards`,transformStyle:'preserve-3d'}}>
                                     {unlocked&&<div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] shadow-lg">✓</div>}
-                                    <div className={`text-5xl mb-3 transition-transform duration-500 ${unlocked?'group-hover:scale-110 drop-shadow-lg':'grayscale opacity-30'}`} style={unlocked?{animation:`badge-float 3s ease-in-out ${achIdx*0.4}s infinite`}:{}}>{unlocked ? ach.icon : '🔒'}</div>
+                                    {/* 3D SHELF BOTTOM */}
+                                    {unlocked&&<div className="absolute -bottom-1 left-2 right-2 h-2 rounded-b-lg" style={{background:'linear-gradient(180deg,transparent,rgba(250,204,21,0.15))',transform:'perspective(200px) rotateX(60deg)',transformOrigin:'top'}}/>}
+                                    <div className={`text-5xl mb-3 transition-transform duration-500 ${unlocked?'group-hover:scale-125 drop-shadow-lg':'grayscale opacity-30'}`} style={unlocked?{animation:`badge-float 3s ease-in-out ${achIdx*0.4}s infinite`,filter:'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'}:{}}>{unlocked ? ach.icon : '🔒'}</div>
                                     <div className={'font-bold text-sm mb-1 '+(unlocked?'text-white':'text-gray-600')}>{ach.name}</div>
                                     <div className={'text-[10px] leading-tight mb-2 '+(unlocked?'text-gray-400':'text-gray-700')}>{ach.desc}</div>
                                     {unlocked ? (
@@ -2193,6 +2324,11 @@ export default function YamsUltimateLegacy() {
                         </div>
                         {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
                         <div className="text-sm mt-1" style={playerColors[p]?{color:pc.light}:{}}>{p}</div>
+                        {/* DYNAMIC IN-GAME TITLE */}
+                        {isGameStarted()&&!isGameComplete()&&players.length>=2&&(()=>{
+                            const dt=getDynamicTitle(p,players,scores,calcTotal,lastPlayerToPlay,moveLog);
+                            return dt?<div className="text-[9px] font-bold mt-0.5" style={{color:dt.color}}>{dt.icon} {dt.text}</div>:null;
+                        })()}
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
                         {/* AI PREDICTION */}
                         {isGameStarted()&&!isGameComplete()&&!hideTotals&&!fogMode&&gameHistory.length>=1&&(()=>{
@@ -2206,7 +2342,7 @@ export default function YamsUltimateLegacy() {
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 hover:bg-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all ${isNextCol?'ring-2 ring-inset ring-yellow-400/70':''} ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}08`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow='inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';}}>
+                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
                   :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
@@ -2222,7 +2358,7 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
-          <div className={"space-y-4 tab-slide-"+tabDirection}><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
+          <div className={"space-y-4 tab-slide-"+tabDirection} style={{animation:'history-cascade 0.35s cubic-bezier(0.22,1,0.36,1)'}}><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2 items-center"><select value={historyFilterSeason} onChange={e=>setHistoryFilterSeason(e.target.value)} className="bg-black/40 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none hover:bg-black/60 transition-colors"><option value="Toutes">🌍 Toutes Saisons</option><option value="Aucune">Hors Saison</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {filteredGameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
             {filteredGameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm hover-lift">
@@ -2263,31 +2399,30 @@ export default function YamsUltimateLegacy() {
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
+                {g.note && <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm text-yellow-200 italic flex items-center gap-2">📝 {g.note}</div>}
                 <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="flex items-baseline gap-1.5"><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>{pl.suddenDeathScore&&<span className="text-sm font-bold text-red-400">({pl.suddenDeathScore})</span>}</span></div>})}</div></div>)}</div>}
           </div></div>
         )}
 
         {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='stats'&&(
-            <div className={"space-y-6 tab-slide-"+tabDirection}>
+            <div className={"space-y-6 tab-slide-"+tabDirection} style={{animation:'stats-counter-in 0.4s cubic-bezier(0.22,1,0.36,1)'}}>
                 
                 {/* 0. FILTRE SAISONS */}
                 <div className="bg-white/5 p-4 rounded-3xl border border-white/10">
                     <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
                         <h2 className="text-3xl font-black text-white flex items-center gap-3"><Activity className="text-blue-400"/> Statistiques</h2>
                     </div>
-                    {/* SEASON FILTER - FULL WIDTH */}
-                    <div className="flex items-center gap-3 bg-black/30 p-3 rounded-2xl border border-white/10">
-                        <Calendar size={18} className="text-cyan-400 shrink-0"/>
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider shrink-0">Saison :</span>
-                        <select value={statsFilterSeason} onChange={e=>setStatsFilterSeason(e.target.value)} className="flex-1 bg-black/50 text-white p-2 rounded-xl text-sm font-bold border border-white/20 outline-none cursor-pointer hover:border-white/40 transition-colors">
-                            <option value="Toutes" className="bg-slate-900">🌍 Toutes les Saisons</option>
-                            <option value="Aucune" className="bg-slate-900">📦 Hors Saison</option>
-                            {seasons.map(s=><option key={s} value={s} className="bg-slate-900">📅 {s}</option>)}
-                        </select>
+                    {/* SEASON FILTER - BUTTON BASED */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider shrink-0"><Calendar size={14} className="inline mr-1"/>Saison :</span>
+                        <button onClick={()=>setStatsFilterSeason('Toutes')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statsFilterSeason==='Toutes'?'text-white shadow-lg':'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`} style={statsFilterSeason==='Toutes'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🌍 Toutes</button>
+                        <button onClick={()=>setStatsFilterSeason('Aucune')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statsFilterSeason==='Aucune'?'text-white shadow-lg':'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`} style={statsFilterSeason==='Aucune'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>📦 Hors Saison</button>
+                        {seasons.map(s=><button key={s} onClick={()=>setStatsFilterSeason(s)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statsFilterSeason===s?'text-white shadow-lg':'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`} style={statsFilterSeason===s?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>📅 {s}</button>)}
                     </div>
+                    {statsFilterSeason !== 'Toutes' && <div className="mt-2 text-xs text-gray-500">Filtre actif : <span className="font-bold" style={{color:T.primary}}>{statsFilterSeason}</span> — {filteredHistory.length} partie{filteredHistory.length>1?'s':''}</div>}
                     {statsFilterSeason !== 'Toutes' && seasonDescriptions[statsFilterSeason] && (
-                        <p className="text-gray-400 text-xs mt-2 italic pl-2">💬 {seasonDescriptions[statsFilterSeason]}</p>
+                        <p className="text-gray-400 text-xs mt-1 italic">💬 {seasonDescriptions[statsFilterSeason]}</p>
                     )}
                 </div>
 
