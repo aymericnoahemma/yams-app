@@ -229,22 +229,7 @@ const getWallOfShame = (history) => {
     return Object.entries(shameStats).map(([name,d]) => ({name, ...d, avgScore: Math.round((history.reduce((s,g) => {const p=(g.players||g.results||[]).find(p=>p.name===name);return s+(p?p.score:0);},0))/Math.max(1,d.totalGames))})).sort((a,b) => b.zeros - a.zeros);
 };
 
-// SEASONAL BACKGROUNDS
-const SEASONAL_BG_EFFECTS = {
-    hiver: { emoji: '❄️', count: 15, animation: 'seasonal-snow' },
-    printemps: { emoji: '🌸', count: 12, animation: 'seasonal-petals' },
-    été: { emoji: '☀️', count: 8, animation: 'seasonal-sun' },
-    automne: { emoji: '🍂', count: 15, animation: 'seasonal-leaves' }
-};
-const getSeasonalEffect = (seasonName) => {
-    if(!seasonName) return null;
-    const lower = seasonName.toLowerCase();
-    if(lower.includes('hiver') || lower.includes('winter') || lower.includes('noël') || lower.includes('noel')) return SEASONAL_BG_EFFECTS.hiver;
-    if(lower.includes('printemps') || lower.includes('spring')) return SEASONAL_BG_EFFECTS.printemps;
-    if(lower.includes('été') || lower.includes('ete') || lower.includes('summer')) return SEASONAL_BG_EFFECTS.été;
-    if(lower.includes('automne') || lower.includes('autumn') || lower.includes('fall')) return SEASONAL_BG_EFFECTS.automne;
-    return null;
-};
+
 
 // GHOST SCORE CALCULATION
 const getGhostScore = (player, category, history) => {
@@ -367,7 +352,7 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
   const isZero = hasValue && parseInt(value) === 0;
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?(isZero?'cursor-not-allowed opacity-50 bg-red-500/10 text-red-400/60 border border-red-500/20':'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10 cell-alive'):isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5 cell-empty-wave'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?(isZero?'cursor-not-allowed opacity-50 bg-red-500/10 text-red-400/60 border border-red-500/20 cell-cracked':'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10 cell-alive'):isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5 cell-empty-wave'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -592,6 +577,7 @@ export default function YamsUltimateLegacy() {
   const [activeChallenge, setActiveChallenge] = useState(null);
   const [themeTransition, setThemeTransition] = useState(false);
   const [shakeScreen, setShakeScreen] = useState(false);
+  const [glassCrack, setGlassCrack] = useState(null);
   const [tensionMode, setTensionMode] = useState(false);
   const [quickStatsPlayer, setQuickStatsPlayer] = useState(null);
   const [shockwavePos, setShockwavePos] = useState(null);
@@ -622,7 +608,14 @@ export default function YamsUltimateLegacy() {
   const [showClutch, setShowClutch] = useState(null);
   const [showPhotoFinish, setShowPhotoFinish] = useState(false);
   const [showGhostScores, setShowGhostScores] = useState(false);
-  const [seasonalBgEnabled, setSeasonalBgEnabled] = useState(false);
+  const gridAge = useMemo(() => {
+    if(!players.length) return 0;
+    const total = players.length * playableCats.length;
+    const filled = players.reduce((s,p) => s + playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length, 0);
+    return total > 0 ? filled / total : 0;
+  }, [players, scores]);
+  const [rouletteMode, setRouletteMode] = useState(false);
+  const [rouletteResult, setRouletteResult] = useState(null);
   const [compactMode, setCompactMode] = useState(typeof window!=='undefined'&&window.innerWidth<400);
   const [idleTimer, setIdleTimer] = useState(null);
   const [idleAvatars, setIdleAvatars] = useState(false);
@@ -634,6 +627,7 @@ export default function YamsUltimateLegacy() {
   const tabOrder = ['game','rules','trophies','history','stats','gages'];
   const switchTab = (newTab) => {
     if(newTab === currentTab) return;
+    window.scrollTo({top:0,behavior:'instant'});
     const oldIdx = tabOrder.indexOf(currentTab);
     const newIdx = tabOrder.indexOf(newTab);
     setTabDirection(newIdx > oldIdx ? 'r' : 'l');
@@ -671,12 +665,11 @@ export default function YamsUltimateLegacy() {
   }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();loadNewSettings();},[]);
-  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);const sgs=localStorage.getItem('yamsShowGhost');if(sgs)setShowGhostScores(JSON.parse(sgs));const sbg=localStorage.getItem('yamsSeasonalBg');if(sbg)setSeasonalBgEnabled(JSON.parse(sbg));}catch(e){}};
+  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);const sgs=localStorage.getItem('yamsShowGhost');if(sgs)setShowGhostScores(JSON.parse(sgs));}catch(e){}};
   useEffect(()=>{localStorage.setItem('yamsGridSkin',gridSkin);},[gridSkin]);
   useEffect(()=>{localStorage.setItem('yamsPlayerColors',JSON.stringify(playerColors));},[playerColors]);
   useEffect(()=>{localStorage.setItem('yamsShowGhost',JSON.stringify(showGhostScores));},[showGhostScores]);
-  useEffect(()=>{localStorage.setItem('yamsSeasonalBg',JSON.stringify(seasonalBgEnabled));},[seasonalBgEnabled]);
-  useEffect(()=>{localStorage.setItem('yamsCustomFont',customFont);const f=FONT_OPTIONS[customFont];if(f&&f.url){const existing=document.getElementById('yams-font-link');if(existing)existing.remove();const link=document.createElement('link');link.id='yams-font-link';link.rel='stylesheet';link.href=f.url;document.head.appendChild(link);}},[customFont]);
+  useEffect(()=>{localStorage.setItem('yamsCustomFont',customFont);const f=FONT_OPTIONS[customFont];if(f&&f.url){const existing=document.getElementById('yams-font-link');if(existing)existing.remove();const link=document.createElement('link');link.id='yams-font-link';link.rel='stylesheet';link.href=f.url;document.head.appendChild(link);}document.documentElement.style.setProperty('--app-font',f?.family||'system-ui, sans-serif');},[customFont]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
@@ -747,14 +740,23 @@ export default function YamsUltimateLegacy() {
       const sortedPlayers = players.map(p=>({name:p,score:calcTotal(p)})).sort((a,b)=>b.score-a.score);
       if(sortedPlayers.length >= 2 && sortedPlayers[0].score - sortedPlayers[1].score <= 5) {
           setShowPhotoFinish(true);
-          setTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
+          setTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
       } else {
-          setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
+          setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
       }};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
 
+  const spinRoulette = () => {
+    const nextP = getNextPlayer();
+    if(!nextP) return;
+    const emptyCats = playableCats.filter(c => scores[nextP]?.[c.id] === undefined);
+    if(emptyCats.length === 0) return;
+    let spins = 0;
+    const spin = () => { setRouletteResult(emptyCats[Math.floor(Math.random()*emptyCats.length)]); spins++; if(spins < 15) setTimeout(spin, 80 + spins * 25); else vibrate(30); };
+    spin();
+  };
   const useJoker = (player) => { if(jokers[player] > 0) { showConfirm(`Utiliser un Joker pour ${player} ? (-10 pts)`, () => { setConfirmModal(null); setJokers({...jokers, [player]: jokers[player] - 1}); }); } };
   const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); };
 
@@ -855,6 +857,7 @@ export default function YamsUltimateLegacy() {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
         setShakeScreen(true); setTimeout(()=>setShakeScreen(false),500);
+        setGlassCrack(player+'-'+category); setTimeout(()=>setGlassCrack(null),1500);
         setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),3000);
         setTimeout(()=>setConfetti(null),4000);
     } else { 
@@ -1040,7 +1043,7 @@ export default function YamsUltimateLegacy() {
       setConfetti('gold');
       setTimeout(()=>setConfetti(null),3000);
     } else {
-      setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
+      setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
     }
   }},[scores,showEndGameModal,showSuddenDeath]);
   
@@ -1406,7 +1409,7 @@ export default function YamsUltimateLegacy() {
             <div className="modal-content bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-yellow-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl shadow-yellow-500/20 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl"></div>
-                <div className="text-5xl mb-3" style={{animation:'trophy-float 3s ease-in-out infinite'}}>🎲</div>
+                <div className="text-5xl mb-3" style={{animation:'trophy-float 3s ease-in-out infinite'}}>{({modern:'🎲',sunset:'🌅',ocean:'🌊',forest:'🌲',galaxy:'🌌',candy:'🍬',fire:'🔥',ice:'❄️',neon:'💜',vintage:'🎰'})[theme]||'🎲'}</div>
                 <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide winner-glow">YAMS !</h3>
                 <p className="text-gray-400 text-sm mb-6 font-medium">Quel chiffre as-tu obtenu ?</p>
                 <div className="grid grid-cols-3 gap-3 mb-4">
@@ -1429,7 +1432,7 @@ export default function YamsUltimateLegacy() {
       )}
 
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} color={fs.color} />)}
-      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=confetti==='gold'?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>}
+      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" style={confetti==='winner'?{filter:`hue-rotate(${(()=>{const w=getWinner()[0];const pc=getPlayerColor(w,players.indexOf(w));return pc?.hue||0;})()}deg)`}:{}}>{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=(confetti==='gold'||confetti==='winner')?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
       {/* COUNTDOWN CINEMATIC */}
       {showCountdown&&<div className="fixed inset-0 z-[280] flex items-center justify-center pointer-events-none">
@@ -1461,18 +1464,6 @@ export default function YamsUltimateLegacy() {
           )}</div>
         </div>
       </div>}
-      {/* SEASONAL BACKGROUND EFFECTS */}
-      {seasonalBgEnabled && activeSeason && getSeasonalEffect(activeSeason) && (
-        <div className="fixed inset-0 pointer-events-none z-[5] overflow-hidden">
-          {[...Array(getSeasonalEffect(activeSeason).count)].map((_,i) => 
-            <div key={i} className="absolute text-2xl" style={{
-              left: Math.random()*100+'%', top: '-30px',
-              animation: `${getSeasonalEffect(activeSeason).animation} ${4+Math.random()*6}s linear ${Math.random()*8}s infinite`,
-              opacity: 0.4 + Math.random()*0.3
-            }}>{getSeasonalEffect(activeSeason).emoji}</div>
-          )}
-        </div>
-      )}
       {/* HOT SEAT OVERLAY */}
       {hotSeatPlayer&&<div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
         <div className="text-center" style={{animation:'hotseat-pulse 1.5s ease-in-out'}}>
@@ -1592,6 +1583,8 @@ export default function YamsUltimateLegacy() {
   @keyframes cinema-rise{0%{transform:translateY(50px);opacity:0}100%{transform:translateY(0);opacity:1}}
   @keyframes cinema-text{0%{letter-spacing:20px;opacity:0}100%{letter-spacing:2px;opacity:1}}
   @keyframes shake-screen{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-3px)}20%,40%,60%,80%{transform:translateX(3px)}}
+  :root{--app-font:system-ui, sans-serif}
+  *:not(select):not(option):not(input){font-family:var(--app-font)!important}
   .scrollbar-none::-webkit-scrollbar{display:none}
   .scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
   .shake-active{animation:shake-screen 0.4s ease-in-out}
@@ -1677,12 +1670,10 @@ export default function YamsUltimateLegacy() {
   @keyframes photo-camera{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
   @keyframes photo-text{0%{transform:scaleX(0);letter-spacing:40px}100%{transform:scaleX(1);letter-spacing:6px}}
   @keyframes player-entrance{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:0.6}100%{transform:scale(1);opacity:0}}
-  @keyframes seasonal-snow{0%{transform:translateY(-30px) rotate(0deg)}100%{transform:translateY(100vh) rotate(360deg)}}
-  @keyframes seasonal-petals{0%{transform:translateY(-30px) translateX(0) rotate(0)}50%{transform:translateY(50vh) translateX(30px) rotate(180deg)}100%{transform:translateY(100vh) translateX(-20px) rotate(360deg)}}
-  @keyframes seasonal-leaves{0%{transform:translateY(-30px) translateX(0) rotate(0)}33%{transform:translateY(33vh) translateX(40px) rotate(120deg)}66%{transform:translateY(66vh) translateX(-30px) rotate(240deg)}100%{transform:translateY(100vh) translateX(10px) rotate(360deg)}}
-  @keyframes seasonal-sun{0%{transform:translateY(-30px);opacity:0.5}50%{opacity:0.8}100%{transform:translateY(100vh);opacity:0.3}}
   @keyframes stats-intro{0%{transform:translateY(30px) scale(0.95);opacity:0;filter:blur(4px)}100%{transform:translateY(0) scale(1);opacity:1;filter:blur(0)}}
   @keyframes wall-shame-entry{0%{transform:translateX(-20px);opacity:0}100%{transform:translateX(0);opacity:1}}
+  @keyframes glass-crack{0%{opacity:0;transform:scale(0.5)}30%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1.3)}}
+  .cell-cracked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 2L18 15L5 12L17 20L8 35L20 24L30 38L23 20L38 15L22 14Z' fill='none' stroke='%23ef4444' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E");background-size:80%;background-repeat:no-repeat;background-position:center}
   @keyframes scroll-hint{0%,100%{transform:translateX(0) translateY(-50%);opacity:0.3}50%{transform:translateX(8px) translateY(-50%);opacity:0.7}}
   @keyframes score-trail{0%{box-shadow:0 0 0 transparent}30%{box-shadow:0 0 15px var(--trail-color,rgba(255,255,255,0.3))}100%{box-shadow:0 0 0 transparent}}
   .score-trail-effect{animation:score-trail 1s ease-out}
@@ -1870,6 +1861,13 @@ export default function YamsUltimateLegacy() {
           </div>
         </div>
       )}
+      {/* ROULETTE OVERLAY */}
+      {rouletteMode&&rouletteResult&&<div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] pointer-events-none" style={{animation:'fade-in-scale 0.3s ease-out'}}>
+        <div className="bg-black/80 backdrop-blur-sm px-8 py-4 rounded-3xl border-2 border-amber-500/50 text-center shadow-2xl shadow-amber-500/20">
+          <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest mb-1">🎰 Roulette</div>
+          <div className="text-2xl font-black text-white">{rouletteResult.name}</div>
+        </div>
+      </div>}
       {/* STYLED CONFIRM MODAL */}
       {confirmModal&&(
         <div className="fixed inset-0 z-[350] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={()=>setConfirmModal(null)}>
@@ -1977,7 +1975,7 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
                   <div className="absolute -top-10 -left-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
                   <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
-                  <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}><Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/></div>
+                  <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}>{(()=>{const w=getWinner()[0];const t=getPlayerTitle(playerStats.find(s=>s.name===w));return t?.icon?<span className="text-7xl mx-auto block text-center mb-4" style={{filter:'drop-shadow(0 0 20px rgba(250,204,21,0.5))'}}>{t.icon}</span>:<Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/>;})()}</div>
                   <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>{suddenDeathWinner ? '⚔️ MORT SUBITE - WINNER' : 'THE WINNER IS'}</h2>
                   <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
                   <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
@@ -2039,7 +2037,6 @@ export default function YamsUltimateLegacy() {
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Image size={14}/> Skin de Grille</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.keys(GRID_SKINS).map(k=>{const s=GRID_SKINS[k];return <button key={k} onClick={()=>setGridSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${gridSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">👻</div><div><div className="text-white font-bold text-sm">Score Fantôme</div><div className="text-gray-400 text-[10px]">Affiche ta meilleure partie en filigrane</div></div></div><button onClick={()=>setShowGhostScores(!showGhostScores)} className={'relative w-12 h-6 rounded-full transition-all '+(showGhostScores?'bg-indigo-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(showGhostScores?'translate-x-6':'')}></div></button></div>
-                <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">🌸</div><div><div className="text-white font-bold text-sm">Fond Saisonnier</div><div className="text-gray-400 text-[10px]">Particules selon la saison active</div></div></div><button onClick={()=>setSeasonalBgEnabled(!seasonalBgEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(seasonalBgEnabled?'bg-cyan-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(seasonalBgEnabled?'translate-x-6':'')}></div></button></div>
               </div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Terminal size={14}/> Police d'écriture</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.entries(FONT_OPTIONS).map(([k,f])=><button key={k} onClick={()=>setCustomFont(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${customFont===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`} style={{fontFamily:f.family}}>{f.name}</button>)}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Couleur par Joueur</h3><div className="space-y-2">{players.map((p,pi)=>{const current=playerColors[p]||PLAYER_COLORS[pi%PLAYER_COLORS.length].id;return <div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold flex-1 text-sm">{playerAvatars[p]||'👤'} {p}</span><div className="flex gap-1.5">{PLAYER_COLORS.map(c=><button key={c.id} onClick={()=>setPlayerColors({...playerColors,[p]:c.id})} className={'w-7 h-7 rounded-full border-2 transition-all hover:scale-110 '+(current===c.id?'border-white scale-110':'border-transparent')} style={{background:c.hex}} title={c.name}/>)}</div></div>;})}</div></div>
@@ -2050,6 +2047,7 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">🎰</div><div><div className="text-white font-bold">Mode Roulette</div><div className="text-gray-400 text-xs">Catégorie aléatoire à chaque tour</div></div></div><button onClick={()=>setRouletteMode(!rouletteMode)} className={'relative w-12 h-6 rounded-full transition-all '+(rouletteMode?'bg-amber-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(rouletteMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
               {/* SAISONS DANS LES REGLAGES */}
@@ -2419,6 +2417,7 @@ export default function YamsUltimateLegacy() {
                 <h2 className="text-2xl font-black text-white flex items-center gap-3" style={{animation:"fade-in-scale 0.4s ease-out 0.1s backwards"}}><span className="text-3xl">📝</span>Feuille de score</h2>
                 <div className="flex gap-2 flex-wrap items-center">
                   {editMode?(<><button onClick={toggleEditMode} className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl font-bold transition-all flex items-center gap-2"><Check size={18}/>Valider</button><button onClick={cancelEdit} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><X size={18}/>Annuler</button></>):(<button onClick={toggleEditMode} className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-bold transition-all flex items-center gap-2"><Edit3 size={18}/>Éditer</button>)}
+                  {rouletteMode&&isGameStarted()&&!isGameComplete()&&<button onClick={spinRoulette} className="px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-400 rounded-xl font-bold transition-all flex items-center gap-2 border border-amber-500/20">🎰 Roulette</button>}
                   <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
                 </div>
               </div>
@@ -2448,7 +2447,7 @@ export default function YamsUltimateLegacy() {
                   </div>
               )}
 
-              <div className={`overflow-x-auto relative group ${GRID_SKINS[gridSkin]?.accent||''} ${gridSkin!=='default'?'grid-'+gridSkin:''}`}>{players.length>=3&&<div className="absolute top-1/2 -translate-y-1/2 right-2 z-20 pointer-events-none text-white/40 sm:hidden" style={{animation:'scroll-hint 2s ease-in-out infinite'}}>👉</div>}<table className={`w-full table-fixed ${GRID_SKINS[gridSkin]?.border||''}`} role="grid" aria-label="Grille de scores YAMS"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className={`border-b ${gridSkin==='neon'?'border-green-500/30':gridSkin==='vintage'?'border-amber-700/30':gridSkin==='chalk'?'border-green-800/30':gridSkin==='pixel'?'border-purple-500/30':'border-white/20'}`}>
+              <div className={`overflow-x-auto relative group ${GRID_SKINS[gridSkin]?.accent||''} ${gridSkin!=='default'?'grid-'+gridSkin:''}`} style={{filter:`sepia(${gridAge*0.15}) contrast(${1+gridAge*0.08})`,transition:'filter 2s ease'}}>{players.length>=3&&<div className="absolute top-1/2 -translate-y-1/2 right-2 z-20 pointer-events-none text-white/40 sm:hidden" style={{animation:'scroll-hint 2s ease-in-out infinite'}}>👉</div>}<table className={`w-full table-fixed ${GRID_SKINS[gridSkin]?.border||''}`} role="grid" aria-label="Grille de scores YAMS"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className={`border-b ${gridSkin==='neon'?'border-green-500/30':gridSkin==='vintage'?'border-amber-700/30':gridSkin==='chalk'?'border-green-800/30':gridSkin==='pixel'?'border-purple-500/30':'border-white/20'}`}>
                 <th className={`text-left p-3 font-bold sticky left-0 z-10 ${GRID_SKINS[gridSkin]?.text||'text-white'} bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}>Catégorie</th>
                 {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;const isLeaderCol=leader===p;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset ring-yellow-400 shadow-xl shadow-yellow-400/30':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}25,rgba(250,204,21,0.08))`,boxShadow:`inset 0 0 30px ${pc.hex}15, 0 0 20px rgba(250,204,21,0.15)`}:isLeaderCol&&!editMode?{boxShadow:'inset 0 0 20px rgba(250,204,21,0.06)',background:'rgba(250,204,21,0.03)'}:{})}}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
@@ -2489,7 +2488,7 @@ export default function YamsUltimateLegacy() {
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
+                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
                   :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
@@ -2553,7 +2552,7 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='stats'&&(
-            <div className={"space-y-6 tab-slide-"+tabDirection} style={{animation:'stats-intro 0.6s cubic-bezier(0.22,1,0.36,1)'}}>
+            <div className={"space-y-6 tab-slide-"+tabDirection} >
                 
                 {/* 0. FILTRE SAISONS */}
                 <div className="bg-white/5 p-4 rounded-3xl border border-white/10">
