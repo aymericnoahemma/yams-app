@@ -203,6 +203,61 @@ const FUN_QUOTES = [
     "La tension est palpable ⚡","Masterclass en cours 📚","Coup dur... mais rien n'est perdu ! 💪"
 ];
 
+// WALL OF SHAME CALCULATION
+const getWallOfShame = (history) => {
+    if(!history || history.length < 2) return null;
+    const shameStats = {};
+    history.forEach(g => {
+        const parts = g.players || g.results || [];
+        const grid = g.grid || {};
+        parts.forEach(p => {
+            if(!shameStats[p.name]) shameStats[p.name] = { zeros: 0, worstScore: 999, consecutiveZeros: 0, maxConsecutiveZeros: 0, totalGames: 0, lastPlace: 0 };
+            const s = shameStats[p.name];
+            s.totalGames++;
+            if(p.score < s.worstScore) s.worstScore = p.score;
+            const sorted = [...parts].sort((a,b) => b.score - a.score);
+            if(sorted[sorted.length-1]?.name === p.name && parts.length > 1) s.lastPlace++;
+            if(grid[p.name]) {
+                let consec = 0;
+                Object.entries(grid[p.name]).forEach(([k,v]) => {
+                    if(v === 0 && !k.includes('History') && !k.includes('Score')) { s.zeros++; consec++; if(consec > s.maxConsecutiveZeros) s.maxConsecutiveZeros = consec; }
+                    else consec = 0;
+                });
+            }
+        });
+    });
+    return Object.entries(shameStats).map(([name,d]) => ({name, ...d, avgScore: Math.round((history.reduce((s,g) => {const p=(g.players||g.results||[]).find(p=>p.name===name);return s+(p?p.score:0);},0))/Math.max(1,d.totalGames))})).sort((a,b) => b.zeros - a.zeros);
+};
+
+// SEASONAL BACKGROUNDS
+const SEASONAL_BG_EFFECTS = {
+    hiver: { emoji: '❄️', count: 15, animation: 'seasonal-snow' },
+    printemps: { emoji: '🌸', count: 12, animation: 'seasonal-petals' },
+    été: { emoji: '☀️', count: 8, animation: 'seasonal-sun' },
+    automne: { emoji: '🍂', count: 15, animation: 'seasonal-leaves' }
+};
+const getSeasonalEffect = (seasonName) => {
+    if(!seasonName) return null;
+    const lower = seasonName.toLowerCase();
+    if(lower.includes('hiver') || lower.includes('winter') || lower.includes('noël') || lower.includes('noel')) return SEASONAL_BG_EFFECTS.hiver;
+    if(lower.includes('printemps') || lower.includes('spring')) return SEASONAL_BG_EFFECTS.printemps;
+    if(lower.includes('été') || lower.includes('ete') || lower.includes('summer')) return SEASONAL_BG_EFFECTS.été;
+    if(lower.includes('automne') || lower.includes('autumn') || lower.includes('fall')) return SEASONAL_BG_EFFECTS.automne;
+    return null;
+};
+
+// GHOST SCORE CALCULATION
+const getGhostScore = (player, category, history) => {
+    if(!history || history.length === 0) return null;
+    let bestGame = null; let bestScore = 0;
+    history.forEach(g => {
+        const p = (g.players||g.results||[]).find(pp => pp.name === player);
+        if(p && p.score > bestScore) { bestScore = p.score; bestGame = g; }
+    });
+    if(!bestGame || !bestGame.grid || !bestGame.grid[player]) return null;
+    return bestGame.grid[player][category];
+};
+
 // DYNAMIC IN-GAME TITLES
 const getDynamicTitle = (player, players, scores, calcTotal, lastPlayerToPlay, moveLog) => {
     if (!players || players.length < 2) return null;
@@ -349,7 +404,7 @@ const VisualDie = ({ value, onClick, skin }) => {
 const FloatingScore = ({ x, y, value, color }) => {
     const c = color || '#4ade80';
     return (
-      <div className="fixed pointer-events-none z-[100]" style={{ left: x, top: y }}>
+      <div className="fixed pointer-events-none z-[100]" style={{ left: x, top: y, transform: 'translateX(-50%)' }}>
         <div className="font-black text-2xl" style={{ animation: 'floatUp 1s ease-out forwards', fontFamily: 'JetBrains Mono, monospace', color: c, textShadow: `0 0 12px ${c}, 0 0 24px ${c}40` }}>+{value}</div>
         <div className="absolute inset-0 font-black text-2xl score-trail" style={{ fontFamily: 'JetBrains Mono, monospace', color: c, filter:'blur(6px)', opacity:0.5 }}>+{value}</div>
       </div>
@@ -607,6 +662,14 @@ export default function YamsUltimateLegacy() {
   const [scoreParticles, setScoreParticles] = useState([]);
   const [consecutiveZeros, setConsecutiveZeros] = useState({});
   const [gameNote, setGameNote] = useState('');
+  const [showCountdown, setShowCountdown] = useState(null);
+  const [showClutch, setShowClutch] = useState(null);
+  const [showPhotoFinish, setShowPhotoFinish] = useState(false);
+  const [showGhostScores, setShowGhostScores] = useState(false);
+  const [seasonalBgEnabled, setSeasonalBgEnabled] = useState(false);
+  const [idleTimer, setIdleTimer] = useState(null);
+  const [idleAvatars, setIdleAvatars] = useState(false);
+  const [playerEntrance, setPlayerEntrance] = useState(false);
   const [funQuote, setFunQuote] = useState(null);
   const [customFont, setCustomFont] = useState('default');
   const replayIntervalRef = useRef(null);
@@ -651,15 +714,25 @@ export default function YamsUltimateLegacy() {
   }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();loadNewSettings();},[]);
-  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);}catch(e){}};
+  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);const sgs=localStorage.getItem('yamsShowGhost');if(sgs)setShowGhostScores(JSON.parse(sgs));const sbg=localStorage.getItem('yamsSeasonalBg');if(sbg)setSeasonalBgEnabled(JSON.parse(sbg));}catch(e){}};
   useEffect(()=>{localStorage.setItem('yamsGridSkin',gridSkin);},[gridSkin]);
   useEffect(()=>{localStorage.setItem('yamsPlayerColors',JSON.stringify(playerColors));},[playerColors]);
+  useEffect(()=>{localStorage.setItem('yamsShowGhost',JSON.stringify(showGhostScores));},[showGhostScores]);
+  useEffect(()=>{localStorage.setItem('yamsSeasonalBg',JSON.stringify(seasonalBgEnabled));},[seasonalBgEnabled]);
   useEffect(()=>{localStorage.setItem('yamsCustomFont',customFont);const f=FONT_OPTIONS[customFont];if(f&&f.url){const existing=document.getElementById('yams-font-link');if(existing)existing.remove();const link=document.createElement('link');link.id='yams-font-link';link.rel='stylesheet';link.href=f.url;document.head.appendChild(link);}},[customFont]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
   const saveHistory=(h)=>{try{localStorage.setItem('yamsHistory',JSON.stringify(h));}catch(e){}};
   const loadGlobalStats=()=>{try{const xp=localStorage.getItem('yamsGlobalXP');if(xp)setGlobalXP(parseInt(xp));}catch(e){}};
   const loadSeasons=()=>{try{const s=localStorage.getItem('yamsSeasons');const a=localStorage.getItem('yamsActiveSeason');const d=localStorage.getItem('yamsSeasonDesc');if(s)setSeasons(JSON.parse(s));if(a)setActiveSeason(a);if(d)setSeasonDescriptions(JSON.parse(d));}catch(e){}};
   const loadGages=()=>{try{const cg=localStorage.getItem('yamsCustomGages');const edg=localStorage.getItem('yamsEnableDefaultGages');if(cg)setCustomGages(JSON.parse(cg));if(edg)setEnableDefaultGages(JSON.parse(edg));}catch(e){}};
+
+  // IDLE DETECTION
+  useEffect(() => {
+    if(!isGameStarted() || isGameComplete()) { setIdleAvatars(false); return; }
+    const timer = setTimeout(() => setIdleAvatars(true), 30000);
+    setIdleAvatars(false);
+    return () => clearTimeout(timer);
+  }, [scores, lastPlayerToPlay]);
 
   useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
 
@@ -702,7 +775,14 @@ export default function YamsUltimateLegacy() {
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
   const getWinner=()=>{if(!players.length)return[];const max=Math.max(...players.map(p=>calcTotal(p)));const tied=players.filter(p=>calcTotal(p)===max);if(suddenDeathWinner&&tied.includes(suddenDeathWinner))return[suddenDeathWinner];return tied;};
   const getLoser=()=>{if(!players.length)return null;const winners=getWinner();const nonWinners=players.filter(p=>!winners.includes(p));if(nonWinners.length===0){const totals=players.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);}const totals=nonWinners.map(p=>({name:p,score:calcTotal(p)}));const min=Math.min(...totals.map(t=>t.score));return totals.find(t=>t.score===min);};
-  const handleSuddenDeathWin=(winner,sdScores=null)=>{setSuddenDeathWinner(winner);if(sdScores){const ns={...scores};Object.entries(sdScores).forEach(([p,v])=>{if(!ns[p])ns[p]={};ns[p].suddenDeathScore=v;});setScores(ns);}setShowSuddenDeath(false);setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);};
+  const handleSuddenDeathWin=(winner,sdScores=null)=>{setSuddenDeathWinner(winner);if(sdScores){const ns={...scores};Object.entries(sdScores).forEach(([p,v])=>{if(!ns[p])ns[p]={};ns[p].suddenDeathScore=v;});setScores(ns);}setShowSuddenDeath(false);// CHECK PHOTO FINISH
+      const sortedPlayers = players.map(p=>({name:p,score:calcTotal(p)})).sort((a,b)=>b.score-a.score);
+      if(sortedPlayers.length >= 2 && sortedPlayers[0].score - sortedPlayers[1].score <= 5) {
+          setShowPhotoFinish(true);
+          setTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
+      } else {
+          setShowVictoryAnimation(true);setConfetti('gold');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
+      }};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
@@ -720,7 +800,12 @@ export default function YamsUltimateLegacy() {
       const afterScores = {...scores,[player]:{...scores[player],[category]:parseInt(value)||0}};
       const filledAfter = players.reduce((s,p)=>s+playableCats.filter(c=>afterScores[p]?.[c.id]!==undefined).length,0);
       const totalCells = players.length * playableCats.length;
-      if(totalCells - filledAfter <= players.length && totalCells - filledAfter > 0) {
+      const remaining = totalCells - filledAfter;
+      if(remaining <= 3 && remaining > 0) {
+        setShowCountdown(remaining);
+        setTimeout(() => setShowCountdown(null), 1500);
+      }
+      if(remaining <= players.length && remaining > 0) {
         setTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});},800);
       }
     }
@@ -772,9 +857,11 @@ export default function YamsUltimateLegacy() {
         const newZeros = {...consecutiveZeros, [player]: (consecutiveZeros[player]||0)+1};
         setConsecutiveZeros(newZeros);
         if(newZeros[player] >= 3) {
-            setMassacreScreen(player);
-            setTimeout(() => setMassacreScreen(null), 2500);
-            setConsecutiveZeros({...newZeros, [player]: 0});
+            const level = newZeros[player];
+            const variant = level >= 5 ? 'legendary' : level >= 4 ? 'apocalypse' : 'massacre';
+            setMassacreScreen({player, variant});
+            setTimeout(() => setMassacreScreen(null), 2800);
+            if(level >= 5) setConsecutiveZeros({...newZeros, [player]: 0});
         }
     } else if(value !== '' && !editMode) {
         setConsecutiveZeros(prev => ({...prev, [player]: 0}));
@@ -797,7 +884,11 @@ export default function YamsUltimateLegacy() {
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); 
         setTimeout(()=>{setConfetti(null);setShakeAnimation(null);setShowDiceAnim(false);setEmojiRain(null);setShockwavePos(null);},4500);
     } else if(value==='0') {
+        setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
+        setShakeScreen(true); setTimeout(()=>setShakeScreen(false),500);
+        setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),3000);
+        setTimeout(()=>setConfetti(null),4000);
     } else { 
         setConfetti(null); 
     }
@@ -828,14 +919,22 @@ export default function YamsUltimateLegacy() {
     
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
     if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});setTimeout(()=>setConfetti(null),4500);}
-    // FINISHING MOVE (player fills last cell)
+    // FINISHING MOVE (player fills last cell) + CLUTCH DETECTION
     if(!editMode && value !== '') {
         const playerCats = playableCats.filter(c=>ns[player]?.[c.id]!==undefined);
         if(playerCats.length === playableCats.length) {
-            const finalTotal = categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)>=63 ? newTotal : newTotal;
+            const finalTotal = newTotal;
             if(!showBonusFullscreen) {
                 pushNotif({icon:'✅',title:'TERMINÉ !',description:player+' a rempli toute sa grille ! ('+finalTotal+' pts)'});
-                
+            }
+            // CLUTCH: Was behind, finishes grid and overtakes leader
+            if(players.length >= 2) {
+                const oldLeaderScore = Math.max(...players.filter(p2=>p2!==player).map(p2=>calcTotal(p2)));
+                const wasLosing = calcTotal(player) <= oldLeaderScore;
+                if(wasLosing && finalTotal > oldLeaderScore) {
+                    setShowClutch(player);
+                    setTimeout(() => setShowClutch(null), 3000);
+                }
             }
         }
     }
@@ -858,13 +957,26 @@ export default function YamsUltimateLegacy() {
             setLastPlayerToPlay(player);
             setLastModifiedCell(cellKey);
             if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
-            // HOT SEAT: flash next player (delayed if animation is playing)
+            // HOT SEAT: flash next player (delayed if any animation is playing)
             const nextP = players[(players.indexOf(player)+1)%players.length];
             if(players.length >= 2 && !isGameComplete()) {
-                const delay = (showBonusFullscreen || category==='yams' && value==='50') ? 5500 : 500;
+                const hasYams = category==='yams' && value==='50';
+                const hasBonus = (oldUp<63&&newUp>=63) || showBonusFullscreen;
+                const hasBonusLost = categories.find(c=>c.id===category)?.upper && (() => {
+                    const uCats = categories.filter(c=>c.upper);
+                    const filled = uCats.filter(c=>ns[player]?.[c.id]!==undefined);
+                    const empty = uCats.filter(c=>ns[player]?.[c.id]===undefined);
+                    const sum = filled.reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
+                    if(empty.length===0 && sum<63) return true;
+                    if(empty.length>0) { const maxR = empty.reduce((s,c)=>s+(c.max||0),0); if(sum+maxR<63) return true; }
+                    return false;
+                })();
+                const delay = (hasYams || hasBonus || hasBonusLost) ? 6000 : 600;
                 setTimeout(() => {
-                    setHotSeatPlayer(nextP);
-                    setTimeout(() => setHotSeatPlayer(null), 1800);
+                    if(!showBonusFullscreen && !pendingYamsDetail) {
+                        setHotSeatPlayer(nextP);
+                        setTimeout(() => setHotSeatPlayer(null), 1800);
+                    }
                 }, delay);
             }
         } else {
@@ -877,6 +989,10 @@ export default function YamsUltimateLegacy() {
   // NEW FUNCTION: Save detail of Yams
   const saveYamsDetail = (val) => {
       if(!pendingYamsDetail) return;
+      // Stop dice animation immediately when user selects
+      setShowDiceAnim(false);
+      setEmojiRain(null);
+      setShockwavePos(null);
       const { player } = pendingYamsDetail;
       const newScores = { ...scores };
       if(newScores[player]) {
@@ -891,7 +1007,7 @@ export default function YamsUltimateLegacy() {
 
   const toggleEditMode=()=>{if(!editMode){setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));setLastPlayerBeforeEdit(lastPlayerToPlay);setEditMode(true);}else{setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);}};
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
-  const resetGame = (forcedLoserName = null) => { 
+  const resetGame = (forcedLoserName = null) => { setPlayerEntrance(true); setTimeout(() => setPlayerEntrance(false), 2000); 
       if(!forcedLoserName && !window.confirm("Commencer une nouvelle partie ?")) return; 
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
@@ -1285,7 +1401,7 @@ export default function YamsUltimateLegacy() {
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 transition-opacity duration-300 overflow-x-hidden '+(themeTransition?'opacity-0':'opacity-100')+(tensionMode?' tension-pulse':'')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-all duration-500 ease-in-out '+(themeTransition?'opacity-0 scale-[0.98] blur-sm':'opacity-100 scale-100 blur-0')+(tensionMode?' tension-pulse':'')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
       <InteractiveParticles themeKey={theme}/>
       {/* VS FIGHTING SCREEN */}
       {showVSScreen&&players.length>=2&&<div className="fixed inset-0 z-[300] bg-black flex items-center justify-center overflow-hidden" style={{animation:'cinema-darken 0.3s ease-out'}}>
@@ -1347,6 +1463,48 @@ export default function YamsUltimateLegacy() {
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} color={fs.color} />)}
       {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=confetti==='gold'?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
+      {/* COUNTDOWN CINEMATIC */}
+      {showCountdown&&<div className="fixed inset-0 z-[280] flex items-center justify-center pointer-events-none">
+        <div className="text-center" style={{animation:'countdown-pop 1.2s cubic-bezier(0.34,1.56,0.64,1)'}}>
+          <div className="text-[12rem] font-black text-white leading-none" style={{textShadow:'0 0 80px rgba(250,204,21,0.5), 0 0 120px rgba(250,204,21,0.3)',animation:'countdown-pulse 0.4s ease-in-out'}}>{showCountdown}</div>
+          <div className="text-xl font-black text-yellow-400 uppercase tracking-[0.5em] mt-4" style={{animation:'fade-in-scale 0.3s ease-out 0.2s backwards'}}>{showCountdown===1?'DERNIÈRE CASE':'CASES RESTANTES'}</div>
+        </div>
+      </div>}
+      {/* CLUTCH ANIMATION */}
+      {showClutch&&<div className="fixed inset-0 z-[270] flex items-center justify-center pointer-events-none" style={{animation:'clutch-flash 3s ease-out forwards'}}>
+        <div className="text-center">
+          <div className="text-8xl mb-4" style={{animation:'clutch-icon 0.6s cubic-bezier(0.34,1.56,0.64,1)'}}>⚡</div>
+          <div className="text-5xl sm:text-6xl font-black text-yellow-400 tracking-wider" style={{textShadow:'0 0 40px rgba(250,204,21,0.6)',animation:'clutch-text 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s backwards'}}>CLUTCH !</div>
+          <div className="text-xl font-bold text-white mt-2" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}>{showClutch} renverse la table !</div>
+        </div>
+      </div>}
+      {/* PHOTO FINISH */}
+      {showPhotoFinish&&<div className="fixed inset-0 z-[270] flex items-center justify-center bg-black/90 pointer-events-none" style={{animation:'photo-flash 3s ease-out forwards'}}>
+        <div className="text-center">
+          <div className="text-8xl mb-4" style={{animation:'photo-camera 1s ease-in-out infinite'}}>📸</div>
+          <div className="text-5xl sm:text-6xl font-black text-white tracking-widest" style={{animation:'photo-text 0.6s cubic-bezier(0.34,1.56,0.64,1)'}}>PHOTO FINISH</div>
+          <div className="text-xl font-bold text-yellow-400 mt-3" style={{animation:'fade-in-scale 0.4s ease-out 0.3s backwards'}}>Écart ≤ 5 pts !</div>
+          <div className="flex justify-center gap-6 mt-6">{players.map(p=>({name:p,score:calcTotal(p)})).sort((a,b)=>b.score-a.score).slice(0,2).map((p,i)=>
+            <div key={p.name} className="text-center" style={{animation:`fade-in-scale 0.4s ease-out ${0.5+i*0.2}s backwards`}}>
+              <div className="text-4xl mb-1">{playerAvatars[p.name]||'👤'}</div>
+              <div className="text-white font-black text-lg">{p.name}</div>
+              <div className="text-3xl font-black" style={{color:i===0?'#fbbf24':'#94a3b8'}}>{p.score}</div>
+            </div>
+          )}</div>
+        </div>
+      </div>}
+      {/* SEASONAL BACKGROUND EFFECTS */}
+      {seasonalBgEnabled && activeSeason && getSeasonalEffect(activeSeason) && (
+        <div className="fixed inset-0 pointer-events-none z-[5] overflow-hidden">
+          {[...Array(getSeasonalEffect(activeSeason).count)].map((_,i) => 
+            <div key={i} className="absolute text-2xl" style={{
+              left: Math.random()*100+'%', top: '-30px',
+              animation: `${getSeasonalEffect(activeSeason).animation} ${4+Math.random()*6}s linear ${Math.random()*8}s infinite`,
+              opacity: 0.4 + Math.random()*0.3
+            }}>{getSeasonalEffect(activeSeason).emoji}</div>
+          )}
+        </div>
+      )}
       {/* HOT SEAT OVERLAY */}
       {hotSeatPlayer&&<div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
         <div className="text-center" style={{animation:'hotseat-pulse 1.5s ease-in-out'}}>
@@ -1358,9 +1516,9 @@ export default function YamsUltimateLegacy() {
       {/* MASSACRE SCREEN */}
       {massacreScreen&&<div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/80 pointer-events-none" style={{animation:'massacre-in 0.3s ease-out'}}>
         <div className="text-center" style={{animation:'massacre-shake 0.5s ease-in-out'}}>
-          <div className="text-9xl mb-4" style={{animation:'massacre-skull 0.6s cubic-bezier(0.34,1.56,0.64,1)',filter:'drop-shadow(0 0 30px rgba(239,68,68,0.8))'}}>💀</div>
-          <div className="text-4xl sm:text-5xl font-black text-red-500 tracking-widest" style={{textShadow:'0 0 20px rgba(239,68,68,0.5)',animation:'massacre-text 0.4s ease-out 0.2s backwards'}}>MASSACRE</div>
-          <div className="text-lg text-red-300 font-bold mt-2">{massacreScreen} enchaîne 3 zéros !</div>
+          <div className="text-9xl mb-4" style={{animation:'massacre-skull 0.6s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 30px ${massacreScreen.variant==='legendary'?'rgba(168,85,247,0.8)':massacreScreen.variant==='apocalypse'?'rgba(249,115,22,0.8)':'rgba(239,68,68,0.8)'})`}}>{massacreScreen.variant==='legendary'?'☠️':massacreScreen.variant==='apocalypse'?'🌋':'💀'}</div>
+          <div className={`text-4xl sm:text-5xl font-black tracking-widest ${massacreScreen.variant==='legendary'?'text-purple-400':massacreScreen.variant==='apocalypse'?'text-orange-400':'text-red-500'}`} style={{textShadow:'0 0 20px currentColor',animation:'massacre-text 0.4s ease-out 0.2s backwards'}}>{massacreScreen.variant==='legendary'?'LÉGENDAIRE...MENT NUL':massacreScreen.variant==='apocalypse'?'APOCALYPSE':'MASSACRE'}</div>
+          <div className="text-lg text-red-300 font-bold mt-2">{massacreScreen.player} enchaîne les zéros !</div>
         </div>
       </div>}
       {/* SCORE PARTICLES */}
@@ -1558,13 +1716,28 @@ export default function YamsUltimateLegacy() {
   @keyframes massacre-shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
   @keyframes score-particle{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
   @keyframes funquote-in{0%{transform:translateX(-50%) translateY(20px) scale(0.8);opacity:0}100%{transform:translateX(-50%) translateY(0) scale(1);opacity:1}}
+  @keyframes countdown-pop{0%{transform:scale(3);opacity:0}30%{transform:scale(0.9);opacity:1}50%{transform:scale(1.1)}100%{transform:scale(1);opacity:0}}
+  @keyframes countdown-pulse{0%,100%{text-shadow:0 0 80px rgba(250,204,21,0.5)}50%{text-shadow:0 0 120px rgba(250,204,21,0.8)}}
+  @keyframes clutch-flash{0%{background:rgba(250,204,21,0.2)}20%{background:transparent}40%{background:rgba(250,204,21,0.1)}100%{opacity:0}}
+  @keyframes clutch-icon{0%{transform:scale(0) rotate(-180deg)}100%{transform:scale(1) rotate(0)}}
+  @keyframes clutch-text{0%{transform:scale(0.3);opacity:0;letter-spacing:30px}100%{transform:scale(1);opacity:1;letter-spacing:3px}}
+  @keyframes photo-flash{0%{background:white}10%{background:rgba(0,0,0,0.9)}95%{opacity:1}100%{opacity:0}}
+  @keyframes photo-camera{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  @keyframes photo-text{0%{transform:scaleX(0);letter-spacing:40px}100%{transform:scaleX(1);letter-spacing:6px}}
+  @keyframes player-entrance{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:0.6}100%{transform:scale(1);opacity:0}}
+  @keyframes seasonal-snow{0%{transform:translateY(-30px) rotate(0deg)}100%{transform:translateY(100vh) rotate(360deg)}}
+  @keyframes seasonal-petals{0%{transform:translateY(-30px) translateX(0) rotate(0)}50%{transform:translateY(50vh) translateX(30px) rotate(180deg)}100%{transform:translateY(100vh) translateX(-20px) rotate(360deg)}}
+  @keyframes seasonal-leaves{0%{transform:translateY(-30px) translateX(0) rotate(0)}33%{transform:translateY(33vh) translateX(40px) rotate(120deg)}66%{transform:translateY(66vh) translateX(-30px) rotate(240deg)}100%{transform:translateY(100vh) translateX(10px) rotate(360deg)}}
+  @keyframes seasonal-sun{0%{transform:translateY(-30px);opacity:0.5}50%{opacity:0.8}100%{transform:translateY(100vh);opacity:0.3}}
+  @keyframes stats-intro{0%{transform:translateY(30px) scale(0.95);opacity:0;filter:blur(4px)}100%{transform:translateY(0) scale(1);opacity:1;filter:blur(0)}}
+  @keyframes wall-shame-entry{0%{transform:translateX(-20px);opacity:0}100%{transform:translateX(0);opacity:1}}
   @keyframes score-trail{0%{box-shadow:0 0 0 transparent}30%{box-shadow:0 0 15px var(--trail-color,rgba(255,255,255,0.3))}100%{box-shadow:0 0 0 transparent}}
   .score-trail-effect{animation:score-trail 1s ease-out}
   @keyframes badge-shelf-3d{0%{transform:perspective(600px) rotateY(-8deg) translateZ(-20px);opacity:0}100%{transform:perspective(600px) rotateY(0) translateZ(0);opacity:1}}
   @keyframes stats-counter-in{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
   @keyframes history-cascade{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
 `}</style>
-      {notifQueue.length>0&&<div className="fixed bottom-28 right-4 z-50 flex flex-col-reverse gap-3">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
+      {notifQueue.length>0&&<div className="fixed top-4 left-1/2 -translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-4">{notifQueue.map((notif,ni)=>{const colors=notif.icon==='🎲'?'from-yellow-600 to-orange-600 border-yellow-400':notif.icon==='🎁'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🩸'?'from-red-700 to-rose-700 border-red-400':notif.icon==='💯'?'from-emerald-600 to-teal-600 border-emerald-400':notif.icon==='🏁'?'from-orange-600 to-red-600 border-orange-400':notif.icon==='⏱️'?'from-blue-600 to-indigo-600 border-blue-400':notif.icon==='🔄'?'from-cyan-600 to-blue-600 border-cyan-400':notif.icon==='❌'?'from-red-800 to-rose-800 border-red-500':notif.icon==='✅'?'from-green-600 to-emerald-600 border-green-400':notif.icon==='🏅'?'from-amber-600 to-yellow-600 border-amber-400':notif.icon==='🏆'?'from-yellow-600 to-amber-600 border-yellow-400':'from-purple-600 to-pink-600 border-purple-400';return(<div key={notif.id} className="slide-in-right" style={{animation:`notif-enter 0.6s cubic-bezier(0.34,1.56,0.64,1) ${ni*0.1}s backwards`}}><div className={'relative overflow-hidden px-6 py-5 rounded-2xl shadow-2xl backdrop-blur-xl border-2 max-w-sm bg-gradient-to-r '+colors}><div className="absolute inset-0" style={{animation:'shimmer 2s infinite',backgroundSize:'200% 100%',backgroundImage:'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)'}}></div><div className="flex items-center gap-4 relative z-10"><span className="text-5xl" style={{animation:'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>{notif.icon}</span><div className="text-white"><div className="text-xs font-bold uppercase tracking-widest opacity-80">{notif.icon==='🎲'?'🎉 Exploit !':notif.icon==='🎁'?'🎉 Succès !':notif.icon==='🩸'?'⚔️ Premier Sang !':notif.icon==='💯'?'🎯 Perfection !':notif.icon==='🏁'?'🚨 Attention !':notif.icon==='⏱️'?'📊 Mi-Temps':notif.icon==='🔄'?'🔥 Renversement !':notif.icon==='❌'?'😬 Aïe !':notif.icon==='✅'?'🎮 Fini !':notif.icon==='🏅'?'🏅 Record !':notif.icon==='🏆'?'🏆 Défi !':'🎉 Incroyable !'}</div><div className="font-black text-xl">{notif.title}</div><div className="text-sm opacity-90">{notif.description}</div></div></div></div></div>);})}</div>}
       {/* SHOCKWAVE EFFECT */}
       {shockwavePos&&<div className="fixed z-[100] pointer-events-none" style={{left:shockwavePos.x-50,top:shockwavePos.y-50}}><div className="w-[100px] h-[100px] rounded-full border-4 border-white/40 shockwave"></div></div>}
       {/* EMOJI RAIN */}
@@ -1895,9 +2068,13 @@ export default function YamsUltimateLegacy() {
             </div>
           </div>
           
-          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTimeout(()=>{setTheme(k);setThemeTransition(false);},300);}}} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
+          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Thème</h3><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTimeout(()=>{setTheme(k);setTimeout(()=>setThemeTransition(false),400);},200);}}} className={'relative overflow-hidden px-4 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k? <Check size={16}/> : td.icon}<span>{td.name}</span></button>;})}</div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Dices size={14}/> Skin de Dés</h3><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${diceSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Image size={14}/> Skin de Grille</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.keys(GRID_SKINS).map(k=>{const s=GRID_SKINS[k];return <button key={k} onClick={()=>setGridSkin(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${gridSkin===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`}>{s.name}</button>;})}</div></div>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">👻</div><div><div className="text-white font-bold text-sm">Score Fantôme</div><div className="text-gray-400 text-[10px]">Affiche ta meilleure partie en filigrane</div></div></div><button onClick={()=>setShowGhostScores(!showGhostScores)} className={'relative w-12 h-6 rounded-full transition-all '+(showGhostScores?'bg-indigo-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(showGhostScores?'translate-x-6':'')}></div></button></div>
+                <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">🌸</div><div><div className="text-white font-bold text-sm">Fond Saisonnier</div><div className="text-gray-400 text-[10px]">Particules selon la saison active</div></div></div><button onClick={()=>setSeasonalBgEnabled(!seasonalBgEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(seasonalBgEnabled?'bg-cyan-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(seasonalBgEnabled?'translate-x-6':'')}></div></button></div>
+              </div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Terminal size={14}/> Police d'écriture</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.entries(FONT_OPTIONS).map(([k,f])=><button key={k} onClick={()=>setCustomFont(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${customFont===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`} style={{fontFamily:f.family}}>{f.name}</button>)}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Couleur par Joueur</h3><div className="space-y-2">{players.map((p,pi)=>{const current=playerColors[p]||PLAYER_COLORS[pi%PLAYER_COLORS.length].id;return <div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold flex-1 text-sm">{playerAvatars[p]||'👤'} {p}</span><div className="flex gap-1.5">{PLAYER_COLORS.map(c=><button key={c.id} onClick={()=>setPlayerColors({...playerColors,[p]:c.id})} className={'w-7 h-7 rounded-full border-2 transition-all hover:scale-110 '+(current===c.id?'border-white scale-110':'border-transparent')} style={{background:c.hex}} title={c.name}/>)}</div></div>;})}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -2103,7 +2280,7 @@ export default function YamsUltimateLegacy() {
             <div className={"space-y-4 tab-slide-"+tabDirection} style={{animation:'badge-shelf-3d 0.5s cubic-bezier(0.22,1,0.36,1)'}}>
                 <div className={'bg-gradient-to-br '+T.card+' p-6 rounded-3xl border border-white/10'}>
                     <h2 className="text-3xl font-black text-white mb-2 flex items-center gap-3"><Award className="text-yellow-400"/> Galerie des Trophées</h2>
-                    <p className="text-gray-400 text-sm mb-6">{ACHIEVEMENTS.filter(ach=>{let w=false;playerStats.forEach(p=>{if(ach.id==='first_win'&&p.wins>0)w=true;if(ach.id==='score_300'&&p.maxScore>=300)w=true;if(ach.id==='score_350'&&p.maxScore>=350)w=true;if(ach.id==='yams_king'&&p.yamsCount>=10)w=true;if(ach.id==='veteran'&&p.games>=50)w=true;if(ach.id==='bonus_hunter'&&p.bonusCount>=20)w=true;});return w;}).length} / {ACHIEVEMENTS.length} débloqués</p>
+                    <p className="text-gray-400 text-sm mb-4">{ACHIEVEMENTS.filter(ach=>{let w=false;playerStats.forEach(p=>{if(ach.id==='first_win'&&p.wins>0)w=true;if(ach.id==='score_300'&&p.maxScore>=300)w=true;if(ach.id==='score_350'&&p.maxScore>=350)w=true;if(ach.id==='yams_king'&&p.yamsCount>=10)w=true;if(ach.id==='veteran'&&p.games>=50)w=true;if(ach.id==='bonus_hunter'&&p.bonusCount>=20)w=true;});return w;}).length} / {ACHIEVEMENTS.length} débloqués</p>
                     {/* 3D SHELF BADGE WALL */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style={{perspective:'1200px'}}>
                         {ACHIEVEMENTS.map((ach,achIdx) => {
@@ -2185,6 +2362,34 @@ export default function YamsUltimateLegacy() {
                     </div>
                 </div>
                 )}
+                {/* WALL OF SHAME */}
+                {gameHistory.length >= 3 && (()=>{
+                    const shame = getWallOfShame(gameHistory);
+                    if(!shame || shame.length === 0) return null;
+                    return <div className={'bg-gradient-to-br from-red-950/30 to-rose-950/30 backdrop-blur-xl border border-red-500/20 rounded-3xl shadow-2xl p-6 mt-4'}>
+                        <h2 className="text-2xl font-black text-red-400 mb-4 flex items-center gap-3">💀 Mur de la Honte</h2>
+                        <div className="space-y-3">
+                            {shame.slice(0,5).map((s,i) => (
+                                <div key={s.name} className="flex items-center gap-4 bg-black/30 rounded-2xl p-4 border border-red-500/10 hover:bg-black/40 transition-all" style={{animation:`wall-shame-entry 0.4s ease-out ${i*0.1}s backwards`}}>
+                                    <div className="text-3xl">{i===0?'💩':i===1?'🤡':'😵'}</div>
+                                    <div className="flex-1">
+                                        <div className="text-white font-black">{playerAvatars[s.name]||'👤'} {s.name}</div>
+                                        <div className="flex flex-wrap gap-3 mt-1 text-[10px]">
+                                            <span className="text-red-400 font-bold">🚫 {s.zeros} zéros</span>
+                                            <span className="text-orange-400 font-bold">📉 Pire: {s.worstScore}pts</span>
+                                            <span className="text-pink-400 font-bold">🏳️ {s.lastPlace}× dernier</span>
+                                            {s.maxConsecutiveZeros>=3&&<span className="text-purple-400 font-bold">💀 {s.maxConsecutiveZeros} zéros d'affilée</span>}
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xs text-gray-500">Moy.</div>
+                                        <div className="text-lg font-black text-red-400">{s.avgScore}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>;
+                })()}
             </div>
         )}
 
@@ -2278,7 +2483,7 @@ export default function YamsUltimateLegacy() {
 
               <div className={`overflow-x-auto ${GRID_SKINS[gridSkin]?.accent||''} ${gridSkin!=='default'?'grid-'+gridSkin:''}`}><table className={`w-full table-fixed ${GRID_SKINS[gridSkin]?.border||''}`}><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className={`border-b ${gridSkin==='neon'?'border-green-500/30':gridSkin==='vintage'?'border-amber-700/30':gridSkin==='chalk'?'border-green-800/30':gridSkin==='pixel'?'border-purple-500/30':'border-white/20'}`}>
                 <th className={`text-left p-3 font-bold sticky left-0 z-10 ${GRID_SKINS[gridSkin]?.text||'text-white'} bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}>Catégorie</th>
-                {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset ring-yellow-400 shadow-xl shadow-yellow-400/30':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}25,rgba(250,204,21,0.08))`,boxShadow:`inset 0 0 30px ${pc.hex}15, 0 0 20px rgba(250,204,21,0.15)`}:{})}}>
+                {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;const isLeaderCol=leader===p;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset ring-yellow-400 shadow-xl shadow-yellow-400/30':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}25,rgba(250,204,21,0.08))`,boxShadow:`inset 0 0 30px ${pc.hex}15, 0 0 20px rgba(250,204,21,0.15)`}:isLeaderCol&&!editMode?{boxShadow:'inset 0 0 20px rgba(250,204,21,0.06)',background:'rgba(250,204,21,0.03)'}:{})}}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {/* NEXT PLAYER INDICATOR */}
                         {isNext && <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-b-lg text-[9px] font-black tracking-widest uppercase" style={{background:`linear-gradient(90deg,${pc.hex},rgba(250,204,21,0.8))`,color:'#000'}}>À TON TOUR</div>}
@@ -2297,13 +2502,14 @@ export default function YamsUltimateLegacy() {
                             <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform '+(lastPlayerToPlay===p?'avatar-dance':getNextPlayer()===p?'avatar-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}</div>
                         </div>
                         {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
-                        <div className="text-sm mt-1" style={playerColors[p]?{color:pc.light}:{}}>{p}</div>
+                        <div className="text-sm mt-1" style={playerColors[p]?{color:pc.light}:{}}>{p}{idleAvatars&&isNext?' 😤':idleAvatars&&!isNext?' 💤':''}</div>
                         {/* DYNAMIC IN-GAME TITLE */}
                         {isGameStarted()&&!isGameComplete()&&players.length>=2&&(()=>{
                             const dt=getDynamicTitle(p,players,scores,calcTotal,lastPlayerToPlay,moveLog);
                             return dt?<div className="text-[9px] font-bold mt-0.5" style={{color:dt.color}}>{dt.icon} {dt.text}</div>:null;
                         })()}
                         {!lastPlayerToPlay && p === starterName && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full animate-bounce">1️⃣</span>}
+                        {playerEntrance && <div className="absolute inset-0 rounded-full" style={{animation:`player-entrance 0.6s cubic-bezier(0.34,1.56,0.64,1) ${i*0.15}s backwards`,background:`radial-gradient(circle,${pc.hex}20,transparent)`}}/>}
                         {/* AI PREDICTION */}
                         {isGameStarted()&&!isGameComplete()&&!hideTotals&&!fogMode&&gameHistory.length>=1&&(()=>{
                             const pred=predictFinalScore(p);
@@ -2321,7 +2527,7 @@ export default function YamsUltimateLegacy() {
                   :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
-                  :<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
+                  :{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/>}
                   </td>})}</tr>;
                 })}
                 <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className={`p-4 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-800 to-slate-700'}`}><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className={`font-black text-xl ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl total-breathe" style={{textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":(<FlipCounter value={calcTotal(p)} color={getWinner().includes(p)?T.primary:'#fff'}/>)}</div>}</td>)}</tr>
@@ -2380,7 +2586,7 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='stats'&&(
-            <div className={"space-y-6 tab-slide-"+tabDirection} style={{animation:'stats-counter-in 0.4s cubic-bezier(0.22,1,0.36,1)'}}>
+            <div className={"space-y-6 tab-slide-"+tabDirection} style={{animation:'stats-intro 0.6s cubic-bezier(0.22,1,0.36,1)'}}>
                 
                 {/* 0. FILTRE SAISONS */}
                 <div className="bg-white/5 p-4 rounded-3xl border border-white/10">
@@ -2394,7 +2600,8 @@ export default function YamsUltimateLegacy() {
                         <button onClick={()=>setStatsFilterSeason('Aucune')} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statsFilterSeason==='Aucune'?'text-white shadow-lg':'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`} style={statsFilterSeason==='Aucune'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>📦 Hors Saison</button>
                         {allSeasons.map(s=><button key={s} onClick={()=>setStatsFilterSeason(s)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statsFilterSeason===s?'text-white shadow-lg':'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`} style={statsFilterSeason===s?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>📅 {s}</button>)}
                     </div>
-                    {statsFilterSeason !== 'Toutes' && <div className="mt-2 text-xs text-gray-500">Filtre actif : <span className="font-bold" style={{color:T.primary}}>{statsFilterSeason}</span> — {filteredHistory.length} partie{filteredHistory.length>1?'s':''}</div>}
+                    {statsFilterSeason !== 'Toutes' && <div className="mt-2 text-xs text-gray-500">Filtre actif : <span className="font-bold" style={{color:T.primary}}>{statsFilterSeason}</span> — {filteredHistory.length} partie{filteredHistory.length>1?'s':''} sur {gameHistory.length}</div>}
+                    {allSeasons.length === 0 && <div className="mt-2 text-xs text-amber-400/70 flex items-center gap-1">⚠️ Aucune saison trouvée. Crée une saison dans les Réglages et joue une partie avec.</div>}
                     {statsFilterSeason !== 'Toutes' && seasonDescriptions[statsFilterSeason] && (
                         <p className="text-gray-400 text-xs mt-1 italic">💬 {seasonDescriptions[statsFilterSeason]}</p>
                     )}
