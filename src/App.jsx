@@ -2561,11 +2561,8 @@ export default function YamsUltimateLegacy() {
           </div>
         )}
 
-        {/* TAB: HISTORY */}
-        {currentTab==='history'&&(
-            (() => {
-              // 22. GAME COMPARATOR MODAL
-              if(showCompare && compareGames.length === 2) {
+        {/* 22. GAME COMPARATOR MODAL */}
+        {showCompare && compareGames.length === 2 && (()=>{
                 const g1 = compareGames[0], g2 = compareGames[1];
                 const p1 = g1.players||g1.results||[], p2 = g2.players||g2.results||[];
                 const allNames = [...new Set([...p1.map(p=>p.name),...p2.map(p=>p.name)])];
@@ -2602,9 +2599,10 @@ export default function YamsUltimateLegacy() {
                     </div>
                   </div>
                 );
-              }
-              return null;
-            })(),
+        })()}
+
+        {/* TAB: HISTORY */}
+        {currentTab==='history'&&(
           <div className={"space-y-4 tab-slide-"+tabDirection} ><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2 items-center"><select value={historyFilterSeason} onChange={e=>setHistoryFilterSeason(e.target.value)} className="bg-black/40 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none hover:bg-black/60 transition-colors"><option value="Toutes">🌍 Toutes Saisons</option><option value="Aucune">Hors Saison</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {filteredGameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
