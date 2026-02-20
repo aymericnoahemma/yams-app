@@ -547,8 +547,7 @@ export default function YamsUltimateLegacy() {
   const [simDice, setSimDice] = useState([1,1,1,1,1]);
   const [simPlayer, setSimPlayer] = useState(null);
   const [replayGame, setReplayGame] = useState(null);
-  const [compareGames, setCompareGames] = useState([]);
-  const [showCompare, setShowCompare] = useState(false);
+
   const [playerAvatars, setPlayerAvatars] = useState({});
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarSelectorIndex, setAvatarSelectorIndex] = useState(null);
@@ -641,8 +640,7 @@ export default function YamsUltimateLegacy() {
     const filled = players.reduce((s,p) => s + playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length, 0);
     return total > 0 ? filled / total : 0;
   }, [players, scores]);
-  const [rouletteMode, setRouletteMode] = useState(false);
-  const [rouletteResult, setRouletteResult] = useState(null);
+
   const [compactMode, setCompactMode] = useState(typeof window!=='undefined'&&window.innerWidth<400);
   const [idleTimer, setIdleTimer] = useState(null);
   const [idleAvatars, setIdleAvatars] = useState(false);
@@ -776,15 +774,7 @@ export default function YamsUltimateLegacy() {
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
   const isAvatarLocked = (req, stats) => { if(req === "none") return false; const [cond, val] = req.split(':'); const v = parseInt(val); if(!stats) return true; if(cond === 'games') return stats.games < v; if(cond === 'wins') return stats.wins < v; if(cond === 'yams') return stats.yamsCount < v; if(cond === 'score') return stats.maxScore < v; if(cond === 'lose') return (stats.games - stats.wins) < v; if(cond === 'bonus') return stats.bonusCount < v; return true; };
 
-  const spinRoulette = () => {
-    const nextP = getNextPlayer();
-    if(!nextP) return;
-    const emptyCats = playableCats.filter(c => scores[nextP]?.[c.id] === undefined);
-    if(emptyCats.length === 0) return;
-    let spins = 0;
-    const spin = () => { setRouletteResult(emptyCats[Math.floor(Math.random()*emptyCats.length)]); spins++; if(spins < 15) setTimeout(spin, 80 + spins * 25); else vibrate(30); };
-    spin();
-  };
+
   const useJoker = (player) => { if(jokers[player] > 0) { showConfirm(`Utiliser un Joker pour ${player} ? (-10 pts)`, () => { setConfirmModal(null); setJokers({...jokers, [player]: jokers[player] - 1}); }); } };
   const handleUndo = () => { if (!undoData) return; const { player, category, previousLastPlayer, previousLastCell } = undoData; const newScores = { ...scores }; if (newScores[player]) { delete newScores[player][category]; } setScores(newScores); setLastPlayerToPlay(previousLastPlayer); setLastModifiedCell(previousLastCell); setUndoData(null); setMoveLog(moveLog.slice(0, -1)); saveCurrentGame(newScores); };
 
@@ -871,15 +861,19 @@ export default function YamsUltimateLegacy() {
     } else if(value !== '' && !editMode) {
         setConsecutiveZeros(prev => ({...prev, [player]: 0}));
     }
-    // 11. CATEGORY CELEBRATION
+    // 11. CATEGORY CELEBRATION - emoji rain per category
     if(!editMode && value !== '' && valInt > 0 && category !== 'yams') {
         const celeb = CATEGORY_CELEBRATIONS[category];
-        if(celeb && valInt >= (categories.find(c=>c.id===category)?.max||99)*0.7) {
-            setFunQuote(celeb.emoji + ' ' + celeb.text);
+        const catMax = categories.find(c=>c.id===category)?.max||99;
+        if(celeb && valInt >= catMax * 0.7) {
+            setEmojiRain(celeb.emoji);
+            setTimeout(() => setEmojiRain(null), 2500);
+            setFunQuote(celeb.text);
             setTimeout(() => setFunQuote(null), 2500);
-        } else if(valInt >= 25 || valInt === 0) {
-            // 14. NARRATOR - contextual phrase
-            const pool = valInt >= 25 ? NARRATOR_PHRASES.bigScore : NARRATOR_PHRASES.zero;
+        }
+        // 14. NARRATOR
+        if(valInt >= 25) {
+            const pool = NARRATOR_PHRASES.bigScore;
             setFunQuote(pool[Math.floor(Math.random() * pool.length)]);
             setTimeout(() => setFunQuote(null), 3000);
         }
@@ -1742,7 +1736,7 @@ export default function YamsUltimateLegacy() {
       {/* SHOCKWAVE EFFECT */}
       {shockwavePos&&<div className="fixed z-[100] pointer-events-none" style={{left:shockwavePos.x-50,top:shockwavePos.y-50}}><div className="w-[100px] h-[100px] rounded-full border-4 border-white/40 shockwave"></div></div>}
       {/* EMOJI RAIN */}
-      {emojiRain&&<div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">{Array.from({length:30},(_,i)=>i).map(i=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-30px',animation:`emoji-rain ${2+Math.random()*3}s linear ${Math.random()*2}s both`}}>{emojiRain==='🎲'?['🎲','🎲','🎲','⭐','✨','🎯'][i%6]:['💀','😱','🧱','💔','😬','❌'][i%6]}</div>)}</div>}
+      {emojiRain&&<div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">{Array.from({length:30},(_,i)=>i).map(i=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-30px',animation:`emoji-rain ${2+Math.random()*3}s linear ${Math.random()*2}s both`}}>{emojiRain==='🎲'?['🎲','🎲','🎲','⭐','✨','🎯'][i%6]:emojiRain==='💀'?['💀','😱','🧱','💔','😬','❌'][i%6]:emojiRain==='🃏'?['🃏','🂡','♠️','♥️','♦️','♣️'][i%6]:emojiRain==='🎰'?['🎰','💎','⭐','7️⃣','🌟','✨'][i%6]:emojiRain==='🔥'?['🔥','🔥','💥','⚡','🔥','💫'][i%6]:emojiRain==='🎯'?['🎯','🎯','✨','⭐','💫','🎯'][i%6]:emojiRain==='📈'?['📈','⬆️','✨','🔢','📊','⭐'][i%6]:emojiRain==='🍀'?['🍀','🍀','✨','⭐','🌟','💚'][i%6]:[emojiRain,emojiRain,'✨','⭐','🌟','💫'][i%6]}</div>)}</div>}
       {/* DICE 3D ANIMATION */}
       {showDiceAnim&&<div className="fixed inset-0 pointer-events-none z-[70] flex items-center justify-center gap-4">{[1,2,3,4,5].map(d=><div key={d} className="text-6xl dice-roll-anim" style={{animationDelay:d*0.12+'s'}}>🎲</div>)}</div>}
       {/* QUICK STATS POPUP */}
@@ -1918,12 +1912,7 @@ export default function YamsUltimateLegacy() {
         </div>
       )}
       {/* ROULETTE OVERLAY */}
-      {rouletteMode&&rouletteResult&&<div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] pointer-events-none" style={{animation:'fade-in-scale 0.3s ease-out'}}>
-        <div className="bg-black/80 backdrop-blur-sm px-8 py-4 rounded-3xl border-2 border-amber-500/50 text-center shadow-2xl shadow-amber-500/20">
-          <div className="text-[10px] text-amber-400 font-black uppercase tracking-widest mb-1">🎰 Roulette</div>
-          <div className="text-2xl font-black text-white">{rouletteResult.name}</div>
-        </div>
-      </div>}
+
       {/* STYLED CONFIRM MODAL */}
       {confirmModal&&(
         <div className="fixed inset-0 z-[350] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={()=>setConfirmModal(null)}>
@@ -2036,11 +2025,38 @@ export default function YamsUltimateLegacy() {
                   <div className="text-6xl mb-2 relative z-10" style={{animation:'fade-in-scale 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.25s backwards'}}>{playerAvatars[getWinner()[0]]||'👤'}</div>
                   <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
                   {victorySigs[getWinner()[0]]&&<div className="text-sm italic text-yellow-300/80 -mt-4 mb-4 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}>"{victorySigs[getWinner()[0]]}"</div>}
-                  <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
-                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
-                      <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
-                  </div>
-                  {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
+                  {(()=>{
+                      const w = getWinner()[0];
+                      const wScores = scores[w]||{};
+                      const total = calcTotal(w);
+                      const upper = calcUpper(w);
+                      const hasBonus = upper >= 63;
+                      const zeros = playableCats.filter(c=>wScores[c.id]==='0'||wScores[c.id]===0).length;
+                      const bestCat = playableCats.reduce((best,c)=>(parseInt(wScores[c.id])||0)>(parseInt(wScores[best.id])||0)?c:best, playableCats[0]);
+                      const bestScore = parseInt(wScores[bestCat.id])||0;
+                      const gap = players.length>1 ? total - Math.max(...players.filter(p2=>p2!==w).map(p2=>calcTotal(p2))) : 0;
+                      return (
+                      <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono'}}>{total}</div><div className="text-[9px] uppercase text-yellow-100 font-bold">Points</div></div>
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out 0.45s backwards'}}><div className="text-2xl font-black text-white">{gap>0?'+'+gap:'='}</div><div className="text-[9px] uppercase text-yellow-100 font-bold">Écart</div></div>
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-lg font-black text-white">{hasBonus?'✅ OUI':'❌ NON'}</div><div className="text-[9px] uppercase text-yellow-100 font-bold">Bonus</div></div>
+                          <div className="bg-white/10 p-3 rounded-2xl border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out 0.55s backwards'}}><div className="text-lg font-black text-white">{zeros}</div><div className="text-[9px] uppercase text-yellow-100 font-bold">Zéros</div></div>
+                          <div className="col-span-2 bg-white/10 p-3 rounded-2xl border border-white/5" style={{animation:'fade-in-scale 0.4s ease-out 0.6s backwards'}}><div className="text-sm font-black text-white">{bestCat.icon} {bestCat.name} — {bestScore} pts</div><div className="text-[9px] uppercase text-yellow-100 font-bold">Meilleur coup</div></div>
+                      </div>);
+                  })()}
+                  {players.length > 1 && (
+                      <div className="mb-4 relative z-10 space-y-2" style={{animation:'fade-in-scale 0.4s ease-out 0.65s backwards'}}>
+                          <div className="text-[9px] uppercase font-bold text-gray-400 tracking-wider mb-1">Classement</div>
+                          {players.map(p=>({name:p,score:calcTotal(p)})).sort((a,b)=>b.score-a.score).map((p,i)=>(
+                              <div key={p.name} className={"flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm "+(i===0?"bg-yellow-500/20 text-yellow-300":"bg-white/5 text-gray-300")}>
+                                  <span>{['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣'][i]}</span>
+                                  <span className="font-bold flex-1">{playerAvatars[p.name]||'👤'} {p.name}</span>
+                                  <span className="font-black">{p.score}</span>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+                  {players.length > 1 && getLoser() && (<div className="bg-red-500/20 p-4 rounded-2xl mb-4 relative z-10 border border-red-500/20" style={{animation:'fade-in-scale 0.4s ease-out 0.75s backwards'}}><p className="text-[10px] uppercase font-bold text-red-300 tracking-wider">⚡ Gage pour {getLoser().name}</p><p className="text-sm italic text-white font-bold mt-1">"{currentGage}"</p></div>)}
                   <div className="space-y-2 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.7s backwards'}}>
                       <input type="text" value={gameNote} onChange={e=>setGameNote(e.target.value)} placeholder="📝 Ajouter une note... (optionnel)" className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 outline-none focus:border-yellow-400/50 transition-colors mb-1" maxLength={100}/>
                       <button onClick={saveGameFromModal} className="w-full py-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-black rounded-2xl shadow-xl hover:scale-[1.03] transition-all duration-200 hover:shadow-yellow-500/40 hover:shadow-2xl active:scale-[0.98]">✨ ENREGISTRER</button>
@@ -2106,7 +2122,6 @@ export default function YamsUltimateLegacy() {
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400"><Eye size={20}/></div><div><div className="text-white font-bold">Masquer les totaux</div><div className="text-gray-400 text-xs">Suspense garanti</div></div></div><button onClick={()=>setHideTotals(!hideTotals)} className={'relative w-12 h-6 rounded-full transition-all '+(hideTotals?'bg-green-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(hideTotals?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Lock size={20}/></div><div><div className="text-white font-bold">Ordre Imposé</div><div className="text-gray-400 text-xs">Haut vers le bas obligatoire</div></div></div><button onClick={()=>setImposedOrder(!imposedOrder)} className={'relative w-12 h-6 rounded-full transition-all '+(imposedOrder?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(imposedOrder?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400"><Flame size={20}/></div><div><div className="text-white font-bold">Mode Chaos</div><div className="text-gray-400 text-xs">Événements aléatoires</div></div></div><button onClick={()=>setChaosMode(!chaosMode)} className={'relative w-12 h-6 rounded-full transition-all '+(chaosMode?'bg-pink-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(chaosMode?'translate-x-6':'')}></div></button></div>
-              <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">🎰</div><div><div className="text-white font-bold">Mode Roulette</div><div className="text-gray-400 text-xs">Catégorie aléatoire à chaque tour</div></div></div><button onClick={()=>setRouletteMode(!rouletteMode)} className={'relative w-12 h-6 rounded-full transition-all '+(rouletteMode?'bg-amber-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(rouletteMode?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all col-span-1 md:col-span-2"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-400"><Wand2 size={20}/></div><div><div className="text-white font-bold">Activer Jokers</div><div className="text-gray-400 text-xs">Malus -10 pts / usage</div></div></div><div className="flex items-center gap-4"><button onClick={()=>setJokersEnabled(!jokersEnabled)} className={'relative w-12 h-6 rounded-full transition-all mr-4 '+(jokersEnabled?'bg-yellow-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(jokersEnabled?'translate-x-6':'')}></div></button>{jokersEnabled && <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-xl"><span className="text-xs text-gray-400 font-bold uppercase">Qté:</span><select value={jokerMax} onChange={e=>setJokerMax(parseInt(e.target.value))} disabled={isGameStarted()} className={`bg-transparent text-white font-bold text-center outline-none cursor-pointer ${isGameStarted()?'opacity-50 cursor-not-allowed':''}`}><option value="1" className="bg-slate-800">1</option><option value="2" className="bg-slate-800">2</option><option value="3" className="bg-slate-800">3</option><option value="4" className="bg-slate-800">4</option><option value="5" className="bg-slate-800">5</option></select></div>}</div></div>
               
               {/* SAISONS DANS LES REGLAGES */}
@@ -2476,7 +2491,7 @@ export default function YamsUltimateLegacy() {
                 <h2 className="text-2xl font-black text-white flex items-center gap-3" style={{animation:"fade-in-scale 0.4s ease-out 0.1s backwards"}}><span className="text-3xl">📝</span>Feuille de score</h2>
                 <div className="flex gap-2 flex-wrap items-center">
                   {editMode?(<><button onClick={toggleEditMode} className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl font-bold transition-all flex items-center gap-2"><Check size={18}/>Valider</button><button onClick={cancelEdit} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><X size={18}/>Annuler</button></>):(<button onClick={toggleEditMode} className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl font-bold transition-all flex items-center gap-2"><Edit3 size={18}/>Éditer</button>)}
-                  {rouletteMode&&isGameStarted()&&!isGameComplete()&&<button onClick={spinRoulette} className="px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-400 rounded-xl font-bold transition-all flex items-center gap-2 border border-amber-500/20">🎰 Roulette</button>}
+
                   <button onClick={()=>resetGame(null)} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"><RotateCcw size={18}/>Reset</button>
                 </div>
               </div>
@@ -2561,46 +2576,6 @@ export default function YamsUltimateLegacy() {
           </div>
         )}
 
-        {/* 22. GAME COMPARATOR MODAL */}
-        {showCompare && compareGames.length === 2 && (()=>{
-                const g1 = compareGames[0], g2 = compareGames[1];
-                const p1 = g1.players||g1.results||[], p2 = g2.players||g2.results||[];
-                const allNames = [...new Set([...p1.map(p=>p.name),...p2.map(p=>p.name)])];
-                return (
-                  <div className="fixed inset-0 z-[400] bg-black/90 flex items-center justify-center p-4" onClick={()=>{setShowCompare(false);setCompareGames([]);}}>
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-3xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
-                      <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black text-white">🔍 Comparaison</h3><button onClick={()=>{setShowCompare(false);setCompareGames([]);}} className="p-2 hover:bg-white/10 rounded-xl"><X size={18} className="text-white"/></button></div>
-                      <div className="grid grid-cols-3 gap-2 text-center mb-4 text-xs font-bold"><div className="text-gray-400">{g1.date}</div><div className="text-white">VS</div><div className="text-gray-400">{g2.date}</div></div>
-                      {allNames.map(name => {
-                        const s1 = p1.find(p=>p.name===name)?.score||0;
-                        const s2 = p2.find(p=>p.name===name)?.score||0;
-                        const diff = s1-s2;
-                        return <div key={name} className="grid grid-cols-3 gap-2 items-center py-2 border-b border-white/5">
-                          <div className={`text-right font-black text-lg ${diff>0?'text-green-400':diff<0?'text-red-400':'text-white'}`}>{s1}</div>
-                          <div className="text-center text-sm text-gray-300 font-bold">{name}</div>
-                          <div className={`text-left font-black text-lg ${diff<0?'text-green-400':diff>0?'text-red-400':'text-white'}`}>{s2}</div>
-                        </div>;
-                      })}
-                      {g1.grid && g2.grid && allNames.length > 0 && (
-                        <div className="mt-4"><div className="text-xs font-bold text-gray-400 mb-2">Détail par catégorie</div>
-                        {playableCats.map(cat => {
-                          const name = allNames[0];
-                          const v1 = g1.grid?.[name]?.[cat.id]; const v2 = g2.grid?.[name]?.[cat.id];
-                          if(v1===undefined && v2===undefined) return null;
-                          const d = (parseInt(v1)||0)-(parseInt(v2)||0);
-                          return <div key={cat.id} className="grid grid-cols-3 gap-2 items-center py-1 text-xs">
-                            <div className={`text-right font-bold ${d>0?'text-green-400':d<0?'text-red-400':'text-gray-400'}`}>{v1??'-'}</div>
-                            <div className="text-center text-gray-500">{cat.name}</div>
-                            <div className={`text-left font-bold ${d<0?'text-green-400':d>0?'text-red-400':'text-gray-400'}`}>{v2??'-'}</div>
-                          </div>;
-                        })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-        })()}
-
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
           <div className={"space-y-4 tab-slide-"+tabDirection} ><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
@@ -2640,7 +2615,6 @@ export default function YamsUltimateLegacy() {
                                 <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier les saisons"><Edit3 size={12}/></button>
                             </div>
                         )}
-                        <button onClick={()=>{const newSel=[...compareGames];const idx=newSel.findIndex(x=>x.id===g.id);if(idx>=0)newSel.splice(idx,1);else if(newSel.length<2)newSel.push(g);setCompareGames(newSel);if(newSel.length===2)setShowCompare(true);}} className={"px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 "+(compareGames.find(x=>x.id===g.id)?"bg-purple-500/40 text-purple-300":"bg-purple-500/20 text-purple-400 hover:bg-purple-500/30")}>{compareGames.find(x=>x.id===g.id)?'✓':''} 🔍</button>
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
