@@ -930,7 +930,8 @@ export default function YamsUltimateLegacy() {
             if(chaosMode) { setActiveChaosCard(CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)]); }
             // HOT SEAT: flash next player (delayed if any animation is playing)
             const nextP = players[(players.indexOf(player)+1)%players.length];
-            if(players.length >= 2 && !isGameComplete()) {
+            const gameWillBeComplete = players.every(p2=>playableCats.every(c=>ns[p2]?.[c.id]!==undefined));
+            if(players.length >= 2 && !gameWillBeComplete) {
                 const hasYams = category==='yams' && value==='50';
                 const hasBonus = (oldUp<63&&newUp>=63) || showBonusFullscreen;
                 const hasBonusLost = categories.find(c=>c.id===category)?.upper && (() => {
@@ -944,7 +945,7 @@ export default function YamsUltimateLegacy() {
                 })();
                 const delay = (hasYams || hasBonus || hasBonusLost) ? 6000 : 600;
                 setTimeout(() => {
-                    if(!showBonusFullscreen && !pendingYamsDetail && !isGameComplete()) {
+                    if(!showBonusFullscreen && !pendingYamsDetail) {
                         setHotSeatPlayer(nextP);
                         setTimeout(() => setHotSeatPlayer(null), 1800);
                     }
@@ -978,8 +979,8 @@ export default function YamsUltimateLegacy() {
 
   const toggleEditMode=()=>{if(!editMode){setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));setLastPlayerBeforeEdit(lastPlayerToPlay);setEditMode(true);}else{setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);}};
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
-  const resetGame = (forcedLoserName = null) => { setPlayerEntrance(true); setTimeout(() => setPlayerEntrance(false), 2000); 
-      if(!forcedLoserName) { showConfirm("Commencer une nouvelle partie ?", () => { setConfirmModal(null); resetGame(forcedLoserName); }); return; } 
+  const resetGame = (forcedLoserName = null, skipConfirm = false) => { setPlayerEntrance(true); setTimeout(() => setPlayerEntrance(false), 2000); 
+      if(!forcedLoserName && !skipConfirm) { showConfirm("Commencer une nouvelle partie ?", () => { setConfirmModal(null); resetGame(null, true); }); return; } 
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setActiveChaosCard(null); setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);
       const newJokers = {}; players.forEach(p => newJokers[p] = jokerMax); setJokers(newJokers); 
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
@@ -1470,7 +1471,7 @@ export default function YamsUltimateLegacy() {
           <div className="text-6xl mb-2" style={{animation:'hotseat-bell 0.4s ease-in-out 0.2s both'}}>🔔</div>
           <div className="text-xl font-black text-white/80 mb-1 tracking-widest uppercase">À ton tour</div>
           <div className="text-5xl sm:text-7xl font-black text-white" style={{textShadow:`0 0 40px ${getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer)).hex}`,animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s backwards'}}>{playerAvatars[hotSeatPlayer]||'👤'} {hotSeatPlayer}</div>
-          <div className="text-lg text-white/60 font-bold mt-2" style={{animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{(()=>{const remaining=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined).length;return remaining>0?`${remaining} case${remaining>1?'s':''} restante${remaining>1?'s':''}`:null;})()}</div>
+          <div className="text-lg text-white/60 font-bold mt-2" style={{animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{(()=>{const remaining=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined);if(!remaining.length)return null;const names=remaining.slice(0,4).map(c=>c.name);return <span>{names.join(', ')}{remaining.length>4?` +${remaining.length-4}`:''}</span>;})()}</div>
         </div>
       </div>}
       {/* MASSACRE SCREEN */}
@@ -1575,8 +1576,8 @@ export default function YamsUltimateLegacy() {
   .flip-digit{display:inline-block;animation:flipdigit 0.5s ease-in-out;transform-style:preserve-3d}
   @keyframes last-cell-glow{0%,100%{box-shadow:0 0 0 0 rgba(250,204,21,0)}50%{box-shadow:0 0 18px 4px rgba(250,204,21,0.35)}}
   .last-cell-pulse{animation:last-cell-glow 0.8s ease-in-out 2;border-color:rgba(250,204,21,0.6)!important;background:rgba(250,204,21,0.08)!important}
-  @keyframes tab-slide-in-r{0%{opacity:0;filter:blur(2px)}100%{opacity:1;filter:blur(0)}}
-  @keyframes tab-slide-in-l{0%{opacity:0;filter:blur(2px)}100%{opacity:1;filter:blur(0)}}
+  @keyframes tab-slide-in-r{0%{opacity:0}100%{opacity:1}}
+  @keyframes tab-slide-in-l{0%{opacity:0}100%{opacity:1}}
   .tab-slide-r{animation:tab-slide-in-r 0.35s cubic-bezier(0.22,1,0.36,1)}
   .tab-slide-l{animation:tab-slide-in-l 0.35s cubic-bezier(0.22,1,0.36,1)}
   @keyframes row-cascade{0%{transform:translateY(10px);opacity:0}100%{transform:translateY(0);opacity:1}}
@@ -1978,6 +1979,7 @@ export default function YamsUltimateLegacy() {
                   <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
                   <div className="relative z-10" style={{animation:'trophy-float 3s ease-in-out infinite'}}>{(()=>{const w=getWinner()[0];const t=getPlayerTitle(playerStats.find(s=>s.name===w));return t?.icon?<span className="text-7xl mx-auto block text-center mb-4" style={{filter:'drop-shadow(0 0 20px rgba(250,204,21,0.5))'}}>{t.icon}</span>:<Trophy className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" size={64}/>;})()}</div>
                   <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>{suddenDeathWinner ? '⚔️ MORT SUBITE - WINNER' : 'THE WINNER IS'}</h2>
+                  <div className="text-6xl mb-2 relative z-10" style={{animation:'fade-in-scale 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.25s backwards'}}>{playerAvatars[getWinner()[0]]||'👤'}</div>
                   <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
                   <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
                       <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
@@ -2582,6 +2584,13 @@ export default function YamsUltimateLegacy() {
                     )}
                 </div>
 
+                {(!filteredHistory || filteredHistory.length === 0) ? (
+                    <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8 text-center'}>
+                        <div className="text-5xl mb-4">📊</div>
+                        <div className="text-gray-400 text-lg font-bold">Pas encore de statistiques.</div>
+                        <div className="text-gray-500 text-sm mt-2">Jouez une partie !</div>
+                    </div>
+                ) : (<>
                 {/* 1. SCORE MAXI ATTEINT (BANNER) - SAFE MODE */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{
@@ -3030,6 +3039,7 @@ export default function YamsUltimateLegacy() {
                      </div>
                 </div>
 
+            </>)}
             </div>
         )}
 
