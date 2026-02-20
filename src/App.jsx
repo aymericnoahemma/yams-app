@@ -266,6 +266,29 @@ const getDynamicTitle = (player, players, scores, calcTotal, lastPlayerToPlay, m
 
 // FONT OPTIONS
 // Safe localStorage with fallback
+// CATEGORY CELEBRATIONS
+const CATEGORY_CELEBRATIONS = {
+    brelan: { emoji: '🎯', text: 'x3 !' },
+    carre: { emoji: '🔥', text: 'x4 !!' },
+    full: { emoji: '🃏', text: 'FULL HOUSE !' },
+    petiteSuite: { emoji: '📈', text: 'SUITE !' },
+    grandeSuite: { emoji: '🎰', text: 'GRANDE SUITE !' },
+    yams: { emoji: '💥', text: 'YAMS !!!' },
+    chance: { emoji: '🍀', text: 'CHANCE !' },
+};
+
+// NARRATOR PHRASES
+const NARRATOR_PHRASES = {
+    bigScore: ["Un coup magistral !", "Impressionnant !", "Quel talent !", "La foule est en délire !", "Stratégie payante !"],
+    zero: ["Aïe... ça pique.", "Le sort s'acharne...", "Même les dés ont détourné le regard.", "Un moment de silence...", "C'est la vie..."],
+    overtake: ["Renversement spectaculaire !", "Le chasseur devient le chassé !", "Coup de théâtre !", "On n'y croyait plus !"],
+    clutch: ["Le sang-froid d'un champion !", "Sous pression, il délivre !", "Nerfs d'acier !"],
+    streak: ["En feu !", "Inarrêtable !", "Machine de guerre !", "Sur un nuage !"],
+    start: ["Que le spectacle commence !", "Les dés sont jetés !", "Premier coup, premières émotions."],
+    midgame: ["La partie s'intensifie...", "Chaque point compte désormais.", "Qui craquera le premier ?"],
+    endgame: ["Les dernières cases approchent...", "Fin de partie imminente !", "Tout se joue maintenant !"],
+};
+
 const safeGetLS = (key, fallback = null) => {
     try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } 
     catch(e) { console.warn('localStorage error:', key); return fallback; }
@@ -524,6 +547,8 @@ export default function YamsUltimateLegacy() {
   const [simDice, setSimDice] = useState([1,1,1,1,1]);
   const [simPlayer, setSimPlayer] = useState(null);
   const [replayGame, setReplayGame] = useState(null);
+  const [compareGames, setCompareGames] = useState([]);
+  const [showCompare, setShowCompare] = useState(false);
   const [playerAvatars, setPlayerAvatars] = useState({});
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarSelectorIndex, setAvatarSelectorIndex] = useState(null);
@@ -578,6 +603,7 @@ export default function YamsUltimateLegacy() {
   const [themeTransition, setThemeTransition] = useState(false);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [glassCrack, setGlassCrack] = useState(null);
+  const [avatarReaction, setAvatarReaction] = useState({});
 
   const [quickStatsPlayer, setQuickStatsPlayer] = useState(null);
   const [shockwavePos, setShockwavePos] = useState(null);
@@ -593,6 +619,7 @@ export default function YamsUltimateLegacy() {
   const [showPlayerCard, setShowPlayerCard] = useState(null);
   const [gridSkin, setGridSkin] = useState('default');
   const [playerColors, setPlayerColors] = useState({});
+  const [victorySigs, setVictorySigs] = useState({});
   const [showVSScreen, setShowVSScreen] = useState(false);
   const [showPodium3D, setShowPodium3D] = useState(false);
   const [weatherEffects, setWeatherEffects] = useState(true);
@@ -665,9 +692,10 @@ export default function YamsUltimateLegacy() {
   }, [wakeLockEnabled]);
 
   useEffect(()=>{loadHistory();loadCurrentGame();loadSavedPlayers();loadGlobalStats();loadSeasons();loadGages();loadNewSettings();},[]);
-  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);const sgs=localStorage.getItem('yamsShowGhost');if(sgs)setShowGhostScores(JSON.parse(sgs));}catch(e){}};
+  const loadNewSettings=()=>{try{const gs=localStorage.getItem('yamsGridSkin');if(gs)setGridSkin(gs);const pc=localStorage.getItem('yamsPlayerColors');if(pc)setPlayerColors(JSON.parse(pc));const cf=localStorage.getItem('yamsCustomFont');if(cf)setCustomFont(cf);const sgs=localStorage.getItem('yamsShowGhost');if(sgs)setShowGhostScores(JSON.parse(sgs));const vs=localStorage.getItem('yamsVictorySigs');if(vs)setVictorySigs(JSON.parse(vs));}catch(e){}};
   useEffect(()=>{localStorage.setItem('yamsGridSkin',gridSkin);},[gridSkin]);
   useEffect(()=>{localStorage.setItem('yamsPlayerColors',JSON.stringify(playerColors));},[playerColors]);
+  useEffect(()=>{localStorage.setItem('yamsVictorySigs',JSON.stringify(victorySigs));},[victorySigs]);
   useEffect(()=>{localStorage.setItem('yamsShowGhost',JSON.stringify(showGhostScores));},[showGhostScores]);
   useEffect(()=>{localStorage.setItem('yamsCustomFont',customFont);const f=FONT_OPTIONS[customFont];if(f&&f.url){const existing=document.getElementById('yams-font-link');if(existing)existing.remove();const link=document.createElement('link');link.id='yams-font-link';link.rel='stylesheet';link.href=f.url;document.head.appendChild(link);}document.documentElement.style.setProperty('--app-font',f?.family||'system-ui, sans-serif');},[customFont]);
   const loadHistory=()=>{try{const r=localStorage.getItem('yamsHistory');if(r){const p=JSON.parse(r);setGameHistory(Array.isArray(p)?p:[]);}}catch(e){setGameHistory([])}};
@@ -810,7 +838,14 @@ export default function YamsUltimateLegacy() {
             
         }
     }
-    if(value !== '' && value !== '0' && event) { const td = event.target.closest ? event.target.closest('td') : event.target.parentElement; const rect = (td || event.target).getBoundingClientRect(); const id = Date.now(); const pc = getPlayerColor(player, players.indexOf(player)); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt, color: pc.hex }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000); }
+    if(value !== '' && value !== '0' && event) { const td = event.target.closest ? event.target.closest('td') : event.target.parentElement; const rect = (td || event.target).getBoundingClientRect(); const id = Date.now(); const pc = getPlayerColor(player, players.indexOf(player)); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt, color: pc.hex }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000);
+        // 13. SCORE PULSE - shockwave for high scores
+        if(valInt >= 25 && !editMode) {
+            setShockwavePos({x:rect.left+rect.width/2,y:rect.top+rect.height/2});
+            setTimeout(()=>setShockwavePos(null), valInt>=40?1200:800);
+            if(valInt >= 40) { setTimeout(()=>{setShockwavePos({x:rect.left+rect.width/2,y:rect.top+rect.height/2});setTimeout(()=>setShockwavePos(null),800);},400); }
+        }
+    }
     // SCORE PARTICLES
     if(value !== '' && event && !editMode) {
         const rect = event.target.getBoundingClientRect();
@@ -836,10 +871,22 @@ export default function YamsUltimateLegacy() {
     } else if(value !== '' && !editMode) {
         setConsecutiveZeros(prev => ({...prev, [player]: 0}));
     }
-    // FUN QUOTE on notable moves
-    if(!editMode && value !== '' && (valInt >= 25 || valInt === 0 || valInt === 50)) {
-        const q = FUN_QUOTES[Math.floor(Math.random() * FUN_QUOTES.length)];
-        setFunQuote(q);
+    // 11. CATEGORY CELEBRATION
+    if(!editMode && value !== '' && valInt > 0 && category !== 'yams') {
+        const celeb = CATEGORY_CELEBRATIONS[category];
+        if(celeb && valInt >= (categories.find(c=>c.id===category)?.max||99)*0.7) {
+            setFunQuote(celeb.emoji + ' ' + celeb.text);
+            setTimeout(() => setFunQuote(null), 2500);
+        } else if(valInt >= 25 || valInt === 0) {
+            // 14. NARRATOR - contextual phrase
+            const pool = valInt >= 25 ? NARRATOR_PHRASES.bigScore : NARRATOR_PHRASES.zero;
+            setFunQuote(pool[Math.floor(Math.random() * pool.length)]);
+            setTimeout(() => setFunQuote(null), 3000);
+        }
+    }
+    if(!editMode && value === '0') {
+        const pool = NARRATOR_PHRASES.zero;
+        setFunQuote(pool[Math.floor(Math.random() * pool.length)]);
         setTimeout(() => setFunQuote(null), 3000);
     }
     
@@ -923,6 +970,21 @@ export default function YamsUltimateLegacy() {
       }
     }
     vibrate(15); setScores(ns);saveCurrentGame(ns);
+    // 12. AVATAR REACTIONS
+    if(!editMode && value !== '') {
+        const reactions = {};
+        if(valInt === 0) reactions[player] = '😤';
+        else if(valInt >= 40) reactions[player] = '🤩';
+        else if(valInt >= 25) reactions[player] = '😎';
+        else reactions[player] = '😊';
+        // Others react too
+        const leaderBefore = players.reduce((best,p2)=>calcTotal(p2,scores)>calcTotal(best,scores)?p2:best,players[0]);
+        const leaderAfter = players.reduce((best,p2)=>(p2===player?calcTotal(p2,ns):calcTotal(p2))>(player===best?calcTotal(best,ns):calcTotal(best))?p2:best,players[0]);
+        if(leaderBefore !== leaderAfter && leaderBefore !== player) reactions[leaderBefore] = '😱';
+        players.filter(p2=>p2!==player).forEach(p2=>{if(!reactions[p2]) reactions[p2]='🤔';});
+        setAvatarReaction(reactions);
+        setTimeout(() => setAvatarReaction({}), 2500);
+    }
     if(editMode){ } else { 
         if(value!==''){
             setLastPlayerToPlay(player);
@@ -1089,6 +1151,18 @@ export default function YamsUltimateLegacy() {
       });
       return [...set];
   }, [seasons, gameHistory]);
+
+  // 14. NARRATOR - progress-based quotes
+  useEffect(() => {
+    if(!isGameStarted() || isGameComplete() || editMode) return;
+    const totalCells = players.length * playableCats.length;
+    const filled = players.reduce((s,p) => s + playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length, 0);
+    const pct = totalCells > 0 ? filled / totalCells : 0;
+    if(filled === players.length && pct < 0.15) {
+        const q = NARRATOR_PHRASES.start[Math.floor(Math.random()*NARRATOR_PHRASES.start.length)];
+        setFunQuote(q); setTimeout(()=>setFunQuote(null),3000);
+    }
+  }, [players.length > 0 && playableCats.filter(c=>scores[players[0]]?.[c.id]!==undefined).length]);
 
   // Filtrer l'historique par saison active (POUR STATS)
   const filteredHistory = useMemo(() => {
@@ -1582,6 +1656,7 @@ export default function YamsUltimateLegacy() {
   .score-trail{animation:trail-up 1s ease-out forwards}
   @keyframes shockwave{0%{transform:scale(0.5);opacity:0.6;border-width:3px}100%{transform:scale(4);opacity:0;border-width:0px}}
   .shockwave{animation:shockwave 0.7s ease-out forwards}
+  .shockwave-gold .shockwave{border-color:rgba(250,204,21,0.6)!important}
   @keyframes dice-roll{0%{transform:rotateX(0) rotateY(0) scale(0.3);opacity:0}50%{transform:rotateX(720deg) rotateY(360deg) scale(1.2);opacity:1}100%{transform:rotateX(1080deg) rotateY(720deg) scale(1);opacity:1}}
   .dice-roll-anim{animation:dice-roll 0.8s cubic-bezier(0.34,1.56,0.64,1)}
   @keyframes streak-fire{0%,100%{transform:scaleY(1);opacity:0.8}50%{transform:scaleY(1.3);opacity:1}}
@@ -1960,6 +2035,7 @@ export default function YamsUltimateLegacy() {
                   <h2 className="text-sm font-black tracking-widest text-yellow-500 mb-2 relative z-10" style={{animation:'fade-in-scale 0.5s ease-out 0.2s backwards'}}>{suddenDeathWinner ? '⚔️ MORT SUBITE - WINNER' : 'THE WINNER IS'}</h2>
                   <div className="text-6xl mb-2 relative z-10" style={{animation:'fade-in-scale 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.25s backwards'}}>{playerAvatars[getWinner()[0]]||'👤'}</div>
                   <div className="text-4xl font-black uppercase mb-6 relative z-10 text-white winner-glow" style={{animation:'victory-text 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{getWinner()[0]}</div>
+                  {victorySigs[getWinner()[0]]&&<div className="text-sm italic text-yellow-300/80 -mt-4 mb-4 relative z-10" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}>"{victorySigs[getWinner()[0]]}"</div>}
                   <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
                       <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.4s backwards'}}><div className="text-2xl font-black text-white" style={{fontFamily:'JetBrains Mono, monospace'}}>{calcTotal(getWinner()[0])}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Points</div></div>
                       <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm border border-white/5 hover:bg-white/15 transition-all" style={{animation:'fade-in-scale 0.4s ease-out 0.5s backwards'}}><div className="text-2xl font-black text-white">{scores[getWinner()[0]]?.yams ? "1" : "0"}</div><div className="text-[10px] opacity-100 uppercase text-yellow-100 font-bold">Yams</div></div>
@@ -2022,6 +2098,7 @@ export default function YamsUltimateLegacy() {
               </div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Terminal size={14}/> Police d'écriture</h3><div className="grid grid-cols-2 sm:grid-cols-5 gap-3">{Object.entries(FONT_OPTIONS).map(([k,f])=><button key={k} onClick={()=>setCustomFont(k)} className={`px-4 py-3 rounded-xl font-bold transition-all border-2 ${customFont===k?'border-white bg-white/20 text-white':'border-transparent bg-white/5 text-gray-400 hover:bg-white/10'}`} style={{fontFamily:f.family}}>{f.name}</button>)}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Palette size={14}/> Couleur par Joueur</h3><div className="space-y-2">{players.map((p,pi)=>{const current=playerColors[p]||PLAYER_COLORS[pi%PLAYER_COLORS.length].id;return <div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold flex-1 text-sm">{playerAvatars[p]||'👤'} {p}</span><div className="flex gap-1.5">{PLAYER_COLORS.map(c=><button key={c.id} onClick={()=>setPlayerColors({...playerColors,[p]:c.id})} className={'w-7 h-7 rounded-full border-2 transition-all hover:scale-110 '+(current===c.id?'border-white scale-110':'border-transparent')} style={{background:c.hex}} title={c.name}/>)}</div></div>;})}</div></div>
+              <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">✍️ Signature de Victoire</h3><div className="space-y-2">{players.map((p,pi)=><div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold text-sm shrink-0">{playerAvatars[p]||'👤'} {p}</span><input type="text" value={victorySigs[p]||''} onChange={e=>setVictorySigs({...victorySigs,[p]:e.target.value})} placeholder='Ex: "GG EZ 😎"' className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-xs placeholder-gray-600 outline-none focus:border-white/30" maxLength={40}/></div>)}</div></div>
               <div className="mt-6"><h3 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2"><Settings size={14}/> Options de jeu</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Sun size={20}/></div><div><div className="text-white font-bold">Anti-Veille</div><div className="text-gray-400 text-xs">Écran toujours allumé</div></div></div><button onClick={()=>setWakeLockEnabled(!wakeLockEnabled)} className={'relative w-12 h-6 rounded-full transition-all '+(wakeLockEnabled?'bg-blue-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(wakeLockEnabled?'translate-x-6':'')}></div></button></div>
               <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400"><EyeOff size={20}/></div><div><div className="text-white font-bold">Brouillard de Guerre</div><div className="text-gray-400 text-xs">Scores adverses cachés</div></div></div><button onClick={()=>setFogMode(!fogMode)} className={'relative w-12 h-6 rounded-full transition-all '+(fogMode?'bg-purple-500':'bg-gray-600')}><div className={'absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all '+(fogMode?'translate-x-6':'')}></div></button></div>
@@ -2447,7 +2524,7 @@ export default function YamsUltimateLegacy() {
                                     )}
                                 </div>
                             )}
-                            <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform '+(lastPlayerToPlay===p?'avatar-dance':getNextPlayer()===p?'avatar-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}</div>
+                            <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform relative '+(lastPlayerToPlay===p?'avatar-dance':getNextPlayer()===p?'avatar-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}{avatarReaction[p]&&<span className="absolute -top-2 -right-2 text-lg" style={{animation:'bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1)'}}>{avatarReaction[p]}</span>}</div>
                         </div>
                         {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
                         <div className="text-sm mt-1" style={playerColors[p]?{color:pc.light}:{}}>{p}{idleAvatars&&isNext?' 😤':idleAvatars&&!isNext?' 💤':''}</div>
@@ -2486,6 +2563,48 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
+            (() => {
+              // 22. GAME COMPARATOR MODAL
+              if(showCompare && compareGames.length === 2) {
+                const g1 = compareGames[0], g2 = compareGames[1];
+                const p1 = g1.players||g1.results||[], p2 = g2.players||g2.results||[];
+                const allNames = [...new Set([...p1.map(p=>p.name),...p2.map(p=>p.name)])];
+                return (
+                  <div className="fixed inset-0 z-[400] bg-black/90 flex items-center justify-center p-4" onClick={()=>{setShowCompare(false);setCompareGames([]);}}>
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-3xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+                      <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-black text-white">🔍 Comparaison</h3><button onClick={()=>{setShowCompare(false);setCompareGames([]);}} className="p-2 hover:bg-white/10 rounded-xl"><X size={18} className="text-white"/></button></div>
+                      <div className="grid grid-cols-3 gap-2 text-center mb-4 text-xs font-bold"><div className="text-gray-400">{g1.date}</div><div className="text-white">VS</div><div className="text-gray-400">{g2.date}</div></div>
+                      {allNames.map(name => {
+                        const s1 = p1.find(p=>p.name===name)?.score||0;
+                        const s2 = p2.find(p=>p.name===name)?.score||0;
+                        const diff = s1-s2;
+                        return <div key={name} className="grid grid-cols-3 gap-2 items-center py-2 border-b border-white/5">
+                          <div className={`text-right font-black text-lg ${diff>0?'text-green-400':diff<0?'text-red-400':'text-white'}`}>{s1}</div>
+                          <div className="text-center text-sm text-gray-300 font-bold">{name}</div>
+                          <div className={`text-left font-black text-lg ${diff<0?'text-green-400':diff>0?'text-red-400':'text-white'}`}>{s2}</div>
+                        </div>;
+                      })}
+                      {g1.grid && g2.grid && allNames.length > 0 && (
+                        <div className="mt-4"><div className="text-xs font-bold text-gray-400 mb-2">Détail par catégorie</div>
+                        {playableCats.map(cat => {
+                          const name = allNames[0];
+                          const v1 = g1.grid?.[name]?.[cat.id]; const v2 = g2.grid?.[name]?.[cat.id];
+                          if(v1===undefined && v2===undefined) return null;
+                          const d = (parseInt(v1)||0)-(parseInt(v2)||0);
+                          return <div key={cat.id} className="grid grid-cols-3 gap-2 items-center py-1 text-xs">
+                            <div className={`text-right font-bold ${d>0?'text-green-400':d<0?'text-red-400':'text-gray-400'}`}>{v1??'-'}</div>
+                            <div className="text-center text-gray-500">{cat.name}</div>
+                            <div className={`text-left font-bold ${d<0?'text-green-400':d>0?'text-red-400':'text-gray-400'}`}>{v2??'-'}</div>
+                          </div>;
+                        })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })(),
           <div className={"space-y-4 tab-slide-"+tabDirection} ><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2 items-center"><select value={historyFilterSeason} onChange={e=>setHistoryFilterSeason(e.target.value)} className="bg-black/40 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none hover:bg-black/60 transition-colors"><option value="Toutes">🌍 Toutes Saisons</option><option value="Aucune">Hors Saison</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {filteredGameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
@@ -2523,6 +2642,7 @@ export default function YamsUltimateLegacy() {
                                 <button onClick={() => setEditingHistoryId(g.id)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Modifier les saisons"><Edit3 size={12}/></button>
                             </div>
                         )}
+                        <button onClick={()=>{const newSel=[...compareGames];const idx=newSel.findIndex(x=>x.id===g.id);if(idx>=0)newSel.splice(idx,1);else if(newSel.length<2)newSel.push(g);setCompareGames(newSel);if(newSel.length===2)setShowCompare(true);}} className={"px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 "+(compareGames.find(x=>x.id===g.id)?"bg-purple-500/40 text-purple-300":"bg-purple-500/20 text-purple-400 hover:bg-purple-500/30")}>{compareGames.find(x=>x.id===g.id)?'✓':''} 🔍</button>
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
@@ -2570,6 +2690,32 @@ export default function YamsUltimateLegacy() {
                         <div className="text-gray-500 text-sm mt-2">Jouez une partie !</div>
                     </div>
                 ) : (<>
+                {/* CALENDRIER DE PARTIES */}
+                <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6'}>
+                    <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">📅 Calendrier de Parties</h3>
+                    <div className="overflow-x-auto">
+                        {(()=>{
+                            const today = new Date();
+                            const days = 90;
+                            const counts = {};
+                            (filteredHistory||[]).forEach(g => {
+                                const d = g.date;
+                                if(d) counts[d] = (counts[d]||0) + 1;
+                            });
+                            const cells = [];
+                            for(let i=days-1;i>=0;i--) {
+                                const d = new Date(today); d.setDate(d.getDate()-i);
+                                const key = d.toLocaleDateString('fr-FR');
+                                const c = counts[key]||0;
+                                const bg = c===0?'bg-white/5':c===1?'bg-green-500/30':c===2?'bg-green-500/50':c>=3?'bg-green-500/80':'bg-green-500';
+                                cells.push(<div key={i} className={`w-3 h-3 rounded-sm ${bg} transition-all hover:scale-150`} title={`${key}: ${c} partie${c>1?'s':''}`}/>);
+                            }
+                            const totalGames = Object.values(counts).reduce((s,v)=>s+v,0);
+                            return (<div><div className="flex flex-wrap gap-1">{cells}</div><div className="flex justify-between mt-3 text-xs text-gray-500"><span>90 derniers jours</span><span className="font-bold text-white">{totalGames} partie{totalGames>1?'s':''}</span></div></div>);
+                        })()}
+                    </div>
+                </div>
+
                 {/* 1. SCORE MAXI ATTEINT (BANNER) - SAFE MODE */}
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
                   {(()=>{
