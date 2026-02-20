@@ -578,7 +578,7 @@ export default function YamsUltimateLegacy() {
   const [themeTransition, setThemeTransition] = useState(false);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [glassCrack, setGlassCrack] = useState(null);
-  const [tensionMode, setTensionMode] = useState(false);
+
   const [quickStatsPlayer, setQuickStatsPlayer] = useState(null);
   const [shockwavePos, setShockwavePos] = useState(null);
   const [emojiRain, setEmojiRain] = useState(null);
@@ -1024,11 +1024,6 @@ export default function YamsUltimateLegacy() {
       pushNotif({icon:'⏱️',title:'MI-TEMPS !',description:leader+' mène avec '+calcTotal(leader)+' pts'});
       
     }
-    // TENSION MODE: last 25% + gap <= 20pts
-    if(pct>=0.75&&players.length>=2){
-      const sorted=players.map(p=>calcTotal(p)).sort((a,b)=>b-a);
-      if(sorted[0]-sorted[1]<=20) setTensionMode(true); else setTensionMode(false);
-    } else { setTensionMode(false); }
   },[scores]);
 
   useEffect(()=>{if(isGameComplete()&&!showEndGameModal&&!showSuddenDeath&&!gameEndShown&&!showVictoryAnimation){
@@ -1083,20 +1078,7 @@ export default function YamsUltimateLegacy() {
   const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
 
   // DYNAMIC BACKGROUND based on game state
-  const dynamicBgStyle = useMemo(()=>{
-    if(!isGameStarted()||isGameComplete()) return {};
-    const totalCells=players.length*playableCats.length;
-    if(totalCells===0) return {};
-    const filled=players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);
-    const pct=filled/totalCells;
-    const maxScore=Math.max(...players.map(p=>calcTotal(p)),1);
-    const breathIntensity = Math.round(pct * 8); // 0-8 intensity
-    if(maxScore>=300) return {boxShadow:'inset 0 0 200px rgba(250,204,21,0.04)',animation:`bg-breathe ${3-pct}s ease-in-out infinite`};
-    if(tensionMode) return {boxShadow:'inset 0 0 200px rgba(239,68,68,0.06)',animation:'bg-breathe 1.5s ease-in-out infinite'};
-    if(pct>0.75) return {boxShadow:'inset 0 0 200px rgba(249,115,22,0.04)',animation:'bg-breathe 2s ease-in-out infinite'};
-    if(pct>0.25) return {animation:`bg-breathe ${4-pct*2}s ease-in-out infinite`};
-    return {};
-  },[scores,tensionMode,players]);
+  const dynamicBgStyle = {};
 
   // Compute all known seasons from state + history
   const allSeasons = useMemo(() => {
@@ -1174,7 +1156,7 @@ export default function YamsUltimateLegacy() {
   const isFoggy = (p) => fogMode && !isGameComplete() && getNextPlayer() !== p;
   const getLeader = () => { if(isGameComplete() || hideTotals || fogMode) return null; const totals = players.map(p => ({name: p, score: calcTotal(p)})); const max = Math.max(...totals.map(t => t.score)); if(max === 0) return null; const leaders = totals.filter(t => t.score === max); if (leaders.length > 1) return null; return leaders[0].name; };
   const leader = getLeader();
-  const getTensionColor = () => { if(players.length < 2) return 'bg-gray-800'; const totals = players.map(p => calcTotal(p)).sort((a,b)=>b-a); const diff = totals[0] - totals[1]; if(diff < 20) return 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse'; if(diff < 50) return 'bg-gradient-to-r from-yellow-500 to-orange-500'; return 'bg-gradient-to-r from-blue-500 to-cyan-500'; };
+
   const quickEdit = () => {
       setShowEndGameModal(false);
       setEditMode(true);
@@ -1319,7 +1301,7 @@ export default function YamsUltimateLegacy() {
       const totalPlayers = players.length;
       const totals = players.map(p => calcTotal(p)).sort((a, b) => b - a);
       const gap = totals[0] - totals[totals.length - 1];
-      if (tensionMode) return 'storm';
+
       if (rank === 1 && gap > 30) return 'sunny';
       if (rank === 1) return 'clear';
       if (rank === totalPlayers && gap > 30) return 'rain';
@@ -1373,7 +1355,7 @@ export default function YamsUltimateLegacy() {
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-opacity duration-500 ease-in-out '+(themeTransition?'opacity-0':'opacity-100')+(tensionMode?' tension-pulse':'')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-opacity duration-500 ease-in-out '+(themeTransition?'opacity-0':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
       <InteractiveParticles themeKey={theme}/>
       {/* VS FIGHTING SCREEN */}
       {showVSScreen&&players.length>=2&&<div className="fixed inset-0 z-[300] bg-black flex items-center justify-center overflow-hidden" style={{animation:'cinema-darken 0.3s ease-out'}}>
@@ -1471,7 +1453,7 @@ export default function YamsUltimateLegacy() {
           <div className="text-6xl mb-2" style={{animation:'hotseat-bell 0.4s ease-in-out 0.2s both'}}>🔔</div>
           <div className="text-xl font-black text-white/80 mb-1 tracking-widest uppercase">À ton tour</div>
           <div className="text-5xl sm:text-7xl font-black text-white" style={{textShadow:`0 0 40px ${getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer)).hex}`,animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s backwards'}}>{playerAvatars[hotSeatPlayer]||'👤'} {hotSeatPlayer}</div>
-          <div className="text-lg text-white/60 font-bold mt-2" style={{animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{(()=>{const remaining=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined);if(!remaining.length)return null;const names=remaining.slice(0,4).map(c=>c.name);return <span>{names.join(', ')}{remaining.length>4?` +${remaining.length-4}`:''}</span>;})()}</div>
+          <div className="text-sm text-white/50 font-bold mt-2 max-w-md text-center leading-relaxed" style={{animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{(()=>{const remaining=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined);if(!remaining.length)return null;return <span>{remaining.map(c=>c.name).join(', ')}</span>;})()}</div>
         </div>
       </div>}
       {/* MASSACRE SCREEN */}
@@ -1604,8 +1586,7 @@ export default function YamsUltimateLegacy() {
   .dice-roll-anim{animation:dice-roll 0.8s cubic-bezier(0.34,1.56,0.64,1)}
   @keyframes streak-fire{0%,100%{transform:scaleY(1);opacity:0.8}50%{transform:scaleY(1.3);opacity:1}}
   .streak-fire{animation:streak-fire 0.5s ease-in-out infinite}
-  @keyframes bg-pulse-tension{0%,100%{background-color:transparent}50%{background-color:rgba(239,68,68,0.05)}}
-  .tension-pulse{animation:bg-pulse-tension 2s ease-in-out infinite}
+
   @keyframes emoji-rain{0%{transform:translateY(-100%) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
   @keyframes avatar-dance{0%,100%{transform:rotate(0deg) scale(1)}25%{transform:rotate(-8deg) scale(1.1)}75%{transform:rotate(8deg) scale(1.1)}}
   @keyframes avatar-cry{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
@@ -1652,7 +1633,7 @@ export default function YamsUltimateLegacy() {
   .grid-vintage{filter:sepia(0.08)}
   .grid-chalk td{border-color:rgba(34,197,94,0.1)!important;font-family:'Courier New',monospace}
   .grid-pixel td{border-color:rgba(168,85,247,0.1)!important;image-rendering:pixelated}
-  @keyframes bg-breathe{0%,100%{filter:brightness(1)}50%{filter:brightness(1.02)}}
+
   @keyframes hotseat-in{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(8px)}}
   @keyframes hotseat-pulse{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
   @keyframes hotseat-bell{0%{transform:rotate(0) scale(0)}30%{transform:rotate(15deg) scale(1.3)}60%{transform:rotate(-15deg) scale(1.1)}100%{transform:rotate(0) scale(1)}}
@@ -1689,8 +1670,6 @@ export default function YamsUltimateLegacy() {
       {emojiRain&&<div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden">{Array.from({length:30},(_,i)=>i).map(i=><div key={i} className="absolute text-2xl" style={{left:Math.random()*100+'%',top:'-30px',animation:`emoji-rain ${2+Math.random()*3}s linear ${Math.random()*2}s both`}}>{emojiRain==='🎲'?['🎲','🎲','🎲','⭐','✨','🎯'][i%6]:['💀','😱','🧱','💔','😬','❌'][i%6]}</div>)}</div>}
       {/* DICE 3D ANIMATION */}
       {showDiceAnim&&<div className="fixed inset-0 pointer-events-none z-[70] flex items-center justify-center gap-4">{[1,2,3,4,5].map(d=><div key={d} className="text-6xl dice-roll-anim" style={{animationDelay:d*0.12+'s'}}>🎲</div>)}</div>}
-      {/* TENSION MODE INDICATOR */}
-      {tensionMode&&isGameStarted()&&!isGameComplete()&&<div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none"><div className="px-4 py-1.5 bg-red-500/20 border border-red-400/40 rounded-full backdrop-blur-sm" style={{animation:'bg-pulse-tension 1.5s ease-in-out infinite'}}><span className="text-red-400 font-black text-sm tracking-widest">⚡ TENSION ⚡</span></div></div>}
       {/* QUICK STATS POPUP */}
       {quickStatsPlayer&&<div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60" onClick={()=>setQuickStatsPlayer(null)}><div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-3xl p-6 w-80 max-w-[90vw] modal-content" onClick={e=>e.stopPropagation()}>{(()=>{const ps=playerStats.find(s=>s.name===quickStatsPlayer);if(!ps)return <div className="text-gray-400 text-center">Pas de stats</div>;const t=getPlayerTitle(ps);return(<div className="text-center"><div className="text-5xl mb-2">{playerAvatars[quickStatsPlayer]||'👤'}</div><div className="text-xl font-black text-white mb-1">{quickStatsPlayer}</div><div className="text-sm font-bold mb-4" style={{color:T.primary}}>{t.icon} {t.title}</div><div className="grid grid-cols-2 gap-2 text-sm">{[['🎮 Parties',ps.games],['🏆 Victoires',ps.wins],['📊 Moyenne',ps.avgScore||0],['🔝 Max',ps.maxScore],['🎲 Yams',ps.yamsCount||0],['🎁 Bonus %',(ps.bonusRate||0)+'%']].map(([l,v],i)=><div key={i} className="bg-white/5 rounded-xl p-2"><div className="text-gray-500 text-xs">{l}</div><div className="text-white font-bold">{v}</div></div>)}</div><button onClick={()=>{setQuickStatsPlayer(null);setShowPlayerCard(quickStatsPlayer);}} className="mt-4 w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold text-sm transition-all">📇 Carte d'identité</button></div>);})()}</div></div>}
       {/* PLAYER CARD MODAL - POKEMON/FIFA STYLE */}
@@ -2016,7 +1995,7 @@ export default function YamsUltimateLegacy() {
       <div className="max-w-7xl mx-auto space-y-4">
         {/* HEADER + TABS */}
         <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-4 sm:p-6'}>
-          {isGameStarted() && !isGameComplete() && !hideTotals && !fogMode && <div className={`h-1 w-full rounded-t-3xl ${getTensionColor()}`}></div>}
+
           {/* XP LEVEL BAR */}
           {globalXP > 0 && <div className="mb-2 mt-1">
             {(()=>{const xl=getXPLevel(globalXP);return <div className="flex items-center gap-2">
