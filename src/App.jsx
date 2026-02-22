@@ -756,6 +756,28 @@ export default function YamsUltimateLegacy() {
     }
     return {status:'ok',text:`Besoin de ${needed} pts`};
   };
+  const SpiderChart=({player,stats:ps})=>{
+    if(!ps||ps.games<1)return null;
+    const axes=[
+      {label:'Score',val:Math.min(100,Math.round((ps.avgScore/300)*100))},
+      {label:'Bonus',val:ps.bonusRate||0},
+      {label:'Régularité',val:Math.max(0,100-Math.round((ps.games>1?Math.sqrt(ps.games)*5:50)))},
+      {label:'Yams',val:Math.min(100,Math.round((ps.yamsCount/(ps.games||1))*100))},
+      {label:'Anti-0',val:Math.min(100,Math.round(((13-((ps.totalZeros||0)/(ps.games||1)))/13)*100))},
+      {label:'Clutch',val:Math.min(100,ps.wins>0?Math.round((ps.wins/ps.games)*100):0)},
+    ];
+    const cx=75,cy=70,r=55;
+    const points=axes.map((a,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;const rv=r*(a.val/100);return{x:cx+rv*Math.cos(angle),y:cy+rv*Math.sin(angle),lx:cx+(r+14)*Math.cos(angle),ly:cy+(r+14)*Math.sin(angle),label:a.label,val:a.val};});
+    const polygon=points.map(p=>p.x+','+p.y).join(' ');
+    const gridLines=[0.25,0.5,0.75,1].map(s=>axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return (cx+r*s*Math.cos(angle))+','+(cy+r*s*Math.sin(angle));}).join(' '));
+    const pc=getPlayerColor(player,players.indexOf(player));
+    return <svg viewBox="0 0 150 150" className="w-full max-w-[180px]">
+      {gridLines.map((g,i)=><polygon key={i} points={g} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5"/>)}
+      {axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return <line key={i} x1={cx} y1={cy} x2={cx+r*Math.cos(angle)} y2={cy+r*Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>;})}
+      <polygon points={polygon} fill={pc.hex+'30'} stroke={pc.hex} strokeWidth="1.5" style={{filter:`drop-shadow(0 0 4px ${pc.hex}40)`}}/>
+      {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="2.5" fill={pc.hex}/><text x={p.lx} y={p.ly} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.6)" fontSize="5" fontWeight="bold">{p.label}</text></g>)}
+    </svg>;
+  };
   const getBonusProgress=p=>{ const filled=categories.filter(c=>c.upper&&scores[p]?.[c.id]!==undefined).length; if(!filled)return{status:'neutral',message:''}; const targets=[{id:'ones',t:3},{id:'twos',t:6},{id:'threes',t:9},{id:'fours',t:12},{id:'fives',t:15},{id:'sixes',t:18}]; let exp=0;targets.forEach(c=>{if(scores[p]?.[c.id]!==undefined)exp+=c.t;}); const diff=calcUpper(p)-exp; if(diff>0)return{status:'ahead',message:`Avance: +${diff}`,color:'text-green-400'}; if(diff<0)return{status:'behind',message:`Retard: ${diff}`,color:'text-red-400'}; return{status:'ontrack',message:'Sur la cible',color:'text-blue-400'}; };
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
   // Memoized totals
@@ -2682,7 +2704,7 @@ export default function YamsUltimateLegacy() {
               </tbody></table></div>
             </div>
           </div>
-        ) })()}
+        )}
 
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
@@ -2825,31 +2847,7 @@ export default function YamsUltimateLegacy() {
             </div>;
         })()}
 
-        {currentTab==='stats'&&(()=>{
-          // Spider chart component
-          const SpiderChart=({player,stats:ps})=>{
-            if(!ps||ps.games<1)return null;
-            const axes=[
-              {label:'Score',val:Math.min(100,Math.round((ps.avgScore/300)*100))},
-              {label:'Bonus',val:ps.bonusRate||0},
-              {label:'Régularité',val:Math.max(0,100-Math.round((ps.games>1?Math.sqrt(ps.games)*5:50)))},
-              {label:'Yams',val:Math.min(100,Math.round((ps.yamsCount/(ps.games||1))*100))},
-              {label:'Anti-0',val:Math.min(100,Math.round(((13-((ps.totalZeros||0)/(ps.games||1)))/13)*100))},
-              {label:'Clutch',val:Math.min(100,ps.wins>0?Math.round((ps.wins/ps.games)*100):0)},
-            ];
-            const cx=75,cy=70,r=55;
-            const points=axes.map((a,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;const rv=r*(a.val/100);return{x:cx+rv*Math.cos(angle),y:cy+rv*Math.sin(angle),lx:cx+(r+14)*Math.cos(angle),ly:cy+(r+14)*Math.sin(angle),label:a.label,val:a.val};});
-            const polygon=points.map(p=>p.x+','+p.y).join(' ');
-            const gridLines=[0.25,0.5,0.75,1].map(s=>axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return (cx+r*s*Math.cos(angle))+','+(cy+r*s*Math.sin(angle));}).join(' '));
-            const pc=getPlayerColor(player,players.indexOf(player));
-            return <svg viewBox="0 0 150 150" className="w-full max-w-[180px]">
-              {gridLines.map((g,i)=><polygon key={i} points={g} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5"/>)}
-              {axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return <line key={i} x1={cx} y1={cy} x2={cx+r*Math.cos(angle)} y2={cy+r*Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>;})}
-              <polygon points={polygon} fill={pc.hex+'30'} stroke={pc.hex} strokeWidth="1.5" style={{filter:`drop-shadow(0 0 4px ${pc.hex}40)`}}/>
-              {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="2.5" fill={pc.hex}/><text x={p.lx} y={p.ly} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.6)" fontSize="5" fontWeight="bold">{p.label}</text></g>)}
-            </svg>;
-          };
-          return (
+        {currentTab==='stats'&&(
             <div className={"space-y-6 tab-slide-"+tabDirection} >
                 
                 {/* 0. FILTRE SAISONS */}
