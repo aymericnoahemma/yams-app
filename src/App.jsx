@@ -2780,7 +2780,7 @@ export default function YamsUltimateLegacy() {
             // Closest game (smallest gap between 1st and 2nd)
             let closest={val:999,who:'',date:''};
             allGames.forEach(g=>{const pls=(g.players||g.results||[]).map(p=>p.score).sort((a,b)=>b-a);if(pls.length>=2){const gap=pls[0]-pls[1];if(gap<closest.val&&gap>0)closest={val:gap,who:(g.players||g.results).find(p=>p.isWinner)?.name||'',date:g.date};}});
-            if(closest.val<999)records.push({icon:'📏',title:'Partie la plus serrée',value:closest.val+' pts d'écart',holder:closest.who,date:closest.date,color:'from-purple-500/20 to-pink-500/20',border:'border-purple-500/30'});
+            if(closest.val<999)records.push({icon:'📏',title:'Partie la plus serrée',value:closest.val+' pts d\'écart',holder:closest.who,date:closest.date,color:'from-purple-500/20 to-pink-500/20',border:'border-purple-500/30'});
             
             // Most zeros in a game
             let mostZeros={val:0,who:'',date:''};
