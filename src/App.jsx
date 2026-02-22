@@ -2682,7 +2682,7 @@ export default function YamsUltimateLegacy() {
               </tbody></table></div>
             </div>
           </div>
-        ); })()}
+        ) })()}
 
         {/* TAB: HISTORY */}
         {currentTab==='history'&&(
