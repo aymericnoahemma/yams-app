@@ -77,7 +77,8 @@ const THEME_CONFETTI = {
   matrix:['🟢','💚','🖥️','⚡','✨','🔋'], aurora:['🌌','💜','🌠','✨','🔮','💫'], midnight:['🌙','⭐','🌟','💙','✨','🌃'],
   neon:['💡','🌈','⚡','✨','💫','🔆'], jade:['🪨','💚','🍵','🏮','✨','🐉'], autumn:['🍂','🍁','🎃','🍄','✨','🌰'],
   galaxy:['🌌','🪐','🚀','⭐','💫','🌠'], retro:['🕹️','👾','🎮','🟣','✨','🔴'], spring:['🌷','🌼','🐝','🌈','✨','🦋'],
-  christmas:['🎄','🎅','🎁','⭐','❄️','✨'], halloween:['🎃','👻','🦇','🕸️','💀','🧙']
+  christmas:['🎄','🎅','🎁','⭐','❄️','✨'], halloween:['🎃','👻','🦇','🕸️','💀','🧙'],
+  glass:['💎','✦','○','◇','⊹','✧']
 };
 const THEME_CONFETTI_STYLE = {
   modern:{anim:'confetti-fall'},ocean:{anim:'confetti-rise'},sunset:{anim:'confetti-ember'},
@@ -97,6 +98,7 @@ const THEME_BG_PARTICLES = {
   royal: {particles:['⚜','·','✦'],count:10,speed:30,opacity:0.04},
   stealth: {particles:['·','·','○'],count:8,speed:40,opacity:0.03},
   candy: {particles:['●','○','◆'],count:14,speed:20,opacity:0.05},
+  glass: {particles:['◇','○','✦','·'],count:12,speed:35,opacity:0.03},
 };
 const THEMES_CONFIG = {
   modern: { name: "Modern Dark", primary: "#6366f1", secondary: "#8b5cf6", bg: "from-slate-950 via-indigo-950 to-slate-950", card: "from-slate-900/90 to-slate-800/90", glow: "shadow-indigo-500/20", icon: <Monitor size={16}/>, part: "✨" },
@@ -119,7 +121,8 @@ const THEMES_CONFIG = {
   neon: { name: "Neon City", primary: "#06b6d4", secondary: "#d946ef", bg: "from-black via-cyan-950 to-fuchsia-950", card: "from-cyan-950/60 to-fuchsia-950/60", glow: "shadow-cyan-400/30", icon: <Zap size={16}/>, part: "💜" },
   earth: { name: "Terre", primary: "#a16207", secondary: "#854d0e", bg: "from-amber-950 via-yellow-950 to-stone-950", card: "from-amber-950/80 to-stone-900/80", glow: "shadow-amber-600/20", icon: <Sun size={16}/>, part: "🌍" },
   ice: { name: "Glacial", primary: "#67e8f9", secondary: "#22d3ee", bg: "from-cyan-950 via-sky-950 to-slate-950", card: "from-cyan-900/60 to-sky-900/60", glow: "shadow-cyan-300/25", icon: <Snowflake size={16}/>, part: "🧊" },
-  volcano: { name: "Volcan", primary: "#f97316", secondary: "#dc2626", bg: "from-red-950 via-orange-950 to-black", card: "from-red-950/80 to-orange-950/70", glow: "shadow-orange-500/30", icon: <Flame size={16}/>, part: "🌋" }
+  volcano: { name: "Volcan", primary: "#f97316", secondary: "#dc2626", bg: "from-red-950 via-orange-950 to-black", card: "from-red-950/80 to-orange-950/70", glow: "shadow-orange-500/30", icon: <Flame size={16}/>, part: "🌋" },
+  glass: { name: "Liquid Glass", primary: "#88a4c8", secondary: "#5b8fb9", bg: "from-slate-950 via-gray-900 to-slate-950", card: "from-white/[0.06] to-white/[0.03]", glow: "shadow-white/10", icon: <Sparkles size={16}/>, part: "💎" }
 };
 
 const DICE_SKINS = {
@@ -775,8 +778,8 @@ export default function YamsUltimateLegacy() {
       const totalCells = players.length * playableCats.length;
       const remaining = totalCells - filledAfter;
       if(remaining <= 3 && remaining > 0) {
-        setShowCountdown(remaining);
-        setTimeout(() => setShowCountdown(null), 1500);
+        const countdownDelay = (value === '0' || value === '50') ? 2500 : 400;
+        setTimeout(() => { setShowCountdown(remaining); setTimeout(() => setShowCountdown(null), 1500); }, countdownDelay);
       }
       if(remaining <= players.length && remaining > 0) {
         setTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});},800);
@@ -879,7 +882,7 @@ export default function YamsUltimateLegacy() {
     
     // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
-        setPendingYamsDetail({ player });
+        setTimeout(() => setPendingYamsDetail({ player }), 2800);
         setConfetti('gold');
         
         setShowDiceAnim(true);
@@ -899,7 +902,7 @@ export default function YamsUltimateLegacy() {
     }
 
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);}
+    if(oldUp<63&&newUp>=63){const bonusDelay=showPerfect?2800:0;setTimeout(()=>{setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},bonusDelay);}
     
     // BONUS LOST DETECTION
     if(categories.find(c=>c.id===category)?.upper && value !== '') {
@@ -1024,7 +1027,9 @@ export default function YamsUltimateLegacy() {
                 })();
                 const hasPerfect = categories.find(c=>c.id===category)?.max === parseInt(value);
                 const hasCelebration = parseInt(value) >= 25;
-                const delay = (hasYams || hasBonus || hasBonusLost) ? 6000 : hasPerfect ? 3000 : hasCelebration ? 2000 : 800;
+                const isZero = parseInt(value) === 0;
+                const hasMassacre = isZero && (consecutiveZeros[player]||0) >= 2;
+                const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 : hasPerfect ? 3200 : hasMassacre ? 3500 : isZero ? 2000 : hasCelebration ? 2200 : 800;
                 setTimeout(() => {
                     if(!showBonusFullscreen && !pendingYamsDetail && !showPerfect) {
                         setHotSeatPlayer(nextP);
@@ -1532,14 +1537,15 @@ export default function YamsUltimateLegacy() {
         </div>
       </div>}
       {/* HOT SEAT OVERLAY */}
-      {hotSeatPlayer&&<div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
-        <div className="text-center" style={{animation:'hotseat-pulse 1.5s ease-in-out'}}>
-          <div className="text-6xl mb-2" style={{animation:'hotseat-bell 0.4s ease-in-out 0.2s both'}}>🔔</div>
-          <div className="text-xl font-black text-white/80 mb-1 tracking-widest uppercase">À ton tour</div>
-          <div className="text-5xl sm:text-7xl font-black text-white" style={{textShadow:`0 0 40px ${getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer)).hex}`,animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s backwards'}}>{playerAvatars[hotSeatPlayer]||'👤'} {hotSeatPlayer}</div>
-          <div className="text-sm text-white/50 font-bold mt-2 max-w-md text-center leading-relaxed" style={{animation:'hotseat-name 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s backwards'}}>{(()=>{const remaining=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined);if(!remaining.length)return null;return <span>{remaining.map(c=>c.name).join(', ')}</span>;})()}</div>
+      {hotSeatPlayer&&(()=>{const hspc=getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer));return <div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
+        <div className="absolute inset-0" style={{background:`radial-gradient(circle at 50% 50%, ${hspc.hex}15, transparent 70%)`}}></div>
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-28 sm:h-36" style={{background:`linear-gradient(90deg,transparent,${hspc.hex}20,${hspc.hex}30,${hspc.hex}20,transparent)`,borderTop:`2px solid ${hspc.hex}60`,borderBottom:`2px solid ${hspc.hex}60`,animation:'sf-bar 0.4s cubic-bezier(0.22,1,0.36,1)'}}></div>
+        <div className="relative text-center z-10">
+          <div className="text-8xl sm:text-9xl mb-2" style={{animation:'sf-avatar 0.5s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 30px ${hspc.hex}80)`}}>{playerAvatars[hotSeatPlayer]||'👤'}</div>
+          <div className="text-4xl sm:text-6xl font-black uppercase tracking-wider" style={{color:hspc.hex,textShadow:`0 0 40px ${hspc.hex}80, 0 2px 0 rgba(0,0,0,0.5)`,WebkitTextStroke:'1px rgba(255,255,255,0.2)',animation:'sf-name 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s backwards'}}>{hotSeatPlayer}</div>
+          <div className="text-sm font-black text-white/70 uppercase tracking-[0.4em] mt-2" style={{animation:'sf-subtitle 0.3s ease-out 0.3s backwards'}}>À TON TOUR</div>
         </div>
-      </div>}
+      </div>;})()}
       {/* MASSACRE SCREEN */}
       {massacreScreen&&<div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/80 pointer-events-none" style={{animation:'massacre-in 0.3s ease-out'}}>
         <div className="text-center" style={{animation:'massacre-shake 0.5s ease-in-out'}}>
@@ -1702,6 +1708,8 @@ export default function YamsUltimateLegacy() {
   .streak-col-intense{box-shadow:inset 0 0 25px rgba(251,146,60,0.1);animation:streak-glow-intense 1.5s ease-in-out infinite}
   @keyframes streak-glow{0%,100%{box-shadow:inset 0 0 10px rgba(251,146,60,0.04)}50%{box-shadow:inset 0 0 20px rgba(251,146,60,0.08)}}
   @keyframes streak-glow-intense{0%,100%{box-shadow:inset 0 0 15px rgba(251,146,60,0.08)}50%{box-shadow:inset 0 0 30px rgba(251,146,60,0.15)}}
+  .liquid-glass-card{background:linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02))!important;backdrop-filter:blur(20px) saturate(1.2);border:1px solid rgba(255,255,255,0.12)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(255,255,255,0.05),0 8px 32px rgba(0,0,0,0.3),0 0 0 1px rgba(255,255,255,0.05)}
+  .liquid-glass-card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,0.08) 0%,transparent 50%,rgba(255,255,255,0.03) 100%);pointer-events:none}
   @keyframes duel-shimmer{0%,100%{opacity:0.1}50%{opacity:0.3}}
   @keyframes cell-flip{0%{transform:perspective(400px) rotateY(0)}40%{transform:perspective(400px) rotateY(90deg)}60%{transform:perspective(400px) rotateY(90deg)}100%{transform:perspective(400px) rotateY(0)}}
   .cell-flip{animation:cell-flip 0.5s cubic-bezier(0.22,1,0.36,1)}
@@ -1742,6 +1750,10 @@ export default function YamsUltimateLegacy() {
   .grid-chalk td{border-color:rgba(34,197,94,0.1)!important;font-family:'Courier New',monospace}
   .grid-pixel td{border-color:rgba(168,85,247,0.1)!important;image-rendering:pixelated}
 
+  @keyframes sf-bar{0%{transform:translateY(-50%) scaleX(0)}100%{transform:translateY(-50%) scaleX(1)}}
+  @keyframes sf-avatar{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes sf-name{0%{transform:translateX(-100px);opacity:0;letter-spacing:0.8em}100%{transform:translateX(0);opacity:1;letter-spacing:0.15em}}
+  @keyframes sf-subtitle{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
   @keyframes hotseat-in{0%{opacity:0;backdrop-filter:blur(0)}100%{opacity:1;backdrop-filter:blur(8px)}}
   @keyframes hotseat-pulse{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
   @keyframes hotseat-bell{0%{transform:rotate(0) scale(0)}30%{transform:rotate(15deg) scale(1.3)}60%{transform:rotate(-15deg) scale(1.1)}100%{transform:rotate(0) scale(1)}}
