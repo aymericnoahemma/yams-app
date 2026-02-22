@@ -79,7 +79,25 @@ const THEME_CONFETTI = {
   galaxy:['🌌','🪐','🚀','⭐','💫','🌠'], retro:['🕹️','👾','🎮','🟣','✨','🔴'], spring:['🌷','🌼','🐝','🌈','✨','🦋'],
   christmas:['🎄','🎅','🎁','⭐','❄️','✨'], halloween:['🎃','👻','🦇','🕸️','💀','🧙']
 };
+const THEME_CONFETTI_STYLE = {
+  modern:{anim:'confetti-fall'},ocean:{anim:'confetti-rise'},sunset:{anim:'confetti-ember'},
+  fire:{anim:'confetti-ember'},neon:{anim:'confetti-laser'},forest:{anim:'confetti-leaf'},
+  nature:{anim:'confetti-leaf'},autumn:{anim:'confetti-leaf'},galaxy:{anim:'confetti-fall'},
+  arctic:{anim:'confetti-fall'},cherry:{anim:'confetti-fall'},spring:{anim:'confetti-leaf'},
+};
 
+const THEME_BG_PARTICLES = {
+  modern: {particles:['✦','·','⊹'],count:15,speed:20,opacity:0.04},
+  sunset: {particles:['◐','·','☀'],count:12,speed:25,opacity:0.05},
+  ocean: {particles:['~','≋','○'],count:18,speed:30,opacity:0.04},
+  fire: {particles:['⊹','·','⁕'],count:14,speed:15,opacity:0.06},
+  neon: {particles:['◆','▪','●'],count:16,speed:22,opacity:0.05},
+  nature: {particles:['🍃','·','⊹'],count:12,speed:35,opacity:0.04},
+  galaxy: {particles:['✦','·','⊹','✧'],count:20,speed:40,opacity:0.05},
+  royal: {particles:['⚜','·','✦'],count:10,speed:30,opacity:0.04},
+  stealth: {particles:['·','·','○'],count:8,speed:40,opacity:0.03},
+  candy: {particles:['●','○','◆'],count:14,speed:20,opacity:0.05},
+};
 const THEMES_CONFIG = {
   modern: { name: "Modern Dark", primary: "#6366f1", secondary: "#8b5cf6", bg: "from-slate-950 via-indigo-950 to-slate-950", card: "from-slate-900/90 to-slate-800/90", glow: "shadow-indigo-500/20", icon: <Monitor size={16}/>, part: "✨" },
   ocean: { name: "Deep Ocean", primary: "#06b6d4", secondary: "#0891b2", bg: "from-slate-950 via-cyan-950 to-slate-950", card: "from-slate-900/90 to-cyan-900/90", glow: "shadow-cyan-500/20", icon: <Share2 size={16}/>, part: "🫧" },
@@ -343,7 +361,7 @@ const calculateSimulatedScores = (dice) => {
 };
 
 // --- COMPOSANTS INTERNES ---
-const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy }) => {
+const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImposedDisabled, isFoggy, isJustFilled }) => {
   if(isFoggy && isLocked) return <div className="w-full py-3 text-center text-gray-500 font-black animate-pulse text-xs sm:text-lg">???</div>;
   if(isImposedDisabled) return <div className="w-full py-3 text-center text-gray-700 font-bold bg-black/20 rounded-xl opacity-30 cursor-not-allowed text-xs sm:text-lg">🔒</div>;
   const cat = categories.find(c=>c.id===category);
@@ -352,7 +370,7 @@ const ScoreInput = ({ value, onChange, category, isHighlighted, isLocked, isImpo
   const isZero = hasValue && parseInt(value) === 0;
   return (
     <select value={value??''} onChange={e=>onChange(e.target.value, e)} disabled={isLocked}
-      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isLocked?(isZero?'cursor-not-allowed opacity-50 bg-red-500/10 text-red-400/60 border border-red-500/20 cell-cracked':'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10 cell-alive'):isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5 cell-empty-wave'}`}
+      className={`w-full py-3 px-2 rounded-xl font-bold text-sm sm:text-lg text-center transition-all duration-300 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:shadow-lg focus:shadow-white/10 focus:scale-[1.03] ${isJustFilled?'cell-flip':''} ${isLocked?(isZero?'cursor-not-allowed opacity-50 bg-red-500/10 text-red-400/60 border border-red-500/20 cell-cracked':'cursor-not-allowed opacity-60 bg-white/5 text-gray-400 border border-white/10 cell-alive'):isHighlighted?'cursor-pointer bg-gradient-to-r from-green-500/30 to-emerald-500/30 border-2 border-green-400 text-white shadow-lg shadow-green-500/50 ring-pulse':'cursor-pointer bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/40 hover:shadow-lg hover:shadow-white/5 cell-empty-wave'}`}
       style={isLocked||isHighlighted?{}:{background:'linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.1))',color:'white'}}>
       <option value="" style={{backgroundColor:'#1e293b',color:'white'}}>-</option>
       {vals.map(v=><option key={v} value={v} style={{backgroundColor:'#1e293b',color:'white'}}>{v}</option>)}
@@ -494,6 +512,7 @@ export default function YamsUltimateLegacy() {
   const [scoresBeforeEdit,setScoresBeforeEdit]=useState(null);
   const [lastPlayerBeforeEdit,setLastPlayerBeforeEdit]=useState(null);
   const [showVictoryAnimation,setShowVictoryAnimation]=useState(false);
+  const [showPodiumAnim, setShowPodiumAnim] = useState(false);
   const [notifQueue, setNotifQueue] = useState([]);
   const pushNotif = (notif, duration=4500) => {
     const id = Date.now() + Math.random();
@@ -563,6 +582,7 @@ export default function YamsUltimateLegacy() {
   const [emojiRain, setEmojiRain] = useState(null);
   const [showDiceAnim, setShowDiceAnim] = useState(false);
   const [streaks, setStreaks] = useState({});
+  const [playerCombos, setPlayerCombos] = useState({});
   const [lastCellKey, setLastCellKey] = useState(null);
   const [tabDirection, setTabDirection] = useState('l');
   const [showSplash, setShowSplash] = useState(true);
@@ -698,6 +718,28 @@ export default function YamsUltimateLegacy() {
   const calcLower= (p, sc=scores) => { if (!p || !sc[p]) return 0; return categories.filter(c=>c.lower).reduce((s,c)=>s+(sc[p]?.[c.id]||0),0); };
   const calcTotal= (p, sc=scores) => { if (!p) return 0; let total = calcUpperGrand(p, sc)+calcLower(p, sc); return total; };
   const getPlayerTotals = (p, sc=scores) => ({ upper: calcUpper(p, sc), bonus: getBonus(p, sc), lower: calcLower(p, sc), total: calcTotal(p, sc) });
+  const getBonusPrediction=p=>{
+    const upperCats=[{id:'ones',max:5},{id:'twos',max:10},{id:'threes',max:15},{id:'fours',max:20},{id:'fives',max:25},{id:'sixes',max:30}];
+    const current=calcUpper(p);
+    const remaining=upperCats.filter(c=>scores[p]?.[c.id]===undefined);
+    if(remaining.length===0) return current>=63?{status:'done',text:'✅ Bonus obtenu !'}:{status:'fail',text:'❌ Pas de bonus'};
+    const maxPossible=current+remaining.reduce((s,c)=>s+c.max,0);
+    if(maxPossible<63) return {status:'impossible',text:'❌ Bonus impossible'};
+    if(current>=63) return {status:'done',text:'✅ Bonus assuré !'};
+    const needed=63-current;
+    if(remaining.length===1){
+      const cat=remaining[0];
+      const catName=categories.find(c=>c.id===cat.id)?.name||cat.id;
+      return {status:'need',text:`≥${needed} aux ${catName}`};
+    }
+    const minNeeded=needed-remaining.slice(1).reduce((s,c)=>s+c.max,0);
+    if(minNeeded>0){
+      const cat=remaining[0];
+      const catName=categories.find(c=>c.id===cat.id)?.name||cat.id;
+      return {status:'need',text:`Min. ${Math.ceil(needed/remaining.length)} par catég.`};
+    }
+    return {status:'ok',text:`Besoin de ${needed} pts`};
+  };
   const getBonusProgress=p=>{ const filled=categories.filter(c=>c.upper&&scores[p]?.[c.id]!==undefined).length; if(!filled)return{status:'neutral',message:''}; const targets=[{id:'ones',t:3},{id:'twos',t:6},{id:'threes',t:9},{id:'fours',t:12},{id:'fives',t:15},{id:'sixes',t:18}]; let exp=0;targets.forEach(c=>{if(scores[p]?.[c.id]!==undefined)exp+=c.t;}); const diff=calcUpper(p)-exp; if(diff>0)return{status:'ahead',message:`Avance: +${diff}`,color:'text-green-400'}; if(diff<0)return{status:'behind',message:`Retard: ${diff}`,color:'text-red-400'}; return{status:'ontrack',message:'Sur la cible',color:'text-blue-400'}; };
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
   // Memoized totals
@@ -712,7 +754,8 @@ export default function YamsUltimateLegacy() {
           setShowPhotoFinish(true);
           setTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
       } else {
-          setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);
+          if(players.length>=3){setShowPodiumAnim(true);setConfetti('winner');setTimeout(()=>{setShowPodiumAnim(false);setShowVictoryAnimation(true);setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);},4500);}
+          else{setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);}
       }};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
   const getNextPlayer=()=>{if(!lastPlayerToPlay) {return players.includes(starterName) ? starterName : players[0];} return players[(players.indexOf(lastPlayerToPlay)+1)%players.length];};
@@ -907,6 +950,15 @@ export default function YamsUltimateLegacy() {
       }
     }
     vibrate(15); setScores(ns);saveCurrentGame(ns);
+    // COMBO SYSTEM
+    if(!editMode && value !== '') {
+      const valInt2 = parseInt(value) || 0;
+      setPlayerCombos(prev => {
+        const cur = prev[player] || 0;
+        if(valInt2 >= 20) return {...prev, [player]: cur + 1};
+        return {...prev, [player]: 0};
+      });
+    }
     // 12. AVATAR REACTIONS
     if(!editMode && value !== '') {
         const reactions = {};
@@ -979,7 +1031,7 @@ export default function YamsUltimateLegacy() {
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
   const resetGame = (forcedLoserName = null, skipConfirm = false) => { setPlayerEntrance(true); setTimeout(() => setPlayerEntrance(false), 2000); 
       if(!forcedLoserName && !skipConfirm) { showConfirm("Commencer une nouvelle partie ?", () => { setConfirmModal(null); resetGame(null, true); }); return; } 
-      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]);  setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);
+      setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setPlayerCombos({});  setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false);
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
       else { const currentStarterIdx = players.indexOf(starterName); const nextStarter = players[(currentStarterIdx + 1) % players.length]; setStarterName(nextStarter); }
       // CHAOS MODE START ACTION FOR 1ST PLAYER
@@ -1351,6 +1403,7 @@ export default function YamsUltimateLegacy() {
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-opacity duration-500 ease-in-out '+(themeTransition?'opacity-0':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
       <InteractiveParticles themeKey={theme}/>
+      {(()=>{const bp=THEME_BG_PARTICLES[theme];if(!bp)return null;return <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">{Array.from({length:bp.count},(_,i)=>i).map(i=><div key={i} className="absolute" style={{left:`${(i*7.3+3)%100}%`,top:`${(i*13.7+5)%100}%`,opacity:bp.opacity,fontSize:`${10+i%3*6}px`,animation:`bg-float ${bp.speed+i*3}s ease-in-out ${i*2}s infinite alternate`,color:'white'}}>{bp.particles[i%bp.particles.length]}</div>)}</div>;})()}
       {/* VS FIGHTING SCREEN */}
       {showVSScreen&&players.length>=2&&<div className="fixed inset-0 z-[300] bg-black flex items-center justify-center overflow-hidden" style={{animation:'cinema-darken 0.3s ease-out'}}>
         <div className="absolute inset-0" style={{background:`linear-gradient(135deg,${getPlayerColor(players[0],0).hex}20,black,${getPlayerColor(players[1],1).hex}20)`}}/>
@@ -1409,7 +1462,7 @@ export default function YamsUltimateLegacy() {
       )}
 
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} color={fs.color} />)}
-      {confetti&&confetti!=='sad'&&<div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" style={confetti==='winner'?{filter:`hue-rotate(${(()=>{const w=getWinner()[0];const pc=getPlayerColor(w,players.indexOf(w));return pc?.hue||0;})()}deg)`}:{}}>{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=(confetti==='gold'||confetti==='winner')?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',top:'-30px',fontSize:(18+Math.random()*16)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>}
+      {confetti&&confetti!=='sad'&&(()=>{const tcs=THEME_CONFETTI_STYLE[theme]||THEME_CONFETTI_STYLE.modern;const animName=tcs.anim;const isUp=tcs.dir==='up';return <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" style={confetti==='winner'?{filter:`hue-rotate(${(()=>{const w=getWinner()[0];const pc=getPlayerColor(w,players.indexOf(w));return pc?.hue||0;})()}deg)`}:{}}>{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=(confetti==='gold'||confetti==='winner')?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',[isUp?'bottom':'top']:isUp?'-30px':'-30px',fontSize:(18+Math.random()*16)+'px',animation:`${animName} ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>;})()}
       {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
       {/* COUNTDOWN CINEMATIC */}
       {showCountdown&&<div className="fixed inset-0 z-[280] flex items-center justify-center pointer-events-none">
@@ -1585,6 +1638,16 @@ export default function YamsUltimateLegacy() {
   @keyframes lightning{0%{opacity:0;transform:translateX(-50%) scaleY(0)}10%{opacity:1;transform:translateX(-50%) scaleY(1)}30%{opacity:1}100%{opacity:0}}
   @keyframes total-breathe{0%,100%{text-shadow:0 0 10px rgba(255,255,255,0.1)}50%{text-shadow:0 0 20px rgba(255,255,255,0.3)}}
   .total-breathe{animation:total-breathe 3s ease-in-out infinite}
+  @keyframes duel-shimmer{0%,100%{opacity:0.1}50%{opacity:0.3}}
+  @keyframes cell-flip{0%{transform:perspective(400px) rotateY(0)}40%{transform:perspective(400px) rotateY(90deg)}60%{transform:perspective(400px) rotateY(90deg)}100%{transform:perspective(400px) rotateY(0)}}
+  .cell-flip{animation:cell-flip 0.5s cubic-bezier(0.22,1,0.36,1)}
+  @keyframes combo-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  @keyframes confetti-rise{0%{transform:translateY(110vh) rotate(0deg);opacity:1}100%{transform:translateY(-10vh) rotate(720deg);opacity:0}}
+  @keyframes confetti-ember{0%{transform:translateY(-10vh) rotate(0deg) scale(1);opacity:1}60%{opacity:0.8}100%{transform:translateY(110vh) rotate(360deg) scale(0.3);opacity:0;filter:brightness(2)}}
+  @keyframes confetti-leaf{0%{transform:translateY(-10vh) rotate(0deg) translateX(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg) translateX(100px);opacity:0}}
+  @keyframes confetti-laser{0%{transform:translateY(-10vh) scaleX(3) scaleY(0.3);opacity:1}100%{transform:translateY(110vh) scaleX(1) scaleY(1);opacity:0}}
+  @keyframes podium-step{0%{transform:translateY(100px);opacity:0}100%{transform:translateY(0);opacity:1}}
+  @keyframes bg-float{0%{transform:translateY(0) translateX(0) scale(1)}50%{transform:translateY(-30px) translateX(15px) scale(1.1)}100%{transform:translateY(0) translateX(0) scale(1)}}
   @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(1080deg);opacity:0}}
   @keyframes sad-pulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.2);opacity:0.8}}
   .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
@@ -1707,6 +1770,27 @@ export default function YamsUltimateLegacy() {
         </div>);
       })()}
       {/* CINEMATIC END WITH 3D PODIUM */}
+      {showPodiumAnim&&(()=>{
+        const ranked=players.map(p=>({name:p,score:calcTotal(p),avatar:playerAvatars[p]||'👤'})).sort((a,b)=>b.score-a.score);
+        const podiumOrder=[ranked[1],ranked[0],ranked[2]||{name:'',score:0,avatar:''}];
+        const heights=['55%','80%','40%'];
+        const delays=['0.6s','1.2s','0.2s'];
+        const medals=['🥈','🥇','🥉'];
+        const colors=['from-gray-400/30 to-gray-500/20','from-yellow-400/30 to-amber-500/20','from-amber-700/30 to-amber-800/20'];
+        return <div className="fixed inset-0 z-[55] flex items-end justify-center bg-black/95 p-4" style={{animation:'cinema-darken 0.5s ease-out'}}>
+          <div className="text-center absolute top-8 left-0 right-0" style={{animation:'fade-in-scale 0.5s ease-out 0.3s backwards'}}><div className="text-4xl mb-2">🏆</div><div className="text-white text-2xl font-black uppercase tracking-widest">Podium</div></div>
+          <div className="flex items-end justify-center gap-3 w-full max-w-md mb-8">
+            {podiumOrder.map((p,i)=>p.name?<div key={i} className="flex flex-col items-center flex-1" style={{animation:`podium-step 0.8s cubic-bezier(0.34,1.56,0.64,1) ${delays[i]} backwards`}}>
+              <div className="text-3xl mb-1" style={{animation:`bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1) ${parseFloat(delays[i])+0.4}s backwards`}}>{p.avatar}</div>
+              <div className="text-white font-black text-sm mb-1 truncate max-w-[80px]">{p.name}</div>
+              <div className="text-white/80 font-bold text-xs mb-2" style={{fontFamily:'JetBrains Mono'}}>{p.score} pts</div>
+              <div className={"w-full rounded-t-2xl bg-gradient-to-t "+colors[i]+" border border-white/20 flex items-start justify-center pt-3"} style={{height:heights[i],minHeight:'60px'}}>
+                <span className="text-3xl">{medals[i]}</span>
+              </div>
+            </div>:<div key={i} className="flex-1"/>)}
+          </div>
+        </div>;
+      })()}
       {showVictoryAnimation&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black" style={{animation:'cinema-darken 0.8s ease-out'}}>
         <div className="absolute inset-0 overflow-hidden">{[...Array(60)].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=[...tc,'🎉','🏆','👑'];return <div key={i} className="confetti-piece absolute" style={{left:Math.random()*100+'%',top:'-20px',fontSize:(16+Math.random()*14)+'px',animation:`confetti-fall ${2.5+Math.random()*3}s linear ${1.5+Math.random()*2}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>
         {/* SPOTLIGHT BEAMS */}
@@ -2426,6 +2510,29 @@ export default function YamsUltimateLegacy() {
                   </div>
               )}
 
+              {/* DUEL BAR - 1v1 mode */}
+              {players.length===2&&isGameStarted()&&!editMode&&(()=>{
+                const t1=calcTotal(players[0]),t2=calcTotal(players[1]);
+                const total=t1+t2||1;
+                const pct1=Math.round((t1/total)*100);
+                const pc1=getPlayerColor(players[0],0),pc2=getPlayerColor(players[1],1);
+                const leader=t1>t2?0:t2>t1?1:-1;
+                return <div className="mb-3 px-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2"><span className="text-lg">{playerAvatars[players[0]]||'👤'}</span><span className={"font-black text-sm "+(leader===0?"text-white":"text-gray-500")}>{players[0]}</span><span className="font-black text-white text-lg" style={{fontFamily:'JetBrains Mono'}}>{t1}</span></div>
+                    <div className={"text-xs font-bold px-3 py-1 rounded-full "+(leader===-1?"bg-white/10 text-gray-400":"bg-yellow-500/20 text-yellow-400")}>{t1===t2?'ÉGALITÉ':leader===0?`+${t1-t2}`:`+${t2-t1}`}</div>
+                    <div className="flex items-center gap-2"><span className="font-black text-white text-lg" style={{fontFamily:'JetBrains Mono'}}>{t2}</span><span className={"font-black text-sm "+(leader===1?"text-white":"text-gray-500")}>{players[1]}</span><span className="text-lg">{playerAvatars[players[1]]||'👤'}</span></div>
+                  </div>
+                  <div className="h-3 rounded-full overflow-hidden bg-white/10 flex" style={{transition:'all 0.6s cubic-bezier(0.34,1.56,0.64,1)'}}>
+                    <div className="h-full rounded-l-full transition-all duration-700 ease-out relative overflow-hidden" style={{width:pct1+'%',background:`linear-gradient(90deg,${pc1.hex},${pc1.hex}cc)`}}>
+                      <div className="absolute inset-0" style={{background:'linear-gradient(90deg,rgba(255,255,255,0.15),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
+                    </div>
+                    <div className="h-full rounded-r-full transition-all duration-700 ease-out relative overflow-hidden flex-1" style={{background:`linear-gradient(90deg,${pc2.hex}cc,${pc2.hex})`}}>
+                      <div className="absolute inset-0" style={{background:'linear-gradient(270deg,rgba(255,255,255,0.15),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
+                    </div>
+                  </div>
+                </div>;
+              })()}
               <div className={`overflow-x-auto relative group ${GRID_SKINS[gridSkin]?.accent||''} ${gridSkin!=='default'?'grid-'+gridSkin:''}`} style={{filter:`sepia(${gridAge*0.15}) contrast(${1+gridAge*0.08})`,transition:'filter 2s ease'}}>{players.length>=3&&<div className="absolute top-1/2 -translate-y-1/2 right-2 z-20 pointer-events-none text-white/40 sm:hidden" style={{animation:'scroll-hint 2s ease-in-out infinite'}}>👉</div>}<table className={`w-full table-fixed ${GRID_SKINS[gridSkin]?.border||''}`} role="grid" aria-label="Grille de scores YAMS"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className={`border-b ${gridSkin==='neon'?'border-green-500/30':gridSkin==='vintage'?'border-amber-700/30':gridSkin==='chalk'?'border-green-800/30':gridSkin==='pixel'?'border-purple-500/30':'border-white/20'}`}>
                 <th className={`text-left p-3 font-bold sticky left-0 z-10 ${GRID_SKINS[gridSkin]?.text||'text-white'} bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}>Catégorie</th>
                 {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;const isLeaderCol=leader===p;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset ring-yellow-400 shadow-xl shadow-yellow-400/30':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}25,rgba(250,204,21,0.08))`,boxShadow:`inset 0 0 30px ${pc.hex}15, 0 0 20px rgba(250,204,21,0.15)`}:isLeaderCol&&!editMode?{boxShadow:'inset 0 0 20px rgba(250,204,21,0.06)',background:'rgba(250,204,21,0.03)'}:{})}}>
@@ -2447,6 +2554,7 @@ export default function YamsUltimateLegacy() {
                             <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform relative '+(lastPlayerToPlay===p?'avatar-dance':getNextPlayer()===p?'avatar-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}{avatarReaction[p]&&<span className="absolute -top-2 -right-2 text-lg" style={{animation:'bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1)'}}>{avatarReaction[p]}</span>}</div>
                         </div>
                         {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
+                        {playerCombos[p]>=2&&<div className="flex items-center gap-0.5" style={{animation:'combo-pulse 0.6s ease-in-out infinite'}}><span className="text-xs">💥</span><span className={"text-xs font-black "+(playerCombos[p]>=5?"text-red-400":playerCombos[p]>=3?"text-orange-400":"text-yellow-400")}>x{playerCombos[p]}</span></div>}
                         <div className="text-sm mt-1" style={playerColors[p]?{color:pc.light}:{}}>{p}{idleAvatars&&isNext?' 😤':idleAvatars&&!isNext?' 💤':''}</div>
                         {/* DYNAMIC IN-GAME TITLE */}
                         {isGameStarted()&&!isGameComplete()&&players.length>=2&&(()=>{
@@ -2470,9 +2578,9 @@ export default function YamsUltimateLegacy() {
                   return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
                   :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
-                  :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
+                  :cat.upperGrandTotal?<div className="text-center py-2 px-2 rounded-xl font-black bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30"><div className="text-xl text-indigo-400">{isFoggy(p)?"???":calcUpperGrand(p)}</div>{!isFoggy(p)&&!editMode&&!isGameComplete()&&(()=>{const pred=getBonusPrediction(p);return pred.text?<div className={"text-[8px] font-bold mt-0.5 "+(pred.status==='done'||pred.status==='ok'?"text-green-400":pred.status==='impossible'||pred.status==='fail'?"text-red-400/80":"text-amber-400/80")}>{pred.text}</div>:null;})()}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
-                  :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)}/></>}
+                  :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)} isJustFilled={lastModifiedCell===(p+'-'+cat.id)}/></>}
                   </td>})}</tr>;
                 })}
                 <tr className="border-t-2 border-white/30 bg-gradient-to-r from-white/10 to-white/5"><td className={`p-4 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-800 to-slate-700'}`}><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className={`font-black text-xl ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl total-breathe" style={{textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none'}}>{isFoggy(p)?"???":(<FlipCounter value={calcTotal(p)} color={getWinner().includes(p)?T.primary:'#fff'}/>)}</div>}</td>)}</tr>
