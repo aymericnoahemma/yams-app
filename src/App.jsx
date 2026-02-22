@@ -599,6 +599,7 @@ export default function YamsUltimateLegacy() {
   const [lastCellKey, setLastCellKey] = useState(null);
   const [tabDirection, setTabDirection] = useState('l');
   const [showSplash, setShowSplash] = useState(true);
+  const [onboardStep, setOnboardStep] = useState(()=>{try{return localStorage.getItem('yamsOnboardDone')?0:1;}catch(e){return 1;}});
   const [showPlayerCard, setShowPlayerCard] = useState(null);
   const [gridSkin, setGridSkin] = useState('default');
   const [playerColors, setPlayerColors] = useState({});
@@ -1607,6 +1608,12 @@ export default function YamsUltimateLegacy() {
   .text-reveal{animation:text-reveal 0.8s cubic-bezier(0.22,1,0.36,1)}
   .tab-enter{animation:stagger-in 0.45s cubic-bezier(0.22,1,0.36,1);}
   @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
+  .btn-ripple{position:relative;overflow:hidden}
+  .btn-ripple::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--ripple-x,50%) var(--ripple-y,50%),rgba(255,255,255,0.3) 0%,transparent 60%);transform:scale(0);opacity:0;border-radius:inherit;pointer-events:none}
+  .btn-ripple:active::after{animation:ripple-expand 0.5s ease-out forwards}
+  @keyframes empty-bounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.05)}}
+  @keyframes empty-pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
+  @keyframes ripple-expand{0%{transform:scale(0);opacity:1}100%{transform:scale(4);opacity:0}}
   @keyframes bounce-in{0%{transform:scale(0)}40%{transform:scale(1.15)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
   @keyframes modal-backdrop{from{backdrop-filter:blur(0px);opacity:0}to{backdrop-filter:blur(16px);opacity:1}}
   @keyframes modal-content{0%{transform:scale(0.7) translateY(40px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
@@ -1640,11 +1647,11 @@ export default function YamsUltimateLegacy() {
   .flip-digit{display:inline-block;animation:flipdigit 0.5s ease-in-out;transform-style:preserve-3d}
   @keyframes last-cell-glow{0%,100%{box-shadow:0 0 0 0 rgba(250,204,21,0)}50%{box-shadow:0 0 18px 4px rgba(250,204,21,0.35)}}
   .last-cell-pulse{animation:last-cell-glow 0.8s ease-in-out 2;border-color:rgba(250,204,21,0.6)!important;background:rgba(250,204,21,0.08)!important}
-  @keyframes tab-slide-in-r{0%{opacity:0}100%{opacity:1}}
-  @keyframes tab-slide-in-l{0%{opacity:0}100%{opacity:1}}
+  @keyframes tab-slide-in-r{0%{transform:translateX(60px);opacity:0}100%{transform:translateX(0);opacity:1}}
+  @keyframes tab-slide-in-l{0%{transform:translateX(-60px);opacity:0}100%{transform:translateX(0);opacity:1}}
   .tab-slide-r{animation:tab-slide-in-r 0.35s cubic-bezier(0.22,1,0.36,1)}
   .tab-slide-l{animation:tab-slide-in-l 0.35s cubic-bezier(0.22,1,0.36,1)}
-  @keyframes row-cascade{0%{transform:translateY(10px);opacity:0}100%{transform:translateY(0);opacity:1}}
+  @keyframes row-cascade{0%{transform:translateX(-20px) translateY(5px);opacity:0}100%{transform:translateX(0) translateY(0);opacity:1}}
   @keyframes cinema-darken{0%{opacity:0}100%{opacity:1}}
   @keyframes cinema-rise{0%{transform:translateY(50px);opacity:0}100%{transform:translateY(0);opacity:1}}
   @keyframes cinema-text{0%{letter-spacing:20px;opacity:0}100%{letter-spacing:2px;opacity:1}}
@@ -2319,13 +2326,13 @@ export default function YamsUltimateLegacy() {
           </div>}
           
           <div className="flex gap-2 mt-4 flex-wrap">
-            <button onClick={()=>switchTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='game'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
-            <button onClick={()=>switchTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='rules'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
-            <button onClick={()=>switchTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='trophies'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
-            <button onClick={()=>switchTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='history'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
-            <button onClick={()=>switchTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='stats'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
-            <button onClick={()=>switchTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='gages'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
-            <button onClick={()=>switchTab('records')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 '+(currentTab==='records'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='records'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏅 Records</button>
+            <button onClick={()=>switchTab('game')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='game'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='game'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎮 Partie</button>
+            <button onClick={()=>switchTab('rules')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='rules'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='rules'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🎲 Règles & Aide</button>
+            <button onClick={()=>switchTab('trophies')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='trophies'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='trophies'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏆 Carrière</button>
+            <button onClick={()=>switchTab('history')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='history'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='history'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📜 Historique</button>
+            <button onClick={()=>switchTab('stats')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='stats'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='stats'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>📊 Stats</button>
+            <button onClick={()=>switchTab('gages')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='gages'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='gages'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>😈 Gages</button>
+            <button onClick={()=>switchTab('records')} className={'flex-1 min-w-[80px] py-3 rounded-xl font-bold transition-all duration-300 hover-float active:scale-95 btn-ripple '+(currentTab==='records'?'text-white shadow-xl scale-[1.02] '+T.glow:'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10 hover:text-white')} style={currentTab==='records'?{background:'linear-gradient(135deg,'+T.primary+','+T.secondary+')'}:{}}>🏅 Records</button>
           </div>
         </div>
 
@@ -2353,6 +2360,25 @@ export default function YamsUltimateLegacy() {
         
 
         {/* TAB: GAGES */}
+        {/* ONBOARDING OVERLAY */}
+        {onboardStep>0&&players.length===0&&gameHistory.length===0&&currentTab==='game'&&(
+          <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={()=>{setOnboardStep(0);try{localStorage.setItem('yamsOnboardDone','1');}catch(e){}}}>
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 rounded-3xl p-8 max-w-sm mx-4 text-center modal-content" onClick={e=>e.stopPropagation()}>
+              {onboardStep===1&&<>
+                <div className="text-7xl mb-4" style={{animation:'empty-bounce 2s ease-in-out infinite'}}>👋</div>
+                <h3 className="text-2xl font-black text-white mb-2">Bienvenue sur YAMS !</h3>
+                <p className="text-gray-400 text-sm mb-6 leading-relaxed">L'app ultime pour compter les points au Yams entre amis. Voici comment ça marche en 3 étapes :</p>
+                <div className="space-y-3 text-left mb-6">
+                  <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3"><span className="text-2xl">1️⃣</span><div><span className="text-white font-bold text-sm">Ajoutez des joueurs</span><span className="text-gray-500 text-xs block">Entrez les prénoms en haut de l'écran</span></div></div>
+                  <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3"><span className="text-2xl">2️⃣</span><div><span className="text-white font-bold text-sm">Remplissez les scores</span><span className="text-gray-500 text-xs block">Tapez sur les cellules de la grille pour saisir</span></div></div>
+                  <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3"><span className="text-2xl">3️⃣</span><div><span className="text-white font-bold text-sm">Sauvegardez la partie</span><span className="text-gray-500 text-xs block">En fin de partie, tout est enregistré automatiquement</span></div></div>
+                </div>
+                <button onClick={()=>{setOnboardStep(0);try{localStorage.setItem('yamsOnboardDone','1');}catch(e){}}} className="w-full py-3 rounded-2xl font-black text-lg text-white btn-ripple" style={{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}}>C'est parti ! 🎲</button>
+              </>}
+            </div>
+          </div>
+        )}
+
         {currentTab === 'gages' && (
             <div className={"space-y-4 tab-slide-"+tabDirection}>
                 <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
@@ -2612,7 +2638,8 @@ export default function YamsUltimateLegacy() {
                   <div className="flex items-center gap-3"><span className="text-xl">{activeChallenge.icon}</span><div><span className="text-amber-300 font-bold text-xs uppercase tracking-wider">Défi en cours</span><span className="text-white font-semibold text-sm ml-2">{activeChallenge.desc}</span></div></div>
                 </div>
               )}
-              {!editMode&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
+              {!editMode&&players.length>0&&<div className="mb-4 p-4 bg-blue-500/10 border border-blue-400/30 rounded-2xl backdrop-blur-sm"><div className="flex items-center gap-3"><span className="text-2xl">🔒</span><span className="text-blue-300 font-semibold text-sm">Les valeurs saisies sont verrouillées. Cliquez sur "Éditer" pour les modifier.</span></div></div>}
+              {players.length===0&&<div className="text-center py-16"><div className="text-8xl mb-4" style={{animation:'empty-bounce 3s ease-in-out infinite'}}>🎲</div><h3 className="text-2xl font-black text-white/70 mb-2">Prêt à jouer ?</h3><p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">Ajoutez des joueurs ci-dessous pour commencer une partie de Yams !</p><div className="text-4xl" style={{animation:'empty-pulse 2s ease-in-out infinite'}}>👇</div></div>}
               {/* PANNEAU INFORMATION JOUEUR */}
               {!editMode && !isGameComplete() && (
                   <div className="mb-4 p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20">
@@ -2764,7 +2791,7 @@ export default function YamsUltimateLegacy() {
           <div className={"space-y-4 tab-slide-"+tabDirection} ><div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl '+T.glow+' p-6'}>
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4"><h2 className="text-3xl font-black text-white flex items-center gap-3"><span className="text-4xl">📜</span>Historique</h2><div className="flex gap-2 items-center"><select value={historyFilterSeason} onChange={e=>setHistoryFilterSeason(e.target.value)} className="bg-black/40 text-white px-3 py-2 rounded-xl text-sm font-bold border border-white/10 outline-none hover:bg-black/60 transition-colors"><option value="Toutes">🌍 Toutes Saisons</option><option value="Aucune">Hors Saison</option>{seasons.map(s=><option key={s} value={s}>{s}</option>)}</select><button onClick={exportData} className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2"><Download size={18}/>Exporter</button><label className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 flex items-center gap-2 cursor-pointer"><Plus size={18}/>Importer<input type="file" accept=".json" onChange={importData} className="hidden"/></label></div></div>
             {filteredGameHistory.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">🎮</div><div className="text-blue-300 text-xs font-bold uppercase">Total Parties</div><div className="text-4xl font-black text-white">{filteredGameHistory.length}</div></div><div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">📅</div><div className="text-purple-300 text-xs font-bold uppercase">Première Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[filteredGameHistory.length-1]?.date}</div></div><div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl p-5 text-center"><div className="text-4xl mb-2">⏱️</div><div className="text-green-300 text-xs font-bold uppercase">Dernière Partie</div><div className="text-lg font-black text-white">{filteredGameHistory[0]?.date}</div></div></div>}
-            {filteredGameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-6 opacity-20">📋</div><p className="text-gray-500 text-lg">Aucune partie enregistrée pour cette sélection</p></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm hover-lift">
+            {filteredGameHistory.length===0?<div className="text-center py-20"><div className="text-8xl mb-4" style={{animation:'empty-bounce 3s ease-in-out infinite'}}>📋</div><p className="text-white/60 text-xl font-bold mb-2">Aucune partie enregistrée</p><p className="text-gray-500 text-sm max-w-xs mx-auto">Jouez votre première partie dans l'onglet 🎮 Partie puis sauvegardez-la pour la voir ici !</p><button onClick={()=>switchTab('game')} className="mt-4 px-6 py-2 rounded-xl font-bold text-sm btn-ripple" style={{background:`linear-gradient(135deg,${T.primary},${T.secondary})`,color:'#fff'}}>🎮 Aller jouer</button></div>:<div className="space-y-3">{filteredGameHistory.map(g=><div key={g.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm hover-lift">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <span className="text-gray-300 font-semibold">📅 {g.date} à {g.time}</span>
@@ -2811,7 +2838,7 @@ export default function YamsUltimateLegacy() {
         {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='records'&&(()=>{
             const allGames = filteredHistory;
-            if(!allGames.length) return <div className="text-center py-20 text-gray-500"><div className="text-6xl mb-4">🏅</div><div className="text-xl font-bold">Pas encore de records</div><div className="text-sm mt-2">Jouez des parties pour débloquer vos records !</div></div>;
+            if(!allGames.length) return <div className="text-center py-20"><div className="text-7xl mb-4" style={{animation:'empty-bounce 3s ease-in-out infinite'}}>🏅</div><div className="text-xl font-bold text-white/60 mb-2">Pas encore de records</div><div className="text-sm text-gray-500 max-w-xs mx-auto">Jouez des parties et vos meilleurs scores apparaîtront ici automatiquement !</div></div>;
             
             const records = [];
             // Best total score
@@ -2913,7 +2940,7 @@ export default function YamsUltimateLegacy() {
                 {(!filteredHistory || filteredHistory.length === 0) ? (
                     <div className={'bg-gradient-to-br '+T.card+' backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8 text-center'}>
                         <div className="text-5xl mb-4">📊</div>
-                        <div className="text-gray-400 text-lg font-bold">Pas encore de statistiques.</div>
+                        <div className="text-center"><div className="text-7xl mb-4" style={{animation:'empty-bounce 3s ease-in-out infinite'}}>📊</div><div className="text-xl font-bold text-white/60 mb-2">Pas encore de statistiques</div><div className="text-sm text-gray-500 max-w-xs mx-auto">Sauvegardez des parties pour voir vos stats détaillées ici !</div></div>
                         <div className="text-gray-500 text-sm mt-2">Jouez une partie !</div>
                     </div>
                 ) : (<>
