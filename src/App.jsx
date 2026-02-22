@@ -885,11 +885,8 @@ export default function YamsUltimateLegacy() {
         setTimeout(() => setPendingYamsDetail({ player }), 2800);
         setConfetti('gold');
         
-        setShowDiceAnim(true);
-        setEmojiRain('🎲');
-        if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});}
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'}); 
-        setTimeout(()=>{setConfetti(null);setShowDiceAnim(false);setEmojiRain(null);setShockwavePos(null);},4500);
+        setTimeout(()=>{setConfetti(null);setEmojiRain(null);setShockwavePos(null);},4500);
     } else if(value==='0') {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
@@ -912,15 +909,13 @@ export default function YamsUltimateLegacy() {
       const currentUpperSum = filledUpper.reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
       const allUpperFilled = emptyUpper.length === 0;
       if(allUpperFilled && currentUpperSum < 63) {
-        setShowBonusFullscreen({player,type:'lost'});
-        setConfetti('sad');
-        setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);
+        const lostDelay=showPerfect?2800:0;
+        setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay);
       } else if(!allUpperFilled && currentUpperSum < 63) {
         const maxPossibleRemaining = emptyUpper.reduce((s,c)=>s+(c.max||0),0);
         if(currentUpperSum + maxPossibleRemaining < 63) {
-          setShowBonusFullscreen({player,type:'lost'});
-          setConfetti('sad');
-          setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);
+          const lostDelay2=showPerfect?2800:0;
+          setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay2);
         }
       }
     }
@@ -1061,6 +1056,11 @@ export default function YamsUltimateLegacy() {
       setScores(newScores);
       saveCurrentGame(newScores);
       setPendingYamsDetail(null);
+      // Trigger hot seat after Yams detail is selected
+      const nextP2 = players[(players.indexOf(pendingYamsDetail.player)+1)%players.length];
+      if(players.length >= 2 && !isGameComplete()) {
+        setTimeout(() => { setHotSeatPlayer(nextP2); setTimeout(() => setHotSeatPlayer(null), 2000); }, 500);
+      }
   };
 
   const toggleEditMode=()=>{if(!editMode){setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));setLastPlayerBeforeEdit(lastPlayerToPlay);setEditMode(true);}else{setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);}};
@@ -1537,13 +1537,14 @@ export default function YamsUltimateLegacy() {
         </div>
       </div>}
       {/* HOT SEAT OVERLAY */}
-      {hotSeatPlayer&&(()=>{const hspc=getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer));return <div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
-        <div className="absolute inset-0" style={{background:`radial-gradient(circle at 50% 50%, ${hspc.hex}15, transparent 70%)`}}></div>
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-28 sm:h-36" style={{background:`linear-gradient(90deg,transparent,${hspc.hex}20,${hspc.hex}30,${hspc.hex}20,transparent)`,borderTop:`2px solid ${hspc.hex}60`,borderBottom:`2px solid ${hspc.hex}60`,animation:'sf-bar 0.4s cubic-bezier(0.22,1,0.36,1)'}}></div>
+      {hotSeatPlayer&&(()=>{const hspc=getPlayerColor(hotSeatPlayer,players.indexOf(hotSeatPlayer));const remCats=playableCats.filter(c=>scores[hotSeatPlayer]?.[c.id]===undefined);return <div className="fixed inset-0 z-[250] flex items-center justify-center pointer-events-none" style={{animation:'hotseat-in 0.3s ease-out'}}>
+        <div className="absolute inset-0 bg-black/70"></div>
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-40 sm:h-52" style={{background:`linear-gradient(90deg,transparent,${hspc.hex}25,${hspc.hex}40,${hspc.hex}25,transparent)`,borderTop:`3px solid ${hspc.hex}80`,borderBottom:`3px solid ${hspc.hex}80`,animation:'sf-bar 0.4s cubic-bezier(0.22,1,0.36,1)'}}></div>
         <div className="relative text-center z-10">
-          <div className="text-8xl sm:text-9xl mb-2" style={{animation:'sf-avatar 0.5s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 30px ${hspc.hex}80)`}}>{playerAvatars[hotSeatPlayer]||'👤'}</div>
-          <div className="text-4xl sm:text-6xl font-black uppercase tracking-wider" style={{color:hspc.hex,textShadow:`0 0 40px ${hspc.hex}80, 0 2px 0 rgba(0,0,0,0.5)`,WebkitTextStroke:'1px rgba(255,255,255,0.2)',animation:'sf-name 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s backwards'}}>{hotSeatPlayer}</div>
-          <div className="text-sm font-black text-white/70 uppercase tracking-[0.4em] mt-2" style={{animation:'sf-subtitle 0.3s ease-out 0.3s backwards'}}>À TON TOUR</div>
+          <div className="text-8xl sm:text-9xl mb-3" style={{animation:'sf-avatar 0.5s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 40px ${hspc.hex})`}}>{playerAvatars[hotSeatPlayer]||'👤'}</div>
+          <div className="text-5xl sm:text-7xl font-black uppercase" style={{color:hspc.hex,textShadow:`0 0 60px ${hspc.hex}, 0 0 120px ${hspc.hex}60, 0 4px 0 rgba(0,0,0,0.8)`,WebkitTextStroke:'1.5px rgba(255,255,255,0.15)',animation:'sf-name 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s backwards',letterSpacing:'0.12em'}}>{hotSeatPlayer}</div>
+          <div className="text-base font-black text-white uppercase tracking-[0.5em] mt-3" style={{animation:'sf-subtitle 0.3s ease-out 0.3s backwards',textShadow:'0 0 20px rgba(255,255,255,0.5)'}}>À TON TOUR</div>
+          {remCats.length>0&&<div className="mt-4 flex flex-wrap justify-center gap-1.5 max-w-sm mx-auto" style={{animation:'sf-subtitle 0.3s ease-out 0.5s backwards'}}>{remCats.map(c=><span key={c.id} className="px-2 py-0.5 rounded-md text-[10px] font-bold border" style={{borderColor:`${hspc.hex}40`,color:`${hspc.hex}cc`,background:`${hspc.hex}10`}}>{c.icon} {c.name}</span>)}</div>}
         </div>
       </div>;})()}
       {/* MASSACRE SCREEN */}
@@ -1750,6 +1751,9 @@ export default function YamsUltimateLegacy() {
   .grid-chalk td{border-color:rgba(34,197,94,0.1)!important;font-family:'Courier New',monospace}
   .grid-pixel td{border-color:rgba(168,85,247,0.1)!important;image-rendering:pixelated}
 
+  .next-col-pulse{animation:next-col-glow 2s ease-in-out infinite}
+  @keyframes next-col-glow{0%,100%{opacity:0.85}50%{opacity:1}}
+  @keyframes next-turn-badge{0%,100%{opacity:0.8;transform:scale(0.95)}50%{opacity:1;transform:scale(1.05)}}
   @keyframes sf-bar{0%{transform:translateY(-50%) scaleX(0)}100%{transform:translateY(-50%) scaleX(1)}}
   @keyframes sf-avatar{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
   @keyframes sf-name{0%{transform:translateX(-100px);opacity:0;letter-spacing:0.8em}100%{transform:translateX(0);opacity:1;letter-spacing:0.15em}}
@@ -2672,10 +2676,10 @@ export default function YamsUltimateLegacy() {
               })()}
               <div className={`overflow-x-auto relative group ${GRID_SKINS[gridSkin]?.accent||''} ${gridSkin!=='default'?'grid-'+gridSkin:''}`} style={{filter:`sepia(${gridAge*0.15}) contrast(${1+gridAge*0.08})`,transition:'filter 2s ease'}}>{players.length>=3&&<div className="absolute top-1/2 -translate-y-1/2 right-2 z-20 pointer-events-none text-white/40 sm:hidden" style={{animation:'scroll-hint 2s ease-in-out infinite'}}>👉</div>}<table className={`w-full table-fixed ${GRID_SKINS[gridSkin]?.border||''}`} role="grid" aria-label="Grille de scores YAMS"><colgroup><col className="w-48"/>{players.map((_,i)=><col key={i} className="w-32"/>)}</colgroup><thead><tr className={`border-b ${gridSkin==='neon'?'border-green-500/30':gridSkin==='vintage'?'border-amber-700/30':gridSkin==='chalk'?'border-green-800/30':gridSkin==='pixel'?'border-purple-500/30':'border-white/20'}`}>
                 <th className={`text-left p-3 font-bold sticky left-0 z-10 ${GRID_SKINS[gridSkin]?.text||'text-white'} bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}>Catégorie</th>
-                {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;const isLeaderCol=leader===p;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset ring-yellow-400 shadow-xl shadow-yellow-400/30':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}25,rgba(250,204,21,0.08))`,boxShadow:`inset 0 0 30px ${pc.hex}15, 0 0 20px rgba(250,204,21,0.15)`}:isLeaderCol&&!editMode?{boxShadow:'inset 0 0 20px rgba(250,204,21,0.06)',background:'rgba(250,204,21,0.03)'}:{})}}>
+                {players.map((p,i)=>{const pc=getPlayerColor(p,i);const hasFlame=streaks[p]>=3;const isNext=getNextPlayer()===p&&!editMode;const isLeaderCol=leader===p;return <th key={i} className={`p-0 transition-all duration-500 ${isNext?'ring-2 ring-inset shadow-2xl next-col-pulse':''} ${hasFlame?'flame-column':''}`} style={{...(playerColors[p]?{borderTop:`3px solid ${pc.hex}`}:{}),  ...(isNext?{background:`linear-gradient(180deg,${pc.hex}35,${pc.hex}15,${pc.hex}08)`,boxShadow:`inset 0 0 40px ${pc.hex}20, 0 0 30px ${pc.hex}25`,ringColor:pc.hex}:isLeaderCol&&!editMode?{boxShadow:'inset 0 0 20px rgba(250,204,21,0.06)',background:'rgba(250,204,21,0.03)'}:{})}}>
                     <div className="p-3 text-white font-bold text-lg flex flex-col items-center justify-center gap-1 relative">
                         {/* NEXT PLAYER INDICATOR */}
-                        {isNext && <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-b-lg text-[9px] font-black tracking-widest uppercase" style={{background:`linear-gradient(90deg,${pc.hex},rgba(250,204,21,0.8))`,color:'#000'}}>À TON TOUR</div>}
+                        {isNext && <div className="absolute top-1 right-1 px-2 py-0.5 rounded-lg text-[8px] font-black tracking-wider uppercase z-10" style={{background:pc.hex,color:'#000',boxShadow:`0 0 12px ${pc.hex}80`,animation:'next-turn-badge 1.5s ease-in-out infinite'}}>▶ JOUE</div>}
                         {/* REAL-TIME RANKING BADGE - LEFT OF AVATAR */}
                         <div className="flex items-center justify-center gap-2">
                              {isGameStarted() && !isGameComplete() && (
@@ -2712,9 +2716,17 @@ export default function YamsUltimateLegacy() {
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬆️ Partie Supérieure ⬆️</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2" style={{background:'linear-gradient(90deg,transparent,'+T.primary+'50,transparent)',height:'2px'}}/></div><div className="relative flex justify-center"><span className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-2 text-white font-black text-sm uppercase tracking-wider rounded-full border border-white/20">⬇️ Partie Inférieure ⬇️</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);const igs=inGameStreak[p]||0;return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''} ${igs>=5?'streak-col-intense':igs>=3?'streak-col-glow':''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
+                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);const igs=inGameStreak[p]||0;return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''} ${igs>=5?'streak-col-intense':igs>=3?'streak-col-glow':''}`} style={{...(isNextCol?{background:`${pc2.hex}18`,boxShadow:`inset 3px 0 0 ${pc2.hex}90, inset -3px 0 0 ${pc2.hex}90, inset 0 0 20px ${pc2.hex}10`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
-                  :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
+                  :cat.bonus?(()=>{
+                    const upperCats2=categories.filter(c=>c.upper);
+                    const filledUp=upperCats2.filter(c=>scores[p]?.[c.id]!==undefined);
+                    const emptyUp=upperCats2.filter(c=>scores[p]?.[c.id]===undefined);
+                    const upSum=calcUpper(p);
+                    const allFilled=emptyUp.length===0;
+                    const maxRemaining=emptyUp.reduce((s,c)=>s+(c.max||0),0);
+                    const bonusImpossible=allFilled?upSum<63:(upSum+maxRemaining<63);
+                    return <div className="space-y-1"><div className={"text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r "+(isFoggy(p)?"from-gray-500/20 to-gray-500/20 text-gray-500":getBonus(p)>0?"from-yellow-500/20 to-orange-500/20 text-yellow-400":"from-yellow-500/20 to-orange-500/20 text-yellow-400")}>{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?null:(getBonus(p)>0?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:bonusImpossible?<div className="text-center text-xs font-semibold text-red-400">❌ Bonus impossible</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-upSum}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>;})()
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
                   :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)} isJustFilled={lastModifiedCell===(p+'-'+cat.id)} heatColor={scores[p]?.[cat.id]!==undefined&&!editMode?(()=>{const v2=parseInt(scores[p][cat.id])||0;const mx=cat.max||30;if(v2===0)return 'rgba(239,68,68,0.08)';const ratio=v2/mx;if(ratio>=0.75)return 'rgba(16,185,129,0.08)';if(ratio>=0.5)return 'rgba(245,158,11,0.06)';return 'rgba(255,255,255,0.03)';})():null}/></>}
