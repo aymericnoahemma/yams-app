@@ -734,50 +734,6 @@ export default function YamsUltimateLegacy() {
     if(scores2[0]<=150)return '🌧️ Jour de pluie';
     return winner?'🎲 Victoire de '+winner.name:'🎲 Partie';
   };
-  const getBonusPrediction=p=>{
-    const upperCats=[{id:'ones',max:5},{id:'twos',max:10},{id:'threes',max:15},{id:'fours',max:20},{id:'fives',max:25},{id:'sixes',max:30}];
-    const current=calcUpper(p);
-    const remaining=upperCats.filter(c=>scores[p]?.[c.id]===undefined);
-    if(remaining.length===0) return current>=63?{status:'done',text:'✅ Bonus obtenu !'}:{status:'fail',text:'❌ Pas de bonus'};
-    const maxPossible=current+remaining.reduce((s,c)=>s+c.max,0);
-    if(maxPossible<63) return {status:'impossible',text:'❌ Bonus impossible'};
-    if(current>=63) return {status:'done',text:'✅ Bonus assuré !'};
-    const needed=63-current;
-    if(remaining.length===1){
-      const cat=remaining[0];
-      const catName=categories.find(c=>c.id===cat.id)?.name||cat.id;
-      return {status:'need',text:`≥${needed} aux ${catName}`};
-    }
-    const minNeeded=needed-remaining.slice(1).reduce((s,c)=>s+c.max,0);
-    if(minNeeded>0){
-      const cat=remaining[0];
-      const catName=categories.find(c=>c.id===cat.id)?.name||cat.id;
-      return {status:'need',text:`Min. ${Math.ceil(needed/remaining.length)} par catég.`};
-    }
-    return {status:'ok',text:`Besoin de ${needed} pts`};
-  };
-  const SpiderChart=({player,stats:ps})=>{
-    if(!ps||ps.games<1)return null;
-    const axes=[
-      {label:'Score',val:Math.min(100,Math.round((ps.avgScore/300)*100))},
-      {label:'Bonus',val:ps.bonusRate||0},
-      {label:'Régularité',val:Math.max(0,100-Math.round((ps.games>1?Math.sqrt(ps.games)*5:50)))},
-      {label:'Yams',val:Math.min(100,Math.round((ps.yamsCount/(ps.games||1))*100))},
-      {label:'Anti-0',val:Math.min(100,Math.round(((13-((ps.totalZeros||0)/(ps.games||1)))/13)*100))},
-      {label:'Clutch',val:Math.min(100,ps.wins>0?Math.round((ps.wins/ps.games)*100):0)},
-    ];
-    const cx=75,cy=70,r=55;
-    const points=axes.map((a,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;const rv=r*(a.val/100);return{x:cx+rv*Math.cos(angle),y:cy+rv*Math.sin(angle),lx:cx+(r+14)*Math.cos(angle),ly:cy+(r+14)*Math.sin(angle),label:a.label,val:a.val};});
-    const polygon=points.map(p=>p.x+','+p.y).join(' ');
-    const gridLines=[0.25,0.5,0.75,1].map(s=>axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return (cx+r*s*Math.cos(angle))+','+(cy+r*s*Math.sin(angle));}).join(' '));
-    const pc=getPlayerColor(player,players.indexOf(player));
-    return <svg viewBox="0 0 150 150" className="w-full max-w-[180px]">
-      {gridLines.map((g,i)=><polygon key={i} points={g} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5"/>)}
-      {axes.map((_,i)=>{const angle=(Math.PI*2*i/6)-Math.PI/2;return <line key={i} x1={cx} y1={cy} x2={cx+r*Math.cos(angle)} y2={cy+r*Math.sin(angle)} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>;})}
-      <polygon points={polygon} fill={pc.hex+'30'} stroke={pc.hex} strokeWidth="1.5" style={{filter:`drop-shadow(0 0 4px ${pc.hex}40)`}}/>
-      {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="2.5" fill={pc.hex}/><text x={p.lx} y={p.ly} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.6)" fontSize="5" fontWeight="bold">{p.label}</text></g>)}
-    </svg>;
-  };
   const getBonusProgress=p=>{ const filled=categories.filter(c=>c.upper&&scores[p]?.[c.id]!==undefined).length; if(!filled)return{status:'neutral',message:''}; const targets=[{id:'ones',t:3},{id:'twos',t:6},{id:'threes',t:9},{id:'fours',t:12},{id:'fives',t:15},{id:'sixes',t:18}]; let exp=0;targets.forEach(c=>{if(scores[p]?.[c.id]!==undefined)exp+=c.t;}); const diff=calcUpper(p)-exp; if(diff>0)return{status:'ahead',message:`Avance: +${diff}`,color:'text-green-400'}; if(diff<0)return{status:'behind',message:`Retard: ${diff}`,color:'text-red-400'}; return{status:'ontrack',message:'Sur la cible',color:'text-blue-400'}; };
   const getEmptyCells=p=>{if(!p)return[];return playableCats.map(c=>c.id).filter(id=>scores[p]?.[id]===undefined);};
   // Memoized totals
@@ -1046,9 +1002,11 @@ export default function YamsUltimateLegacy() {
                     if(empty.length>0) { const maxR = empty.reduce((s,c)=>s+(c.max||0),0); if(sum+maxR<63) return true; }
                     return false;
                 })();
-                const delay = (hasYams || hasBonus || hasBonusLost) ? 6000 : 600;
+                const hasPerfect = categories.find(c=>c.id===category)?.max === parseInt(value);
+                const hasCelebration = parseInt(value) >= 25;
+                const delay = (hasYams || hasBonus || hasBonusLost) ? 6000 : hasPerfect ? 3000 : hasCelebration ? 2000 : 800;
                 setTimeout(() => {
-                    if(!showBonusFullscreen && !pendingYamsDetail) {
+                    if(!showBonusFullscreen && !pendingYamsDetail && !showPerfect) {
                         setHotSeatPlayer(nextP);
                         setTimeout(() => setHotSeatPlayer(null), 1800);
                     }
@@ -2631,21 +2589,39 @@ export default function YamsUltimateLegacy() {
               {players.length===2&&isGameStarted()&&!editMode&&(()=>{
                 const t1=calcTotal(players[0]),t2=calcTotal(players[1]);
                 const total=t1+t2||1;
-                const pct1=Math.round((t1/total)*100);
+                const pct1=Math.max(8,Math.min(92,Math.round((t1/total)*100)));
                 const pc1=getPlayerColor(players[0],0),pc2=getPlayerColor(players[1],1);
+                const gap=Math.abs(t1-t2);
                 const leader=t1>t2?0:t2>t1?1:-1;
-                return <div className="mb-3 px-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2"><span className="text-lg">{playerAvatars[players[0]]||'👤'}</span><span className={"font-black text-sm "+(leader===0?"text-white":"text-gray-500")}>{players[0]}</span><span className="font-black text-white text-lg" style={{fontFamily:'JetBrains Mono'}}>{t1}</span></div>
-                    <div className={"text-xs font-bold px-3 py-1 rounded-full "+(leader===-1?"bg-white/10 text-gray-400":"bg-yellow-500/20 text-yellow-400")}>{t1===t2?'ÉGALITÉ':leader===0?`+${t1-t2}`:`+${t2-t1}`}</div>
-                    <div className="flex items-center gap-2"><span className="font-black text-white text-lg" style={{fontFamily:'JetBrains Mono'}}>{t2}</span><span className={"font-black text-sm "+(leader===1?"text-white":"text-gray-500")}>{players[1]}</span><span className="text-lg">{playerAvatars[players[1]]||'👤'}</span></div>
-                  </div>
-                  <div className="h-3 rounded-full overflow-hidden bg-white/10 flex" style={{transition:'all 0.6s cubic-bezier(0.34,1.56,0.64,1)'}}>
-                    <div className="h-full rounded-l-full transition-all duration-700 ease-out relative overflow-hidden" style={{width:pct1+'%',background:`linear-gradient(90deg,${pc1.hex},${pc1.hex}cc)`}}>
-                      <div className="absolute inset-0" style={{background:'linear-gradient(90deg,rgba(255,255,255,0.15),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
+                const isClose=gap<=10&&gap>0;
+                return <div className="mb-4 px-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className={"text-2xl "+(leader===0?"scale-110":"")} style={{transition:'transform 0.5s'}}>{playerAvatars[players[0]]||'👤'}</span>
+                      <div className="text-left">
+                        <div className={"font-black text-sm "+(leader===0?"text-white":"text-gray-500")}>{players[0]}</div>
+                        <div className={"font-black transition-all duration-500 "+(leader===0?"text-3xl":"text-2xl text-gray-400")} style={{color:leader===0?pc1.hex:'',fontFamily:'JetBrains Mono',textShadow:leader===0?`0 0 20px ${pc1.hex}60`:''}}>{t1}</div>
+                      </div>
                     </div>
-                    <div className="h-full rounded-r-full transition-all duration-700 ease-out relative overflow-hidden flex-1" style={{background:`linear-gradient(90deg,${pc2.hex}cc,${pc2.hex})`}}>
-                      <div className="absolute inset-0" style={{background:'linear-gradient(270deg,rgba(255,255,255,0.15),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
+                    <div className="flex flex-col items-center">
+                      <div className={"text-xs font-black px-4 py-1.5 rounded-full border transition-all duration-500 "+(leader===-1?"bg-white/10 text-gray-400 border-white/10":isClose?"bg-red-500/20 text-red-400 border-red-500/30 animate-pulse":"bg-yellow-500/20 text-yellow-400 border-yellow-500/30")}>{t1===t2?'⚔️ ÉGALITÉ':gap>0?`${gap} PTS`:''}</div>
+                      {gap>0&&<div className="text-[9px] text-gray-500 mt-0.5 font-bold">{leader===0?'◀ mène':'mène ▶'}</div>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className={"font-black text-sm "+(leader===1?"text-white":"text-gray-500")}>{players[1]}</div>
+                        <div className={"font-black transition-all duration-500 "+(leader===1?"text-3xl":"text-2xl text-gray-400")} style={{color:leader===1?pc2.hex:'',fontFamily:'JetBrains Mono',textShadow:leader===1?`0 0 20px ${pc2.hex}60`:''}}>{t2}</div>
+                      </div>
+                      <span className={"text-2xl "+(leader===1?"scale-110":"")} style={{transition:'transform 0.5s'}}>{playerAvatars[players[1]]||'👤'}</span>
+                    </div>
+                  </div>
+                  <div className={"h-4 rounded-full overflow-hidden flex border "+(isClose?"border-red-500/40":"border-white/10")} style={{background:'rgba(255,255,255,0.05)'}}>
+                    <div className="h-full rounded-l-full transition-all duration-700 ease-out relative overflow-hidden" style={{width:pct1+'%',background:`linear-gradient(90deg,${pc1.hex},${pc1.hex}bb)`}}>
+                      <div className="absolute inset-0" style={{background:'linear-gradient(90deg,rgba(255,255,255,0.2),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
+                    </div>
+                    <div className="w-1 bg-white/40 shrink-0" style={{boxShadow:'0 0 8px rgba(255,255,255,0.3)'}}></div>
+                    <div className="h-full rounded-r-full transition-all duration-700 ease-out relative overflow-hidden flex-1" style={{background:`linear-gradient(90deg,${pc2.hex}bb,${pc2.hex})`}}>
+                      <div className="absolute inset-0" style={{background:'linear-gradient(270deg,rgba(255,255,255,0.2),transparent)',animation:'duel-shimmer 2s ease-in-out infinite'}}></div>
                     </div>
                   </div>
                 </div>;
@@ -2695,7 +2671,7 @@ export default function YamsUltimateLegacy() {
                   return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?'last-cell-pulse':''} ${GRID_SKINS[gridSkin]?.cellBg||''}`} style={{...(isNextCol?{background:`${pc2.hex}12`,boxShadow:`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
                   :cat.bonus?<div className="space-y-1"><div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400">{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?<div className="text-center text-xs font-bold text-gray-600">Masqué</div>:(calcUpper(p)>=63?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-calcUpper(p)}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>
-                  :cat.upperGrandTotal?<div className="text-center py-2 px-2 rounded-xl font-black bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30"><div className="text-xl text-indigo-400">{isFoggy(p)?"???":calcUpperGrand(p)}</div>{!isFoggy(p)&&!editMode&&!isGameComplete()&&(()=>{const pred=getBonusPrediction(p);return pred.text?<div className={"text-[8px] font-bold mt-0.5 "+(pred.status==='done'||pred.status==='ok'?"text-green-400":pred.status==='impossible'||pred.status==='fail'?"text-red-400/80":"text-amber-400/80")}>{pred.text}</div>:null;})()}</div>
+                  :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
                   :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)} isJustFilled={lastModifiedCell===(p+'-'+cat.id)}/></>}
                   </td>})}</tr>;
@@ -2982,19 +2958,6 @@ export default function YamsUltimateLegacy() {
                         })}
                       </div>);
                     })()}
-                    {/* SPIDER CHARTS */}
-                    {playerStats.length>0&&<div className="mb-6">
-                      <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider mb-3">🕸️ Profils Joueurs</h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {playerStats.filter(s=>s.games>0).map(ps=>(
-                          <div key={ps.name} className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center">
-                            <div className="text-lg mb-1">{playerAvatars[ps.name]||'👤'}</div>
-                            <div className="text-white font-bold text-xs mb-2 truncate">{ps.name}</div>
-                            <SpiderChart player={ps.name} stats={ps}/>
-                          </div>
-                        ))}
-                      </div>
-                    </div>}
                     {/* DETAILED CARDS */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
