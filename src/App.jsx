@@ -511,6 +511,7 @@ export default function YamsUltimateLegacy() {
   const [scores,setScores]=useState({});
   const [theme,setTheme]=useState('modern');
   const [showSettings,setShowSettings]=useState(false);
+  const [openSettingsSection, setOpenSettingsSection] = useState(null);
   const [gameHistory,setGameHistory]=useState([]);
   const [currentTab,setCurrentTab]=useState('game');
   const [showEndGameModal,setShowEndGameModal]=useState(false);
@@ -2259,11 +2260,12 @@ export default function YamsUltimateLegacy() {
             </div>
           </div>
           
-          {showSettings&&<div className="mt-6 pt-6 border-t border-white/10 slide-down space-y-8">
+          {showSettings&&<div className="mt-4 pt-4 border-t border-white/10 slide-down space-y-2">
 
               {/* ═══════════ SECTION 1: APPARENCE ═══════════ */}
               <div>
-                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm">🎨</div><h3 className="text-white font-black text-sm uppercase tracking-wider">Apparence</h3></div>
+                <button onClick={()=>setOpenSettingsSection(openSettingsSection==='apparence'?null:'apparence')} className="flex items-center gap-2 mb-3 w-full group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm">🎨</div><h3 className="text-white font-black text-sm uppercase tracking-wider flex-1 text-left">Apparence</h3><ChevronDown size={16} className={"text-gray-500 transition-transform duration-300 "+(openSettingsSection==='apparence'?'rotate-180':'')}/></button>
+                {openSettingsSection==='apparence'&&
                 
                 <div className="space-y-5">
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={10}/> Thème</div><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTheme(k);setTimeout(()=>setThemeTransition(false),50);}}} className={'relative overflow-hidden px-3 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105 opacity-80 hover:opacity-100')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k?<Check size={14}/>:td.icon}<span>{td.name}</span></button>;})}</div></div>
@@ -2277,23 +2279,23 @@ export default function YamsUltimateLegacy() {
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">✨ Intensité effets</div><div className="flex items-center gap-3"><input type="range" min="0" max="1.5" step="0.25" value={effectsIntensity} onChange={e=>setEffectsIntensity(parseFloat(e.target.value))} className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-purple-500"/><span className="text-white font-bold text-sm min-w-[40px] text-right">{effectsIntensity===0?'Off':effectsIntensity<=0.5?'Min':effectsIntensity<=1?'Std':'Max'}</span></div></div>
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">🔤 Taille texte</div><div className="flex items-center gap-3"><input type="range" min="0.85" max="1.2" step="0.05" value={fontScale} onChange={e=>setFontScale(parseFloat(e.target.value))} className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500"/><span className="text-white font-bold text-sm min-w-[40px] text-right">{fontScale<=0.9?'S':fontScale<=1.05?'M':'L'}</span></div></div>
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Terminal size={10}/> Police</div><div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{Object.entries(FONT_OPTIONS).map(([k,f])=><button key={k} onClick={()=>setCustomFont(k)} className={`px-3 py-2 rounded-xl font-bold text-sm transition-all border ${customFont===k?'border-white/60 bg-white/15 text-white':'border-white/5 bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'}`} style={{fontFamily:f.family}}>{f.name}</button>)}</div></div>
-                </div>
+                </div>}
               </div>
-
               {/* ═══════════ SECTION 2: JOUEURS ═══════════ */}
               <div>
-                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-sm">👥</div><h3 className="text-white font-black text-sm uppercase tracking-wider">Joueurs</h3></div>
+                <button onClick={()=>setOpenSettingsSection(openSettingsSection==='joueurs'?null:'joueurs')} className="flex items-center gap-2 mb-3 w-full group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-sm">👥</div><h3 className="text-white font-black text-sm uppercase tracking-wider flex-1 text-left">Joueurs</h3><ChevronDown size={16} className={"text-gray-500 transition-transform duration-300 "+(openSettingsSection==='joueurs'?'rotate-180':'')}/></button>
+                {openSettingsSection==='joueurs'&&
 
                 <div className="space-y-4">
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">🎨 Couleur</div><div className="space-y-2">{players.map((p,pi)=>{const current=playerColors[p]||PLAYER_COLORS[pi%PLAYER_COLORS.length].id;return <div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold flex-1 text-sm">{playerAvatars[p]||'👤'} {p}</span><div className="flex gap-1.5">{PLAYER_COLORS.map(c=><button key={c.id} onClick={()=>setPlayerColors({...playerColors,[p]:c.id})} className={'w-6 h-6 rounded-full border-2 transition-all hover:scale-110 '+(current===c.id?'border-white scale-110':'border-transparent')} style={{background:c.hex}} title={c.name}/>)}</div></div>;})}</div></div>
 
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">✍️ Signature de victoire</div><div className="space-y-2">{players.map((p,pi)=><div key={p} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/10"><span className="text-white font-bold text-sm shrink-0">{playerAvatars[p]||'👤'} {p}</span><input type="text" value={victorySigs[p]||''} onChange={e=>setVictorySigs({...victorySigs,[p]:e.target.value})} placeholder='"GG EZ 😎"' className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 outline-none focus:border-white/30" maxLength={40}/></div>)}</div></div>
-                </div>
+                </div>}
               </div>
-
               {/* ═══════════ SECTION 3: MODES DE JEU ═══════════ */}
               <div>
-                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">⚡</div><h3 className="text-white font-black text-sm uppercase tracking-wider">Modes de jeu</h3></div>
+                <button onClick={()=>setOpenSettingsSection(openSettingsSection==='modes'?null:'modes')} className="flex items-center gap-2 mb-3 w-full group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">⚡</div><h3 className="text-white font-black text-sm uppercase tracking-wider flex-1 text-left">Modes de jeu</h3><ChevronDown size={16} className={"text-gray-500 transition-transform duration-300 "+(openSettingsSection==='modes'?'rotate-180':'')}/></button>
+                {openSettingsSection==='modes'&&
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
@@ -2312,12 +2314,12 @@ export default function YamsUltimateLegacy() {
                       <button onClick={opt.set} className={'relative w-12 h-7 rounded-full transition-all duration-300 '+(opt.val?'shadow-lg':'bg-gray-700/80 shadow-inner')} style={opt.val?{background:({indigo:'#6366f1',blue:'#3b82f6',purple:'#8b5cf6',red:'#ef4444',green:'#22c55e',sky:'#0ea5e9'})[opt.color],boxShadow:`0 0 12px ${({indigo:'#6366f1',blue:'#3b82f6',purple:'#8b5cf6',red:'#ef4444',green:'#22c55e',sky:'#0ea5e9'})[opt.color]}40`}:{}}><div className={'absolute top-0.5 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-md flex items-center justify-center text-[8px] font-black '+(opt.val?'left-[22px]':'left-0.5')} style={{transform:opt.val?'scale(1)':'scale(0.9)'}}><span style={{color:opt.val?({indigo:'#6366f1',blue:'#3b82f6',purple:'#8b5cf6',red:'#ef4444',green:'#22c55e',sky:'#0ea5e9'})[opt.color]:'transparent'}}>{opt.val?'✓':''}</span></div></button>
                     </div>
                   ))}
-                </div>
+                </div>}
               </div>
-
               {/* ═══════════ SECTION 4: SAISONS ═══════════ */}
               <div>
-                <div className="flex items-center gap-2 mb-4"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white text-sm">📅</div><h3 className="text-white font-black text-sm uppercase tracking-wider">Saisons</h3></div>
+                <button onClick={()=>setOpenSettingsSection(openSettingsSection==='saisons'?null:'saisons')} className="flex items-center gap-2 mb-3 w-full group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white text-sm">📅</div><h3 className="text-white font-black text-sm uppercase tracking-wider flex-1 text-left">Saisons</h3><ChevronDown size={16} className={"text-gray-500 transition-transform duration-300 "+(openSettingsSection==='saisons'?'rotate-180':'')}/></button>
+                {openSettingsSection==='saisons'&&
 
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
                   <div className="text-gray-400 text-xs">Saison active : <span className="text-cyan-400 font-bold">{activeSeason}</span></div>
@@ -2354,7 +2356,7 @@ export default function YamsUltimateLegacy() {
                     <input type="text" placeholder="Nouvelle saison..." value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} className="flex-1 bg-black/20 text-white px-3 py-2 rounded-xl text-xs outline-none border border-white/10 focus:border-white/30"/>
                     <button onClick={() => { if(newSeasonName && !seasons.includes(newSeasonName)) { setSeasons([...seasons, newSeasonName]); setActiveSeason(newSeasonName); setNewSeasonName(''); }}} className="px-3 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-xl font-bold text-sm transition-all"><Plus size={14}/></button>
                   </div>
-                </div>
+                </div>}
               </div>
 
           </div>}
