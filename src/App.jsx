@@ -1563,11 +1563,11 @@ export default function YamsUltimateLegacy() {
           <div className="text-8xl sm:text-9xl mb-3" style={{animation:'sf-avatar 0.5s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 40px ${hspc.hex})`}}>{playerAvatars[hotSeatPlayer]||'👤'}</div>
           <div className="text-5xl sm:text-7xl font-black uppercase" style={{color:hspc.hex,textShadow:`0 0 60px ${hspc.hex}, 0 0 120px ${hspc.hex}60, 0 4px 0 rgba(0,0,0,0.8)`,WebkitTextStroke:'1.5px rgba(255,255,255,0.15)',animation:'sf-name 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s backwards',letterSpacing:'0.12em'}}>{hotSeatPlayer}</div>
           <div className="text-base font-black text-white uppercase tracking-[0.5em] mt-3" style={{animation:'sf-subtitle 0.3s ease-out 0.3s backwards',textShadow:'0 0 20px rgba(255,255,255,0.5)'}}>À TON TOUR</div>
-        {remCats.length>0&&<div className="absolute bottom-8 left-0 right-0 z-10" style={{animation:'sf-subtitle 0.4s ease-out 0.5s backwards'}}>
+        </div>
+        {remCats.length>0&&<div className="absolute bottom-6 sm:bottom-10 left-0 right-0 z-10" style={{animation:'sf-subtitle 0.4s ease-out 0.5s backwards'}}>
           <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center mb-2">Il reste</div>
           <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto px-4">{remCats.map(c=><span key={c.id} className="px-3 py-1.5 rounded-lg text-sm font-bold border backdrop-blur-sm" style={{borderColor:`${hspc.hex}50`,color:'#fff',background:`${hspc.hex}20`,textShadow:`0 0 8px ${hspc.hex}60`}}>{c.icon} {c.name}</span>)}</div>
         </div>}
-        </div>
       </div>;})()}
       {/* MASSACRE SCREEN */}
       {massacreScreen&&<div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/80 pointer-events-none" style={{animation:'massacre-in 0.3s ease-out'}}>
