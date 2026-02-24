@@ -7,7 +7,7 @@ import {
   ScrollText, Award, Flame, Coffee, Ghost, Moon,
   TrendingUp, AlertTriangle, Gift, Camera, Calendar, PenLine, Info, Save,
   Play, Pause, Skull, Sparkles, Image, BarChart3, HelpCircle, LockKeyhole, Star, Gavel,
-  Heart, Terminal, Snowflake, FileText, Users, CloudRain, CloudLightning, Droplets, ChevronUp, Target
+  Heart, Terminal, Snowflake, FileText, Users, CloudRain, CloudLightning, Droplets, ChevronUp, ChevronDown, Target
 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -1563,7 +1563,10 @@ export default function YamsUltimateLegacy() {
           <div className="text-8xl sm:text-9xl mb-3" style={{animation:'sf-avatar 0.5s cubic-bezier(0.34,1.56,0.64,1)',filter:`drop-shadow(0 0 40px ${hspc.hex})`}}>{playerAvatars[hotSeatPlayer]||'👤'}</div>
           <div className="text-5xl sm:text-7xl font-black uppercase" style={{color:hspc.hex,textShadow:`0 0 60px ${hspc.hex}, 0 0 120px ${hspc.hex}60, 0 4px 0 rgba(0,0,0,0.8)`,WebkitTextStroke:'1.5px rgba(255,255,255,0.15)',animation:'sf-name 0.4s cubic-bezier(0.22,1,0.36,1) 0.15s backwards',letterSpacing:'0.12em'}}>{hotSeatPlayer}</div>
           <div className="text-base font-black text-white uppercase tracking-[0.5em] mt-3" style={{animation:'sf-subtitle 0.3s ease-out 0.3s backwards',textShadow:'0 0 20px rgba(255,255,255,0.5)'}}>À TON TOUR</div>
-          {remCats.length>0&&<div className="mt-4 flex flex-wrap justify-center gap-1.5 max-w-sm mx-auto" style={{animation:'sf-subtitle 0.3s ease-out 0.5s backwards'}}>{remCats.map(c=><span key={c.id} className="px-2 py-0.5 rounded-md text-[10px] font-bold border" style={{borderColor:`${hspc.hex}40`,color:`${hspc.hex}cc`,background:`${hspc.hex}10`}}>{c.icon} {c.name}</span>)}</div>}
+        {remCats.length>0&&<div className="absolute bottom-8 left-0 right-0 z-10" style={{animation:'sf-subtitle 0.4s ease-out 0.5s backwards'}}>
+          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center mb-2">Il reste</div>
+          <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto px-4">{remCats.map(c=><span key={c.id} className="px-3 py-1.5 rounded-lg text-sm font-bold border backdrop-blur-sm" style={{borderColor:`${hspc.hex}50`,color:'#fff',background:`${hspc.hex}20`,textShadow:`0 0 8px ${hspc.hex}60`}}>{c.icon} {c.name}</span>)}</div>
+        </div>}
         </div>
       </div>;})()}
       {/* MASSACRE SCREEN */}
@@ -2879,15 +2882,15 @@ export default function YamsUltimateLegacy() {
             
             const records = [];
             // Best total score
-            let bestScore={val:0,who:'',date:''};
-            allGames.forEach(g=>{(g.players||g.results||[]).forEach(p=>{if(p.score>bestScore.val)bestScore={val:p.score,who:p.name,date:g.date};});});
-            records.push({icon:'👑',title:'Meilleur Score',value:bestScore.val+' pts',holder:bestScore.who,date:bestScore.date,color:'from-yellow-500/20 to-amber-500/20',border:'border-yellow-500/30'});
+            let bestScore={val:0,who:[],date:''};
+            allGames.forEach(g=>{(g.players||g.results||[]).forEach(p=>{if(p.score>bestScore.val)bestScore={val:p.score,who:[p.name],date:g.date};else if(p.score===bestScore.val&&bestScore.val>0&&!bestScore.who.includes(p.name))bestScore.who.push(p.name);});});
+            records.push({icon:'👑',title:'Meilleur Score',value:bestScore.val+' pts',holder:bestScore.who.join(' & '),date:bestScore.date,color:'from-yellow-500/20 to-amber-500/20',border:'border-yellow-500/30'});
             
             // Best per category
             playableCats.forEach(cat=>{
-              let best={val:0,who:'',date:''};
-              allGames.forEach(g=>{if(g.grid){Object.entries(g.grid).forEach(([name,grid])=>{const v=parseInt(grid[cat.id])||0;if(v>best.val)best={val:v,who:name,date:g.date};});}});
-              if(best.val>0)records.push({icon:cat.icon,title:'Record '+cat.name,value:best.val+'/'+cat.max,holder:best.who,date:best.date,color:'from-blue-500/10 to-indigo-500/10',border:'border-blue-500/20',small:true});
+              let best={val:0,who:[],date:''};
+              allGames.forEach(g=>{if(g.grid){Object.entries(g.grid).forEach(([name,grid])=>{const v=parseInt(grid[cat.id])||0;if(v>best.val)best={val:v,who:[name],date:g.date};else if(v===best.val&&best.val>0&&!best.who.includes(name))best.who.push(name);});}});
+              if(best.val>0)records.push({icon:cat.icon,title:'Record '+cat.name,value:best.val+'/'+cat.max,holder:best.who.join(' & '),date:best.date,color:'from-blue-500/10 to-indigo-500/10',border:'border-blue-500/20',small:true});
             });
             
             // Longest win streak
@@ -2902,9 +2905,9 @@ export default function YamsUltimateLegacy() {
             if(closest.val<999)records.push({icon:'📏',title:'Partie la plus serrée',value:closest.val+' pts d\'écart',holder:closest.who,date:closest.date,color:'from-purple-500/20 to-pink-500/20',border:'border-purple-500/30'});
             
             // Most zeros in a game
-            let mostZeros={val:0,who:'',date:''};
-            allGames.forEach(g=>{if(g.grid){Object.entries(g.grid).forEach(([name,grid])=>{const z=Object.values(grid).filter(v=>parseInt(v)===0).length;if(z>mostZeros.val)mostZeros={val:z,who:name,date:g.date};});}});
-            if(mostZeros.val>0)records.push({icon:'💀',title:'Record de zéros',value:mostZeros.val+' zéros',holder:mostZeros.who,date:mostZeros.date,color:'from-red-500/20 to-rose-500/20',border:'border-red-500/30'});
+            let mostZeros={val:0,who:[],date:''};
+            allGames.forEach(g=>{if(g.grid){Object.entries(g.grid).forEach(([name,grid])=>{const z=Object.values(grid).filter(v=>parseInt(v)===0).length;if(z>mostZeros.val)mostZeros={val:z,who:[name],date:g.date};else if(z===mostZeros.val&&mostZeros.val>0&&!mostZeros.who.includes(name))mostZeros.who.push(name);});}});
+            if(mostZeros.val>0)records.push({icon:'💀',title:'Record de zéros',value:mostZeros.val+' zéros',holder:mostZeros.who.join(' & '),date:mostZeros.date,color:'from-red-500/20 to-rose-500/20',border:'border-red-500/30'});
             
             // Biggest comeback (was last at halftime, won)
             let bigComeback={val:0,who:'',date:''};
