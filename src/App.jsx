@@ -629,11 +629,15 @@ export default function YamsUltimateLegacy() {
   const [playerEntrance, setPlayerEntrance] = useState(false);
   const [funQuote, setFunQuote] = useState(null);
   const [customFont, setCustomFont] = useState('default');
-  const [animSpeed, setAnimSpeed] = useState(1);
-  const [effectsIntensity, setEffectsIntensity] = useState(1);
-  const [fontScale, setFontScale] = useState(1);
+  const [animSpeed, setAnimSpeed] = useState(()=>{try{return parseFloat(localStorage.getItem('yamsAnimSpeed'))||1;}catch(e){return 1;}});
+  const [effectsIntensity, setEffectsIntensity] = useState(()=>{try{return parseFloat(localStorage.getItem('yamsEffectsIntensity'))??1;}catch(e){return 1;}});
+  const [fontScale, setFontScale] = useState(()=>{try{return parseFloat(localStorage.getItem('yamsFontScale'))||1;}catch(e){return 1;}});
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
+  // Persist slider settings
+  useEffect(()=>{try{localStorage.setItem('yamsAnimSpeed',String(animSpeed));}catch(e){}},[animSpeed]);
+  useEffect(()=>{try{localStorage.setItem('yamsEffectsIntensity',String(effectsIntensity));}catch(e){}},[effectsIntensity]);
+  useEffect(()=>{try{localStorage.setItem('yamsFontScale',String(fontScale));}catch(e){}},[fontScale]);
   useEffect(()=>{try{const cv=document.createElement('canvas');cv.width=32;cv.height=32;const cx=cv.getContext('2d');const gr=cx.createLinearGradient(0,0,32,32);gr.addColorStop(0,T.primary);gr.addColorStop(1,T.secondary);cx.beginPath();cx.arc(16,16,14,0,Math.PI*2);cx.fillStyle=gr;cx.fill();cx.font='18px serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('🎲',16,17);let lk=document.querySelector("link[rel*='icon']");if(!lk){lk=document.createElement('link');lk.rel='shortcut icon';document.head.appendChild(lk);}lk.type='image/png';lk.href=cv.toDataURL();}catch(e){}},[theme]);
   const tabOrder = ['game','rules','trophies','history','stats','gages','records'];
   const switchTab = (newTab) => {
@@ -840,7 +844,7 @@ export default function YamsUltimateLegacy() {
         const isGreat = valInt >= catMax * 0.75;
         const isZeroScore = valInt === 0;
         const pColor = isZeroScore ? '#ef4444' : isPerfect ? '#fbbf24' : isGreat ? '#10b981' : pc.hex;
-        const pCount = isPerfect ? 18 : isGreat ? 12 : isZeroScore ? 4 : 6;
+        const pCount = Math.round((isPerfect ? 18 : isGreat ? 12 : isZeroScore ? 4 : 6) * effectsIntensity);
         const pSpread = isPerfect ? 160 : isGreat ? 130 : 80;
         const newParticles = Array.from({length: pCount}, (_, i) => ({
             id: Date.now() + i, x: rect.left + rect.width/2, y: rect.top + rect.height/2,
@@ -1460,7 +1464,7 @@ export default function YamsUltimateLegacy() {
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-all duration-[1500ms] ease-in-out '+(themeTransition?'opacity-95':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif'}}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-all duration-[1500ms] ease-in-out '+(themeTransition?'opacity-95':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif', '--anim-speed': animSpeed, fontSize: `${fontScale}rem`}}>
       <InteractiveParticles themeKey={theme}/>
       {(()=>{const bp=THEME_BG_PARTICLES[theme];if(!bp)return null;return <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">{Array.from({length:Math.round(bp.count*effectsIntensity)},(_,i)=>i).map(i=><div key={i} className="absolute" style={{left:`${(i*7.3+3)%100}%`,top:`${(i*13.7+5)%100}%`,opacity:bp.opacity*effectsIntensity,fontSize:`${10+i%3*6}px`,animation:`bg-float ${bp.speed+i*3}s ease-in-out ${i*2}s infinite alternate`,color:'white'}}>{bp.particles[i%bp.particles.length]}</div>)}</div>;})()}
       {/* GAME PROGRESS BAR */}
@@ -1644,6 +1648,11 @@ export default function YamsUltimateLegacy() {
   [style*='--anim-speed'] .cell-flip{animation-duration:calc(0.5s / var(--anim-speed,1))}
   [style*='--anim-speed'] .hotseat-in{animation-duration:calc(0.3s / var(--anim-speed,1))}
   [style*='--anim-speed'] .tab-slide-r,[style*='--anim-speed'] .tab-slide-l{animation-duration:calc(0.35s / var(--anim-speed,1))}
+  [style*='--anim-speed'] .slide-down{animation-duration:calc(0.3s / var(--anim-speed,1))}
+  [style*='--anim-speed'] .modal-content{animation-duration:calc(0.3s / var(--anim-speed,1))}
+  [style*='--anim-speed'] .confetti-piece{animation-duration:calc(3s / var(--anim-speed,1))}
+  [style*='--anim-speed'] .glow-anim{animation-duration:calc(2s / var(--anim-speed,1))}
+  [style*='--anim-speed'] .streak-fire{animation-duration:calc(0.8s / var(--anim-speed,1))}
   .btn-ripple{position:relative;overflow:hidden}
   .btn-ripple::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--ripple-x,50%) var(--ripple-y,50%),rgba(255,255,255,0.3) 0%,transparent 60%);transform:scale(0);opacity:0;border-radius:inherit;pointer-events:none}
   .btn-ripple:active::after{animation:ripple-expand 0.5s ease-out forwards}
