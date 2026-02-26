@@ -515,6 +515,7 @@ export default function YamsUltimateLegacy() {
   const [gameHistory,setGameHistory]=useState([]);
   const [currentTab,setCurrentTab]=useState('game');
   const [showEndGameModal,setShowEndGameModal]=useState(false);
+  const [recordsSubTab, setRecordsSubTab] = useState('upper');
   const [lastPlayerToPlay,setLastPlayerToPlay]=useState(null);
   const [showTurnWarning,setShowTurnWarning]=useState(null);
   const [lastModifiedCell,setLastModifiedCell]=useState(null);
@@ -2955,16 +2956,47 @@ export default function YamsUltimateLegacy() {
                 </div>
               ))}</div>
               
-              {catRecords.length>0&&<div>
+              {catRecords.length>0&&(()=>{
+                const [recTab, setRecTab] = [recordsSubTab||'upper', (v)=>setRecordsSubTab(v)];
+                const upperCats = playableCats.filter(c=>c.upper);
+                const lowerCats = playableCats.filter(c=>c.lower);
+                const currentCats = recTab==='upper' ? upperCats : lowerCats;
+                const catRecMap = {};
+                catRecords.forEach(r => { catRecMap[r.title.replace('Record ','')] = r; });
+                return <div>
                 <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider mb-3">Records par catégorie</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{catRecords.map((r,i)=>(
-                  <div key={i} className={"bg-gradient-to-br "+r.color+" border "+r.border+" rounded-xl p-3 text-center"} style={{animation:`fade-in-scale 0.3s ease-out ${i*0.05}s backwards`}}>
-                    <div className="text-xl mb-1">{r.icon}</div>
-                    <div className="text-white font-black text-lg">{r.value}</div>
-                    <div className="text-[10px] text-gray-400 font-bold">{playerAvatars[r.holder]||''} {r.holder}</div>
-                  </div>
-                ))}</div>
-              </div>}
+                <div className="flex gap-2 mb-4">
+                  <button onClick={()=>setRecTab('upper')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all '+(recTab==='upper'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recTab==='upper'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔼 Partie Supérieure</button>
+                  <button onClick={()=>setRecTab('lower')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all '+(recTab==='lower'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recTab==='lower'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔽 Partie Inférieure</button>
+                </div>
+                <div className="space-y-2">
+                  {currentCats.map((cat,i) => {
+                    const rec = catRecMap[cat.name];
+                    const recVal = rec ? parseInt(rec.value) : 0;
+                    const pct = cat.max > 0 ? Math.round((recVal / cat.max) * 100) : 0;
+                    const holders = rec ? rec.holder : '-';
+                    return <div key={cat.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 relative overflow-hidden" style={{animation:`fade-in-scale 0.3s ease-out ${i*0.06}s backwards`}}>
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <span className="text-2xl" style={{color:cat.color}}>{cat.icon}</span>
+                        <div className="flex-1">
+                          <div className="text-white font-bold text-sm">{cat.name}</div>
+                          <div className="text-[10px] text-gray-500">{cat.desc||''}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-black text-xl">{recVal}<span className="text-gray-500 text-sm font-bold">/{cat.max}</span></div>
+                        </div>
+                      </div>
+                      <div className="h-2.5 bg-white/5 rounded-full overflow-hidden mb-2">
+                        <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{width:pct+'%',background:`linear-gradient(90deg,${cat.color}90,${cat.color})`,boxShadow:`0 0 8px ${cat.color}40`}}></div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-gray-400">{holders !== '-' ? (holders.split(' & ').map(h => (playerAvatars[h]||'👤')+' '+h).join('  •  ')) : 'Aucun record'}</div>
+                        <div className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:pct===100?'rgba(250,204,21,0.2)':pct>=75?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.05)',color:pct===100?'#fbbf24':pct>=75?'#10b981':'#6b7280'}}>{pct}%</div>
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              </div>;})()}
             </div>;
         })()}
 
