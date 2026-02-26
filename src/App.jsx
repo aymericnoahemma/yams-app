@@ -2888,10 +2888,11 @@ export default function YamsUltimateLegacy() {
                         )}
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
+                    <button onClick={(e)=>{e.stopPropagation();toggleFavorite(g.id);}} className={"p-2.5 rounded-xl transition-all hover:scale-110 text-xl "+(g.favorite?'bg-yellow-500/20 hover:bg-yellow-500/30':'bg-white/5 hover:bg-white/10 opacity-40 hover:opacity-70')} title={g.favorite?'Retirer des favoris':'Ajouter aux favoris'}>{g.favorite?'⭐':'☆'}</button>
                     <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
                 </div>
                 {g.note && <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm text-yellow-200 italic flex items-center gap-2">📝 {g.note}</div>}
-                <button onClick={(e)=>{e.stopPropagation();toggleFavorite(g.id);}} className={"absolute top-4 right-4 text-xl transition-all hover:scale-125 "+(g.favorite?'opacity-100':'opacity-30 hover:opacity-60')} title={g.favorite?'Retirer des favoris':'Ajouter aux favoris'}>{g.favorite?'⭐':'☆'}</button>
+                
                 <div className="space-y-2">{(g.players||g.results).sort((a,b)=>b.score-a.score).map((pl,i)=>{const isSuddenDeathGame=g.suddenDeath;const isSuddenDeathWinner=pl.suddenDeathWin;return <div key={i} className="flex items-center justify-between bg-black/30 rounded-xl p-4 backdrop-blur-sm"><span className="text-white font-bold flex items-center gap-3">{pl.isWinner&&<span className="text-2xl animate-pulse">👑</span>}{!pl.isWinner&&i===0&&<span className="text-xl">🥇</span>}{!pl.isWinner&&i===1&&<span className="text-xl">🥈</span>}{!pl.isWinner&&i===2&&<span className="text-xl">🥉</span>}<span className="text-lg">{pl.name}</span>{isSuddenDeathWinner&&<span className="text-red-400 text-xs bg-red-500/20 px-2 py-0.5 rounded ml-1 font-black">⚔️ Mort Subite</span>}{pl.yamsCount>0&&<span className="text-yellow-400 text-sm bg-yellow-500/20 px-2 py-0.5 rounded ml-2">🎲 YAMS!</span>}{pl.score>=300&&<span className="text-purple-400 text-sm bg-purple-500/20 px-2 py-0.5 rounded ml-1">⭐ 300+</span>}</span><span className="flex items-baseline gap-1.5"><span className="font-black text-2xl" style={{color:pl.isWinner?T.primary:'#9ca3af'}}>{pl.score}</span>{pl.suddenDeathScore&&<span className="text-sm font-bold text-red-400">({pl.suddenDeathScore})</span>}</span></div>})}</div></div>)}</div>}
           </div></div>
           </div>
@@ -2957,17 +2958,16 @@ export default function YamsUltimateLegacy() {
               ))}</div>
               
               {catRecords.length>0&&(()=>{
-                const [recTab, setRecTab] = [recordsSubTab||'upper', (v)=>setRecordsSubTab(v)];
                 const upperCats = playableCats.filter(c=>c.upper);
                 const lowerCats = playableCats.filter(c=>c.lower);
-                const currentCats = recTab==='upper' ? upperCats : lowerCats;
+                const currentCats = recordsSubTab==='upper' ? upperCats : lowerCats;
                 const catRecMap = {};
                 catRecords.forEach(r => { catRecMap[r.title.replace('Record ','')] = r; });
                 return <div>
                 <h3 className="text-sm font-black text-gray-400 uppercase tracking-wider mb-3">Records par catégorie</h3>
                 <div className="flex gap-2 mb-4">
-                  <button onClick={()=>setRecTab('upper')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all '+(recTab==='upper'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recTab==='upper'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔼 Partie Supérieure</button>
-                  <button onClick={()=>setRecTab('lower')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all '+(recTab==='lower'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recTab==='lower'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔽 Partie Inférieure</button>
+                  <button onClick={()=>setRecordsSubTab('upper')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all btn-ripple '+(recordsSubTab==='upper'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recordsSubTab==='upper'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔼 Partie Supérieure</button>
+                  <button onClick={()=>setRecordsSubTab('lower')} className={'flex-1 py-2 rounded-xl font-bold text-sm transition-all btn-ripple '+(recordsSubTab==='lower'?'text-white':'bg-white/5 text-gray-400 hover:bg-white/10')} style={recordsSubTab==='lower'?{background:`linear-gradient(135deg,${T.primary},${T.secondary})`}:{}}>🔽 Partie Inférieure</button>
                 </div>
                 <div className="space-y-2">
                   {currentCats.map((cat,i) => {
