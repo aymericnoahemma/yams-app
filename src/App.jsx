@@ -2898,7 +2898,7 @@ export default function YamsUltimateLegacy() {
 
         {/* TAB: STATS & TROPHIES - CORRECTIF ÉCRAN BLEU */}
         {currentTab==='records'&&(()=>{
-            const allGames = filteredHistory;
+            const allGames = gameHistory;
             if(!allGames.length) return <div className="text-center py-20"><div className="text-7xl mb-4" style={{animation:'empty-bounce 3s ease-in-out infinite'}}>🏅</div><div className="text-xl font-bold text-white/60 mb-2">Pas encore de records</div><div className="text-sm text-gray-500 max-w-xs mx-auto">Jouez des parties et vos meilleurs scores apparaîtront ici automatiquement !</div></div>;
             
             const records = [];
