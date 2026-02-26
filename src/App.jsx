@@ -2888,8 +2888,10 @@ export default function YamsUltimateLegacy() {
                         )}
                         {g.grid && <button onClick={() => setReplayGame(g)} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-500/30"><Eye size={14}/> Voir la grille</button>}
                     </div>
-                    <button onClick={(e)=>{e.stopPropagation();toggleFavorite(g.id);}} className={"p-2.5 rounded-xl transition-all hover:scale-110 text-xl "+(g.favorite?'bg-yellow-500/20 hover:bg-yellow-500/30':'bg-white/5 hover:bg-white/10 opacity-40 hover:opacity-70')} title={g.favorite?'Retirer des favoris':'Ajouter aux favoris'}>{g.favorite?'⭐':'☆'}</button>
-                    <button onClick={()=>deleteGame(g.id)} className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={18}/></button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={(e)=>{e.stopPropagation();toggleFavorite(g.id);}} className={"p-2 rounded-xl transition-all hover:scale-110 text-lg "+(g.favorite?'bg-yellow-500/20 hover:bg-yellow-500/30':'bg-white/5 hover:bg-white/10 opacity-40 hover:opacity-70')} title={g.favorite?'Retirer des favoris':'Ajouter aux favoris'}>{g.favorite?'⭐':'☆'}</button>
+                      <button onClick={()=>deleteGame(g.id)} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all hover:scale-110"><Trash2 size={16}/></button>
+                    </div>
                 </div>
                 {g.note && <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm text-yellow-200 italic flex items-center gap-2">📝 {g.note}</div>}
                 
