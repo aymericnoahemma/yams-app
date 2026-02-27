@@ -867,8 +867,9 @@ export default function YamsUltimateLegacy() {
     // COMMENTARY - general score
     if(commentatorMode && !editMode && value !== '') {
       const catName2 = categories.find(c=>c.id===category)?.name||category;
+      const catMax2 = categories.find(c=>c.id===category)?.max||30;
       if(valInt === 0) pushCommentary('😬 '+player+' inscrit un zéro sur '+catName2+'. Aïe...','bad');
-      else if(valInt >= 20 && !isPerfect) pushCommentary('💪 Joli coup de '+player+' ! '+valInt+' points sur '+catName2+'.','normal');
+      else if(valInt >= 20 && valInt < catMax2) pushCommentary('💪 Joli coup de '+player+' ! '+valInt+' points sur '+catName2+'.','normal');
     }
     // CONSECUTIVE ZEROS → MASSACRE
     if(value === '0' && !editMode) {
@@ -920,7 +921,7 @@ export default function YamsUltimateLegacy() {
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
         pushCommentary('💀 '+player+' est contraint de barrer '+catName+'... Coup dur !','bad');
         setShakeScreen(true); setTimeout(()=>setShakeScreen(false),500);
-        setTimeout(()=>setGlassCrack(null),1500);
+
         setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),3000);
         setTimeout(()=>setConfetti(null),4000);
     } else { 
