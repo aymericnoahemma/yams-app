@@ -702,12 +702,7 @@ export default function YamsUltimateLegacy() {
   const loadSeasons=()=>{try{const s=localStorage.getItem('yamsSeasons');const a=localStorage.getItem('yamsActiveSeason');const d=localStorage.getItem('yamsSeasonDesc');if(s)setSeasons(JSON.parse(s));if(a)setActiveSeason(a);if(d)setSeasonDescriptions(JSON.parse(d));}catch(e){}};
   const loadGages=()=>{try{const cg=localStorage.getItem('yamsCustomGages');const edg=localStorage.getItem('yamsEnableDefaultGages');if(cg)setCustomGages(JSON.parse(cg));if(edg)setEnableDefaultGages(JSON.parse(edg));}catch(e){}};
 
-  // AUTO COMPACT MODE
-  useEffect(() => {
-    const h = () => setCompactMode(window.innerWidth < 400);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
+
 
   // IDLE DETECTION
   useEffect(() => {
@@ -912,16 +907,18 @@ export default function YamsUltimateLegacy() {
     if(category==='yams' && value==='50'){
         setTimeout(() => setPendingYamsDetail({ player }), 2800);
         setConfetti('gold');
-        
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'});
         pushCommentary('🎲 YAMS INCROYABLE de '+player+' ! Le public est en délire !','epic'); 
         setTimeout(()=>{setConfetti(null);setEmojiRain(null);setShockwavePos(null);},4500);
+    } else if(category==='yams' && value==='0') {
+        // Yams barré - simple notification, pas d'effets dramatiques
+        pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre Yams'});
+        pushCommentary('💀 '+player+' est contraint de barrer Yams... Coup dur !','bad');
     } else if(value==='0') {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
         pushCommentary('💀 '+player+' est contraint de barrer '+catName+'... Coup dur !','bad');
         setShakeScreen(true); setTimeout(()=>setShakeScreen(false),300);
-
         setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),2000);
         setTimeout(()=>setConfetti(null),2000);
     } else { 
@@ -1047,6 +1044,7 @@ export default function YamsUltimateLegacy() {
             const gameWillBeComplete = players.every(p2=>playableCats.every(c=>ns[p2]?.[c.id]!==undefined));
             if(players.length >= 2 && !gameWillBeComplete) {
                 const hasYams = category==='yams' && value==='50';
+                const isYamsZero = category==='yams' && value==='0';
                 const hasBonus = (oldUp<63&&newUp>=63) || showBonusFullscreen;
                 const hasBonusLost = categories.find(c=>c.id===category)?.upper && (() => {
                     const uCats = categories.filter(c=>c.upper);
@@ -1061,7 +1059,7 @@ export default function YamsUltimateLegacy() {
                 const hasCelebration = parseInt(value) >= 25;
                 const isZero = parseInt(value) === 0;
                 const hasMassacre = isZero && (consecutiveZeros[player]||0) >= 2;
-                const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 : hasPerfect ? 3200 : hasMassacre ? 3500 : isZero ? 2000 : hasCelebration ? 2200 : 800;
+                const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 : hasPerfect ? 3200 : hasMassacre ? 3500 : isYamsZero ? 800 : isZero ? 2000 : hasCelebration ? 2200 : 800;
                 setTimeout(() => {
                     if(!showBonusFullscreen && !pendingYamsDetail && !showPerfect) {
                         setHotSeatPlayer(nextP);
@@ -1707,7 +1705,6 @@ export default function YamsUltimateLegacy() {
   @keyframes chaos-gradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
   .chaos-bg{background-size:400% 400%;animation:chaos-gradient 3s ease infinite;}
   @keyframes victory-text{0%{transform:scale(0) rotate(-10deg);opacity:0}50%{transform:scale(1.1) rotate(2deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
-  @keyframes gradient-x{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
   .gradient-animate{background-size:200% 200%;animation:gradient-x 3s ease infinite;}
   @keyframes theme-particle-fall{0%{transform:translateY(0) rotate(0deg);opacity:0.04}50%{transform:translateY(50vh) rotate(180deg) translateX(30px);opacity:0.05}100%{transform:translateY(110vh) rotate(360deg) translateX(-20px);opacity:0}}
   @keyframes splash-logo{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.15) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:1}}
@@ -1747,7 +1744,6 @@ export default function YamsUltimateLegacy() {
   @keyframes shockwave{0%{transform:scale(0.5);opacity:0.6;border-width:3px}100%{transform:scale(4);opacity:0;border-width:0px}}
   .shockwave{animation:shockwave 0.7s ease-out forwards}
   .shockwave-gold .shockwave{border-color:rgba(250,204,21,0.6)!important}
-  @keyframes dice-roll{0%{transform:rotateX(0) rotateY(0) scale(0.3);opacity:0}50%{transform:rotateX(720deg) rotateY(360deg) scale(1.2);opacity:1}100%{transform:rotateX(1080deg) rotateY(720deg) scale(1);opacity:1}}
   .dice-roll-anim{animation:dice-roll 0.8s cubic-bezier(0.34,1.56,0.64,1)}
   @keyframes streak-fire{0%,100%{transform:scaleY(1);opacity:0.8}50%{transform:scaleY(1.3);opacity:1}}
   .streak-fire{animation:streak-fire 0.5s ease-in-out infinite}
