@@ -920,10 +920,10 @@ export default function YamsUltimateLegacy() {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
         pushCommentary('💀 '+player+' est contraint de barrer '+catName+'... Coup dur !','bad');
-        setShakeScreen(true); setTimeout(()=>setShakeScreen(false),500);
+        setShakeScreen(true); setTimeout(()=>setShakeScreen(false),300);
 
-        setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),3000);
-        setTimeout(()=>setConfetti(null),4000);
+        setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),2000);
+        setTimeout(()=>setConfetti(null),2000);
     } else { 
         setConfetti(null); 
     }
@@ -1566,7 +1566,7 @@ export default function YamsUltimateLegacy() {
 
       {floatingScores.map(fs => <FloatingScore key={fs.id} x={fs.x} y={fs.y} value={fs.value} color={fs.color} />)}
       {confetti&&confetti!=='sad'&&(()=>{const tcs=THEME_CONFETTI_STYLE[theme]||THEME_CONFETTI_STYLE.modern;const animName=tcs.anim;const isUp=tcs.dir==='up';return <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" style={confetti==='winner'?{filter:`hue-rotate(${(()=>{const w=getWinner()[0];const pc=getPlayerColor(w,players.indexOf(w));return pc?.hue||0;})()}deg)`}:{}}>{[...Array(Math.max(0,Math.round(60*(effectsIntensity||1))))].map((_,i)=>{const tc=THEME_CONFETTI[theme]||THEME_CONFETTI.modern;const pool=(confetti==='gold'||confetti==='winner')?[...tc,'🎉','🎊','🏆']:confetti==='bonus'?[...tc,'🎁','💰']:tc;return <div key={i} className="confetti-piece" style={{left:Math.random()*100+'%',[isUp?'bottom':'top']:isUp?'-30px':'-30px',fontSize:(18+Math.random()*16)+'px',animation:`${animName} ${2.5+Math.random()*3}s linear ${Math.random()*2.5}s both`}}>{pool[Math.floor(Math.random()*pool.length)]}</div>;})}</div>;})()}
-      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-9xl" style={{animation:'sad-pulse 1.5s ease-in-out infinite'}}>❌</div></div>}
+      {confetti==='sad'&&<div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"><div className="text-6xl" style={{animation:'sad-fade 2s ease-out forwards'}}>❌</div></div>}
       {/* COUNTDOWN CINEMATIC */}
 
       {/* CLUTCH ANIMATION */}
@@ -1817,6 +1817,7 @@ export default function YamsUltimateLegacy() {
   @keyframes bg-float{0%{transform:translateY(0) translateX(0) scale(1)}50%{transform:translateY(-30px) translateX(15px) scale(1.1)}100%{transform:translateY(0) translateX(0) scale(1)}}
   @keyframes confetti-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(1080deg);opacity:0}}
   @keyframes sad-pulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.2);opacity:0.8}}
+  @keyframes sad-fade{0%{transform:scale(0.5);opacity:0}15%{transform:scale(1.1);opacity:0.8}30%{transform:scale(1);opacity:0.6}100%{transform:scale(0.8);opacity:0}}
   .glass{background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08)}
   .glass-strong{background:rgba(255,255,255,0.06);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,0.12)}
   ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.25)}
