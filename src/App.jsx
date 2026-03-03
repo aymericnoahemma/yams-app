@@ -803,8 +803,6 @@ export default function YamsUltimateLegacy() {
     const valInt = value === '' ? 0 : parseInt(value);
     // SAVE SCORE IMMEDIATELY - before any effects that might crash
     vibrate(15); setScores(ns); saveCurrentGame(ns);
-    // ALL VISUAL EFFECTS - wrapped in try/catch to never block score saving
-    try {
     // HIGHLIGHT LAST CELL
     if(!editMode && value !== '') { setLastCellKey(player+'-'+category); setTimeout(()=>setLastCellKey(null),2000); }
     
@@ -988,7 +986,6 @@ export default function YamsUltimateLegacy() {
       }
     }
 
-    } catch(effectsError) { console.warn('Effects error (score saved):', effectsError); }
     // PERFECT SCORE DETECTION
     if(!editMode && value !== '') {
       const valInt3 = parseInt(value) || 0;
