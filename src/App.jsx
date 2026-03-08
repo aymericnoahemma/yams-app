@@ -214,32 +214,6 @@ const getSplashFunStat = (history, stats) => {
 
 // FUN QUOTES
 
-// WALL OF SHAME CALCULATION
-const getWallOfShame = (history) => {
-    if(!history || history.length < 2) return null;
-    const shameStats = {};
-    history.forEach(g => {
-        const parts = g.players || g.results || [];
-        const grid = g.grid || {};
-        parts.forEach(p => {
-            if(!shameStats[p.name]) shameStats[p.name] = { zeros: 0, worstScore: 999, consecutiveZeros: 0, maxConsecutiveZeros: 0, totalGames: 0, lastPlace: 0 };
-            const s = shameStats[p.name];
-            s.totalGames++;
-            if(p.score < s.worstScore) s.worstScore = p.score;
-            const sorted = [...parts].sort((a,b) => b.score - a.score);
-            if(sorted[sorted.length-1]?.name === p.name && parts.length > 1) s.lastPlace++;
-            if(grid[p.name]) {
-                let consec = 0;
-                Object.entries(grid[p.name]).forEach(([k,v]) => {
-                    if(v === 0 && !k.includes('History') && !k.includes('Score')) { s.zeros++; consec++; if(consec > s.maxConsecutiveZeros) s.maxConsecutiveZeros = consec; }
-                    else consec = 0;
-                });
-            }
-        });
-    });
-    return Object.entries(shameStats).map(([name,d]) => ({name, ...d, avgScore: Math.round((history.reduce((s,g) => {const p=(g.players||g.results||[]).find(p=>p.name===name);return s+(p?p.score:0);},0))/Math.max(1,d.totalGames))})).sort((a,b) => b.zeros - a.zeros);
-};
-
 
 
 // GHOST SCORE CALCULATION
@@ -515,8 +489,6 @@ export default function YamsUltimateLegacy() {
   const [gameHistory,setGameHistory]=useState([]);
   const [currentTab,setCurrentTab]=useState('game');
   const [showEndGameModal,setShowEndGameModal]=useState(false);
-  const [commentatorMode, setCommentatorMode] = useState(()=>{try{return localStorage.getItem('yamsCommentator')==='true';}catch(e){return false;}});
-  const [commentaryFeed, setCommentaryFeed] = useState([]);
   const [recordsSubTab, setRecordsSubTab] = useState('upper');
   const [lastPlayerToPlay,setLastPlayerToPlay]=useState(null);
   const [showTurnWarning,setShowTurnWarning]=useState(null);
@@ -527,12 +499,6 @@ export default function YamsUltimateLegacy() {
   const [showVictoryAnimation,setShowVictoryAnimation]=useState(false);
   const [showPodiumAnim, setShowPodiumAnim] = useState(false);
   const [notifQueue, setNotifQueue] = useState([]);
-  const pushCommentary = (text, type='normal') => {
-    if(!commentatorMode) return;
-    const turnNum = players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);
-    const entry = {id:Date.now()+Math.random(), turn:turnNum, text, type, time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})};
-    setCommentaryFeed(prev=>[entry,...prev].slice(0,15));
-  };
   const pushNotif = (notif, duration=4500) => {
     const id = Date.now() + Math.random();
     setNotifQueue(prev => [...prev.slice(-2), {...notif, id}]);
@@ -643,7 +609,6 @@ export default function YamsUltimateLegacy() {
   const [fontScale, setFontScale] = useState(()=>{try{const fs2=parseFloat(localStorage.getItem('yamsFontScale'));return isNaN(fs2)||fs2<=0?1:fs2;}catch(e){return 1;}});
   const replayIntervalRef = useRef(null);
   const T = THEMES_CONFIG[theme];
-  useEffect(()=>{try{localStorage.setItem('yamsCommentator',String(commentatorMode));}catch(e){}},[commentatorMode]);
   // Persist slider settings
   useEffect(()=>{try{localStorage.setItem('yamsAnimSpeed',String(animSpeed));}catch(e){}},[animSpeed]);
   useEffect(()=>{try{localStorage.setItem('yamsEffectsIntensity',String(effectsIntensity));}catch(e){}},[effectsIntensity]);
@@ -714,7 +679,7 @@ export default function YamsUltimateLegacy() {
 
   useEffect(() => { localStorage.setItem('yamsCustomGages', JSON.stringify(customGages)); localStorage.setItem('yamsEnableDefaultGages', JSON.stringify(enableDefaultGages)); }, [customGages, enableDefaultGages]);
 
-  const saveCurrentGame=(sc)=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay,lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, diceSkin, moveLog, wakeLockEnabled, activeSeason}));}catch(e){}};
+  const saveCurrentGame=(sc, overrides={})=>{try{localStorage.setItem('yamsCurrentGame',JSON.stringify({players,scores:sc,lastPlayerToPlay: overrides.lastPlayerToPlay !== undefined ? overrides.lastPlayerToPlay : lastPlayerToPlay,lastModifiedCell: overrides.lastModifiedCell !== undefined ? overrides.lastModifiedCell : lastModifiedCell,starterName,timestamp:Date.now(), imposedOrder, fogMode, speedMode, diceSkin, moveLog, wakeLockEnabled, activeSeason}));}catch(e){}};
   const loadCurrentGame=()=>{try{const r=localStorage.getItem('yamsCurrentGame');if(r){const d=JSON.parse(r);if(d.players&&d.scores){setPlayers(d.players);setScores(d.scores);setLastPlayerToPlay(d.lastPlayerToPlay||null);setLastModifiedCell(d.lastModifiedCell||null);setStarterName(d.starterName || d.players[0]); setImposedOrder(d.imposedOrder||false); setFogMode(d.fogMode||false); setSpeedMode(d.speedMode||false); setDiceSkin(d.diceSkin||'classic'); setMoveLog(d.moveLog||[]);
   setWakeLockEnabled(d.wakeLockEnabled !== undefined ? d.wakeLockEnabled : true);}}}catch(e){}};
   const loadSavedPlayers=()=>{try{const r=localStorage.getItem('yamsSavedPlayers');const av=localStorage.getItem('yamsPlayerAvatars');if(r)setPlayers(JSON.parse(r));if(av)setPlayerAvatars(JSON.parse(av));}catch(e){}};
@@ -816,7 +781,6 @@ export default function YamsUltimateLegacy() {
         // FIRST BLOOD
         if(moveLog.length === 0 && !editMode) {
             pushNotif({icon:'🩸',title:'FIRST BLOOD !',description:player+' ouvre le score avec '+valInt+' pts'});
-            pushCommentary('⚡ '+player+' ouvre les hostilités avec '+valInt+' points ! Le match est lancé !','highlight');
             
         }
         // PERSONAL RECORD per category
@@ -829,7 +793,6 @@ export default function YamsUltimateLegacy() {
         const catObj = categories.find(c=>c.id===category);
         if(catObj && catObj.max && valInt === catObj.max && !editMode && !showBonusFullscreen) {
             pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'});
-            pushCommentary('🔥 Score PARFAIT de '+player+' sur '+catName+' ! Quelle maîtrise !','perfect');
             if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});setTimeout(()=>setShockwavePos(null),800);}
             
         }
@@ -860,13 +823,6 @@ export default function YamsUltimateLegacy() {
         }));
         setScoreParticles(prev => [...prev, ...newParticles]);
         setTimeout(() => setScoreParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id))), 1200);
-    }
-    // COMMENTARY - general score
-    if(commentatorMode && !editMode && value !== '') {
-      const catName2 = categories.find(c=>c.id===category)?.name||category;
-      const catMax2 = categories.find(c=>c.id===category)?.max||30;
-      if(valInt === 0) pushCommentary('😬 '+player+' inscrit un zéro sur '+catName2+'. Aïe...','bad');
-      else if(valInt >= 20 && valInt < catMax2) pushCommentary('💪 Joli coup de '+player+' ! '+valInt+' points sur '+catName2+'.','normal');
     }
     // CONSECUTIVE ZEROS → MASSACRE
     if(value === '0' && !editMode) {
@@ -910,16 +866,13 @@ export default function YamsUltimateLegacy() {
         setTimeout(() => setPendingYamsDetail({ player }), 2800);
         setConfetti('gold');
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'});
-        pushCommentary('🎲 YAMS INCROYABLE de '+player+' ! Le public est en délire !','epic'); 
         setTimeout(()=>{setConfetti(null);setEmojiRain(null);setShockwavePos(null);},4500);
     } else if(category==='yams' && value==='0') {
         // Yams barré - simple notification, pas d'effets dramatiques
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre Yams'});
-        pushCommentary('💀 '+player+' est contraint de barrer Yams... Coup dur !','bad');
     } else if(value==='0') {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
-        pushCommentary('💀 '+player+' est contraint de barrer '+catName+'... Coup dur !','bad');
         setShakeScreen(true); setTimeout(()=>setShakeScreen(false),300);
         setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),2000);
         setTimeout(()=>setConfetti(null),2000);
@@ -951,7 +904,7 @@ export default function YamsUltimateLegacy() {
     
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
     if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});
-    pushCommentary('⭐ '+player+' franchit la barre des 300 points ! Performance légendaire !','epic');setTimeout(()=>setConfetti(null),4500);}
+    setTimeout(()=>setConfetti(null),4500);}
     // FINISHING MOVE (player fills last cell) + CLUTCH DETECTION
     if(!editMode && value !== '') {
         const playerCats = playableCats.filter(c=>ns[player]?.[c.id]!==undefined);
@@ -980,7 +933,6 @@ export default function YamsUltimateLegacy() {
         const wasLeading = newTotals.filter(p=>p.name!==player).some(p=>p.total<newLeader.total);
         if(wasLeading && !showBonusFullscreen) {
           pushNotif({icon:'🔄',title:'COMEBACK !',description:player+' prend la tête !'});
-          pushCommentary('🔄 RENVERSEMENT ! '+player+' prend la tête ! Quel retournement de situation !','highlight');
           
         }
       }
@@ -1041,6 +993,8 @@ export default function YamsUltimateLegacy() {
         if(value!==''){
             setLastPlayerToPlay(player);
             setLastModifiedCell(cellKey);
+            // RE-SAVE with correct turn info (fix: previous save had stale lastPlayerToPlay)
+            saveCurrentGame(ns, { lastPlayerToPlay: player, lastModifiedCell: cellKey });
             // HOT SEAT: flash next player (delayed if any animation is playing)
             const nextP = players[(players.indexOf(player)+1)%players.length];
             const gameWillBeComplete = players.every(p2=>playableCats.every(c=>ns[p2]?.[c.id]!==undefined));
@@ -1489,14 +1443,6 @@ export default function YamsUltimateLegacy() {
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-all duration-[1500ms] ease-in-out '+(themeTransition?'opacity-95':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif', '--anim-speed': animSpeed, fontSize: `${fontScale}rem`}}>
       <InteractiveParticles themeKey={theme}/>
       {(()=>{const bp=THEME_BG_PARTICLES[theme];if(!bp)return null;return <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">{Array.from({length:Math.max(0,Math.round(bp.count*(effectsIntensity||1)))},(_,i)=>i).map(i=><div key={i} className="absolute" style={{left:`${(i*7.3+3)%100}%`,top:`${(i*13.7+5)%100}%`,opacity:bp.opacity*effectsIntensity,fontSize:`${10+i%3*6}px`,animation:`bg-float ${bp.speed+i*3}s ease-in-out ${i*2}s infinite alternate`,color:'white'}}>{bp.particles[i%bp.particles.length]}</div>)}</div>;})()}
-      {/* COMMENTARY FEED */}
-      {commentatorMode&&commentaryFeed.length>0&&currentTab==='game'&&<div className="fixed bottom-16 left-2 right-2 sm:left-4 sm:right-4 z-[35] pointer-events-none">
-        <div className="max-w-2xl mx-auto space-y-1">
-          {commentaryFeed.slice(0,3).map((c,i)=><div key={c.id} className={"px-3 py-1.5 rounded-xl text-xs font-bold backdrop-blur-md border pointer-events-auto transition-all "+(c.type==='epic'?'bg-yellow-500/20 border-yellow-500/30 text-yellow-300':c.type==='perfect'?'bg-green-500/15 border-green-500/20 text-green-300':c.type==='bad'?'bg-red-500/10 border-red-500/20 text-red-300':c.type==='highlight'?'bg-blue-500/15 border-blue-500/20 text-blue-300':'bg-white/10 border-white/10 text-gray-300')} style={{opacity:1-i*0.3,animation:`fade-in-scale 0.3s ease-out ${i*0.05}s backwards`}}>
-            <span className="text-gray-500 mr-1.5">{c.time}</span>{c.text}
-          </div>)}
-        </div>
-      </div>}
       {/* GAME PROGRESS BAR */}
       {currentTab==='game'&&players.length>0&&isGameStarted()&&!isGameComplete()&&(()=>{
         const t2=players.length*playableCats.length;const f2=players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);const pct2=t2>0?Math.round((f2/t2)*100):0;
@@ -1870,7 +1816,6 @@ export default function YamsUltimateLegacy() {
   @keyframes photo-camera{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
   @keyframes photo-text{0%{transform:scaleX(0);letter-spacing:40px}100%{transform:scaleX(1);letter-spacing:6px}}
   @keyframes player-entrance{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:0.6}100%{transform:scale(1);opacity:0}}
-  @keyframes wall-shame-entry{0%{transform:translateX(-20px);opacity:0}100%{transform:translateX(0);opacity:1}}
   .cell-cracked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 2L18 15L5 12L17 20L8 35L20 24L30 38L23 20L38 15L22 14Z' fill='none' stroke='%23ef4444' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E");background-size:80%;background-repeat:no-repeat;background-position:center}
   @keyframes scroll-hint{0%,100%{transform:translateX(0) translateY(-50%);opacity:0.3}50%{transform:translateX(8px) translateY(-50%);opacity:0.7}}
   @keyframes score-trail{0%{box-shadow:0 0 0 transparent}30%{box-shadow:0 0 15px var(--trail-color,rgba(255,255,255,0.3))}100%{box-shadow:0 0 0 transparent}}
@@ -2368,7 +2313,6 @@ export default function YamsUltimateLegacy() {
               </div>
               {/* ═══════════ SECTION 3: MODES DE JEU ═══════════ */}
               <div>
-                <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 mb-2"><div className="flex items-center gap-2"><span className="text-lg">🎙️</span><span className="text-white font-bold text-xs">Mode Commentateur</span></div><button onClick={()=>{setCommentatorMode(!commentatorMode);if(!commentatorMode)setCommentaryFeed([]);}} className={"w-12 h-7 rounded-full relative transition-all duration-300 "+(commentatorMode?"bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-500/30":"bg-gray-700/80 shadow-inner")}><div className={"w-6 h-6 bg-white rounded-full absolute top-0.5 transition-all duration-300 flex items-center justify-center text-xs shadow-md "+(commentatorMode?"left-5.5 shadow-green-500/50":"left-0.5")}>{commentatorMode?'✓':''}</div></button></div>
                 <button onClick={()=>setOpenSettingsSection(openSettingsSection==='modes'?null:'modes')} className="flex items-center gap-2 mb-3 w-full group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">⚡</div><h3 className="text-white font-black text-sm uppercase tracking-wider flex-1 text-left">Modes de jeu</h3><ChevronDown size={16} className={"text-gray-500 transition-transform duration-300 "+(openSettingsSection==='modes'?'rotate-180':'')}/></button>
                 {openSettingsSection==='modes'&&
 
@@ -2650,34 +2594,6 @@ export default function YamsUltimateLegacy() {
                     </div>
                 </div>
                 )}
-                {/* WALL OF SHAME */}
-                {gameHistory.length >= 3 && (()=>{
-                    const shame = getWallOfShame(gameHistory);
-                    if(!shame || shame.length === 0) return null;
-                    return <div className={'bg-gradient-to-br from-red-950/30 to-rose-950/30 backdrop-blur-xl border border-red-500/20 rounded-3xl shadow-2xl p-6 mt-4'}>
-                        <h2 className="text-2xl font-black text-red-400 mb-4 flex items-center gap-3">💀 Mur de la Honte</h2>
-                        <div className="space-y-3">
-                            {shame.slice(0,5).map((s,i) => (
-                                <div key={s.name} className="flex items-center gap-4 bg-black/30 rounded-2xl p-4 border border-red-500/10 hover:bg-black/40 transition-all" style={{animation:`wall-shame-entry 0.4s ease-out ${i*0.1}s backwards`}}>
-                                    <div className="text-3xl">{i===0?'💩':i===1?'🤡':'😵'}</div>
-                                    <div className="flex-1">
-                                        <div className="text-white font-black">{playerAvatars[s.name]||'👤'} {s.name}</div>
-                                        <div className="flex flex-wrap gap-3 mt-1 text-[10px]">
-                                            <span className="text-red-400 font-bold">🚫 {s.zeros} zéros</span>
-                                            <span className="text-orange-400 font-bold">📉 Pire: {s.worstScore}pts</span>
-                                            <span className="text-pink-400 font-bold">🏳️ {s.lastPlace}× dernier</span>
-                                            {s.maxConsecutiveZeros>=3&&<span className="text-purple-400 font-bold">💀 {s.maxConsecutiveZeros} zéros d'affilée</span>}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-xs text-gray-500">Moy.</div>
-                                        <div className="text-lg font-black text-red-400">{s.avgScore}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>;
-                })()}
             </div>
         )}
 
@@ -3193,8 +3109,7 @@ export default function YamsUltimateLegacy() {
                         {getPieData().sort((a,b)=>b.value-a.value).map((entry,idx)=>{
                             const pStat = playerStats.find(s => s.name === entry.name);
                             if (!pStat) return null;
-                            const total = getPieData().reduce((s,item)=>s+item.value,0); 
-                            const pct = total > 0 ? ((entry.value/total)*100).toFixed(0) : 0; 
+                            const pct = pStat.games > 0 ? ((pStat.wins/pStat.games)*100).toFixed(0) : 0; 
                             const isTop = idx === 0; 
                             const COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#06b6d4'];
                             
