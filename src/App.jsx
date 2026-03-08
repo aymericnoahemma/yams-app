@@ -810,15 +810,15 @@ export default function YamsUltimateLegacy() {
         const rect = event.target.getBoundingClientRect();
         const pc = getPlayerColor(player, players.indexOf(player));
         const catMax = categories.find(c=>c.id===category)?.max||30;
-        const isPerfect = valInt === catMax;
+        const isPerfectParticle = valInt === catMax;
         const isGreat = valInt >= catMax * 0.75;
         const isZeroScore = valInt === 0;
-        const pColor = isZeroScore ? '#ef4444' : isPerfect ? '#fbbf24' : isGreat ? '#10b981' : pc.hex;
-        const pCount = Math.max(0,Math.round((isPerfect ? 18 : isGreat ? 12 : isZeroScore ? 4 : 6) * (effectsIntensity||1)));
-        const pSpread = isPerfect ? 160 : isGreat ? 130 : 80;
+        const pColor = isZeroScore ? '#ef4444' : isPerfectParticle ? '#fbbf24' : isGreat ? '#10b981' : pc.hex;
+        const pCount = Math.max(0,Math.round((isPerfectParticle ? 18 : isGreat ? 12 : isZeroScore ? 4 : 6) * (effectsIntensity||1)));
+        const pSpread = isPerfectParticle ? 160 : isGreat ? 130 : 80;
         const newParticles = Array.from({length: pCount}, (_, i) => ({
             id: Date.now() + i, x: rect.left + rect.width/2, y: rect.top + rect.height/2,
-            color: isPerfect ? ['#fbbf24','#f59e0b','#fcd34d','#fff'][i%4] : pColor,
+            color: isPerfectParticle ? ['#fbbf24','#f59e0b','#fcd34d','#fff'][i%4] : pColor,
             dx: (Math.random()-0.5)*pSpread, dy: isZeroScore ? 20+Math.random()*40 : -30 - Math.random()*80
         }));
         setScoreParticles(prev => [...prev, ...newParticles]);
@@ -880,8 +880,21 @@ export default function YamsUltimateLegacy() {
         setConfetti(null); 
     }
 
+    // PERFECT SCORE DETECTION (must run BEFORE bonus/celebrations for proper sequencing)
+    let isPerfect = false;
+    const PERFECT_DURATION = 3000;
+    if(!editMode && value !== '') {
+      const valInt3 = parseInt(value) || 0;
+      const catDef = categories.find(c=>c.id===category);
+      if(catDef && catDef.max && valInt3 === catDef.max) {
+        isPerfect = true;
+        setShowPerfect({player, category: catDef.name, icon: catDef.icon, value: valInt3});
+        setTimeout(() => setShowPerfect(null), PERFECT_DURATION);
+      }
+    }
+
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){const bonusDelay=showPerfect?2800:0;setTimeout(()=>{setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},bonusDelay);}
+    if(oldUp<63&&newUp>=63){const bonusDelay=isPerfect?PERFECT_DURATION+300:0;setTimeout(()=>{setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},bonusDelay);}
     
     // BONUS LOST DETECTION
     if(categories.find(c=>c.id===category)?.upper && value !== '') {
@@ -891,20 +904,20 @@ export default function YamsUltimateLegacy() {
       const currentUpperSum = filledUpper.reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
       const allUpperFilled = emptyUpper.length === 0;
       if(allUpperFilled && currentUpperSum < 63) {
-        const lostDelay=showPerfect?2800:0;
+        const lostDelay=isPerfect?PERFECT_DURATION+300:0;
         setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay);
       } else if(!allUpperFilled && currentUpperSum < 63) {
         const maxPossibleRemaining = emptyUpper.reduce((s,c)=>s+(c.max||0),0);
         if(currentUpperSum + maxPossibleRemaining < 63) {
-          const lostDelay2=showPerfect?2800:0;
+          const lostDelay2=isPerfect?PERFECT_DURATION+300:0;
           setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay2);
         }
       }
     }
     
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
-    if(newTotal>=300&&calcTotal(player)<300){setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});
-    setTimeout(()=>setConfetti(null),4500);}
+    if(newTotal>=300&&calcTotal(player)<300){const legendDelay=isPerfect?PERFECT_DURATION+300:0;setTimeout(()=>{setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});
+    setTimeout(()=>setConfetti(null),4500);},legendDelay);}
     // FINISHING MOVE (player fills last cell) + CLUTCH DETECTION
     if(!editMode && value !== '') {
         const playerCats = playableCats.filter(c=>ns[player]?.[c.id]!==undefined);
@@ -938,15 +951,6 @@ export default function YamsUltimateLegacy() {
       }
     }
 
-    // PERFECT SCORE DETECTION
-    if(!editMode && value !== '') {
-      const valInt3 = parseInt(value) || 0;
-      const catDef = categories.find(c=>c.id===category);
-      if(catDef && catDef.max && valInt3 === catDef.max) {
-        setShowPerfect({player, category: catDef.name, icon: catDef.icon, value: valInt3});
-        setTimeout(() => setShowPerfect(null), 2500);
-      }
-    }
     // IN-GAME STREAK (no-zero streak)
     if(!editMode && value !== '') {
       const valStrk = parseInt(value) || 0;
@@ -1011,11 +1015,12 @@ export default function YamsUltimateLegacy() {
                     if(empty.length>0) { const maxR = empty.reduce((s,c)=>s+(c.max||0),0); if(sum+maxR<63) return true; }
                     return false;
                 })();
-                const hasPerfect = categories.find(c=>c.id===category)?.max === parseInt(value);
+                const hasPerfect = isPerfect;
                 const hasCelebration = parseInt(value) >= 25;
                 const isZero = parseInt(value) === 0;
                 const hasMassacre = isZero && (consecutiveZeros[player]||0) >= 2;
-                const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 : hasPerfect ? 3200 : hasMassacre ? 3500 : isYamsZero ? 800 : isZero ? 2000 : hasCelebration ? 2200 : 800;
+                const perfectExtra = hasPerfect ? PERFECT_DURATION + 300 : 0;
+                const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 + perfectExtra : hasPerfect ? PERFECT_DURATION + 500 : hasMassacre ? 3500 : isYamsZero ? 800 : isZero ? 2000 : hasCelebration ? 2200 : 800;
                 setTimeout(() => {
                     if(!showBonusFullscreen && !pendingYamsDetail && !showPerfect) {
                         setHotSeatPlayer(nextP);
@@ -1817,6 +1822,11 @@ export default function YamsUltimateLegacy() {
   @keyframes photo-text{0%{transform:scaleX(0);letter-spacing:40px}100%{transform:scaleX(1);letter-spacing:6px}}
   @keyframes player-entrance{0%{transform:scale(0);opacity:0}60%{transform:scale(1.3);opacity:0.6}100%{transform:scale(1);opacity:0}}
   .cell-cracked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 2L18 15L5 12L17 20L8 35L20 24L30 38L23 20L38 15L22 14Z' fill='none' stroke='%23ef4444' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E");background-size:80%;background-repeat:no-repeat;background-position:center}
+  .ghost-tooltip-wrap{position:relative}
+  .ghost-tooltip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:50;min-width:130px;padding:8px 10px;border-radius:12px;background:rgba(15,23,42,0.95);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);box-shadow:0 8px 24px rgba(0,0,0,0.5);pointer-events:none;white-space:nowrap}
+  .ghost-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(15,23,42,0.95)}
+  td:hover .ghost-tooltip-wrap .ghost-tooltip{display:block;animation:ghost-tooltip-in 0.2s ease-out}
+  @keyframes ghost-tooltip-in{0%{opacity:0;transform:translateX(-50%) translateY(4px)}100%{opacity:1;transform:translateX(-50%) translateY(0)}}
   @keyframes scroll-hint{0%,100%{transform:translateX(0) translateY(-50%);opacity:0.3}50%{transform:translateX(8px) translateY(-50%);opacity:0.7}}
   @keyframes score-trail{0%{box-shadow:0 0 0 transparent}30%{box-shadow:0 0 15px var(--trail-color,rgba(255,255,255,0.3))}100%{box-shadow:0 0 0 transparent}}
   .score-trail-effect{animation:score-trail 1s ease-out}
@@ -2784,7 +2794,7 @@ export default function YamsUltimateLegacy() {
                     return <div className="space-y-1"><div className={"text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r "+(isFoggy(p)?"from-gray-500/20 to-gray-500/20 text-gray-500":getBonus(p)>0?"from-yellow-500/20 to-orange-500/20 text-yellow-400":"from-yellow-500/20 to-orange-500/20 text-yellow-400")}>{isFoggy(p)?"???":getBonus(p)}</div>{isFoggy(p)?null:(getBonus(p)>0?<div className="text-center text-xs font-semibold text-green-400">✅ Bonus acquis!</div>:bonusImpossible?<div className="text-center text-xs font-semibold text-red-400">❌ Bonus impossible</div>:<div className="flex items-center justify-center gap-2 text-xs font-bold"><span className="text-orange-400">Reste: {63-upSum}</span><span className="text-gray-600">|</span>{(()=>{const prog=getBonusProgress(p);return prog.message?<span className={prog.color}>{prog.message}</span>:null;})()}</div>)}</div>;})()
                   :cat.upperGrandTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-400/30">{isFoggy(p)?"???":calcUpperGrand(p)}</div>
                   :cat.lowerTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-400/30">{isFoggy(p)?"???":calcLower(p)}</div>
-                  :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);return g!==undefined&&g!==null?<div className="absolute top-0.5 right-1 text-[8px] text-gray-600 font-mono opacity-40">👻{g}</div>:null;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)} isJustFilled={lastModifiedCell===(p+'-'+cat.id)} heatColor={scores[p]?.[cat.id]!==undefined&&!editMode?(()=>{const v2=parseInt(scores[p][cat.id])||0;const mx=cat.max||30;if(v2===0)return 'rgba(239,68,68,0.08)';const ratio=v2/mx;if(ratio>=0.75)return 'rgba(16,185,129,0.08)';if(ratio>=0.5)return 'rgba(245,158,11,0.06)';return 'rgba(255,255,255,0.03)';})():null}/></>}
+                  :<>{showGhostScores&&scores[p]?.[cat.id]===undefined&&(()=>{const g=getGhostScore(p,cat.id,gameHistory);if(g===undefined||g===null) return null;const mx=cat.max||30;const ratio=g/mx;const ghostColor=g===0?'#ef4444':ratio>=0.75?'#10b981':ratio>=0.5?'#f59e0b':'#94a3b8';return <div className="ghost-tooltip-wrap"><div className="absolute top-0.5 right-1 pointer-events-none z-[2] flex items-center gap-0.5" style={{opacity:0.55}}><span style={{fontSize:'10px'}}>👻</span><span className="font-bold font-mono" style={{fontSize:'10px',color:ghostColor}}>{g}</span></div><div className="ghost-tooltip" style={{borderColor:ghostColor+'60'}}><div className="flex items-center gap-1.5 mb-1"><span className="text-base">👻</span><span className="text-white font-black text-sm">Meilleur : {g} pts</span></div><div className="flex items-center justify-between text-[10px]"><span className="text-gray-400">{cat.name}</span><span className="font-bold" style={{color:ghostColor}}>{g}/{mx}</span></div><div className="w-full bg-white/10 rounded-full h-1 mt-1 overflow-hidden"><div className="h-full rounded-full" style={{width:Math.round(ratio*100)+'%',backgroundColor:ghostColor}}/></div></div></div>;})()}<ScoreInput value={scores[p]?.[cat.id]} onChange={(v, e)=>updateScore(p,cat.id,v, e)} category={cat.id} isHighlighted={lastModifiedCell===(p+'-'+cat.id)} isLocked={!editMode&&scores[p]?.[cat.id]!==undefined} isImposedDisabled={imposedOrder && !editMode && scores[p]?.[cat.id] === undefined && playableCats.findIndex(c => scores[p]?.[c.id] === undefined) !== playableCats.findIndex(c => c.id === cat.id)} isFoggy={isFoggy(p)} isJustFilled={lastModifiedCell===(p+'-'+cat.id)} heatColor={scores[p]?.[cat.id]!==undefined&&!editMode?(()=>{const v2=parseInt(scores[p][cat.id])||0;const mx=cat.max||30;if(v2===0)return 'rgba(239,68,68,0.08)';const ratio=v2/mx;if(ratio>=0.75)return 'rgba(16,185,129,0.08)';if(ratio>=0.5)return 'rgba(245,158,11,0.06)';return 'rgba(255,255,255,0.03)';})():null}/></>}
                   </td>})}</tr>;
                 })}
                 <tr><td colSpan={players.length+1} className="p-0 h-[2px]" style={{background:`linear-gradient(90deg,transparent,${T.primary}80,${T.secondary}80,transparent)`}}></td></tr><tr className="bg-gradient-to-r from-white/10 to-white/5"><td className={`p-4 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-800 to-slate-700'}`}><div className="flex items-center gap-3"><span className="text-3xl">🏆</span><span className={`font-black text-xl ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>TOTAL</span></div></td>{players.map((p,i)=><td key={i} className="p-4 text-center">{hideTotals&&!isGameComplete()?<div className="text-2xl font-black py-4 px-2 rounded-2xl text-gray-500">???</div>:<div className="text-4xl font-black py-4 px-2 rounded-2xl" style={{textShadow:getWinner().includes(p)?'0 0 20px '+T.primary:'none',animation:getWinner().includes(p)?'leader-pulse 2.5s ease-in-out infinite':'total-breathe 3s ease-in-out infinite'}}>{isFoggy(p)?"???":(<FlipCounter value={calcTotal(p)} color={getWinner().includes(p)?T.primary:'#fff'}/>)}</div>}</td>)}</tr>
