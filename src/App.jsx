@@ -253,11 +253,11 @@ const getDynamicTitle = (player, players, scores, calcTotal, lastPlayerToPlay, m
 // Safe localStorage with fallback
 // CATEGORY CELEBRATIONS
 const CATEGORY_CELEBRATIONS = {
-    brelan: { emoji: '🎯', text: 'x3 !' },
-    carre: { emoji: '🔥', text: 'x4 !!' },
-    full: { emoji: '🃏', text: 'FULL HOUSE !' },
-    petiteSuite: { emoji: '📈', text: 'SUITE !' },
-    grandeSuite: { emoji: '🎰', text: 'GRANDE SUITE !' },
+    threeOfKind: { emoji: '🎯', text: 'x3 !' },
+    fourOfKind: { emoji: '🔥', text: 'x4 !!' },
+    fullHouse: { emoji: '🃏', text: 'FULL HOUSE !' },
+    smallStraight: { emoji: '📈', text: 'SUITE !' },
+    largeStraight: { emoji: '🎰', text: 'GRANDE SUITE !' },
     yams: { emoji: '💥', text: 'YAMS !!!' },
     chance: { emoji: '🍀', text: 'CHANCE !' },
 };
@@ -430,29 +430,31 @@ const FlipCounter = ({value, color}) => {
   );
 };
 
-// PARTICULES INTERACTIVES
-const InteractiveParticles = ({themeKey}) => {
+// PARTICULES INTERACTIVES — Optimisé: manipulation DOM directe, zéro re-render
+const InteractiveParticles = React.memo(({themeKey}) => {
   const TC = THEMES_CONFIG[themeKey];
   const containerRef = React.useRef(null);
   const mouseRef = React.useRef({x:-1000,y:-1000});
-  const particlesRef = React.useRef(Array.from({length:14},(_,i)=>({
+  const particleEls = React.useRef([]);
+  const particlesData = React.useRef(Array.from({length:14},(_,i)=>({
     x:(i*7.1+5)%100, y:Math.random()*100, baseX:(i*7.1+5)%100, baseY:Math.random()*100,
     speed:0.15+Math.random()*0.2, size:14+i%3*8, delay:i*0.8
   })));
-  const [, forceUpdate] = React.useState(0);
   React.useEffect(()=>{
     let raf;
     const animate=()=>{
       const mx=mouseRef.current.x, my=mouseRef.current.y;
-      particlesRef.current.forEach(p=>{
+      particlesData.current.forEach((p,i)=>{
         const dx=p.x-mx/window.innerWidth*100, dy=p.y-my/window.innerHeight*100;
         const dist=Math.sqrt(dx*dx+dy*dy);
         if(dist<15&&mx>0){p.x+=dx/dist*2;p.y+=dy/dist*2;}
         else{p.x+=(p.baseX-p.x)*0.02;p.y+=(p.baseY-p.y)*0.02;}
         p.baseY-=p.speed*0.3;
         if(p.baseY<-5){p.baseY=105;p.y=105;}
+        // Manipulation DOM directe — pas de setState/re-render
+        const el=particleEls.current[i];
+        if(el){el.style.left=p.x+'%';el.style.top=p.y+'%';el.style.transform='rotate('+p.y*3.6+'deg)';}
       });
-      forceUpdate(n=>n+1);
       raf=requestAnimationFrame(animate);
     };
     raf=requestAnimationFrame(animate);
@@ -461,23 +463,21 @@ const InteractiveParticles = ({themeKey}) => {
   if(!TC) return null;
   return (
     <div ref={containerRef} className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
-      onMouseMove={e=>{mouseRef.current={x:e.clientX,y:e.clientY};}}
-      onTouchMove={e=>{if(e.touches[0])mouseRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};}}
       style={{pointerEvents:'none'}}>
       <div className="absolute inset-0" style={{pointerEvents:'all'}}
         onMouseMove={e=>{mouseRef.current={x:e.clientX,y:e.clientY};}}
         onTouchMove={e=>{if(e.touches[0])mouseRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};}}>
       </div>
-      {particlesRef.current.map((p,i)=>(
-        <div key={i} className="absolute opacity-[0.05] transition-none" style={{
+      {particlesData.current.map((p,i)=>(
+        <div key={i} ref={el=>{particleEls.current[i]=el;}} className="absolute opacity-[0.05]" style={{
           left:`${p.x}%`,top:`${p.y}%`,fontSize:`${p.size}px`,
           transform:'rotate('+(p.y*3.6)+'deg)',
-          willChange:'left,top'
+          willChange:'transform'
         }}>{TC.part}</div>
       ))}
     </div>
   );
-};
+});
 
 
 export default function YamsUltimateLegacy() {
@@ -502,7 +502,7 @@ export default function YamsUltimateLegacy() {
   const pushNotif = (notif, duration=4500) => {
     const id = Date.now() + Math.random();
     setNotifQueue(prev => [...prev.slice(-2), {...notif, id}]);
-    setTimeout(() => setNotifQueue(prev => prev.filter(n => n.id !== id)), duration);
+    safeTimeout(() => setNotifQueue(prev => prev.filter(n => n.id !== id)), duration);
   };
   const [confetti,setConfetti]=useState(null);
 
@@ -608,6 +608,10 @@ export default function YamsUltimateLegacy() {
   const [effectsIntensity, setEffectsIntensity] = useState(()=>{try{const ei=parseFloat(localStorage.getItem('yamsEffectsIntensity'));return isNaN(ei)?1:ei;}catch(e){return 1;}});
   const [fontScale, setFontScale] = useState(()=>{try{const fs2=parseFloat(localStorage.getItem('yamsFontScale'));return isNaN(fs2)||fs2<=0?1:fs2;}catch(e){return 1;}});
   const replayIntervalRef = useRef(null);
+  // Centralized timer management — prevents orphan setTimeout leaks
+  const gameTimersRef = useRef([]);
+  const safeTimeout = (fn, delay) => { const id = setTimeout(()=>{ gameTimersRef.current = gameTimersRef.current.filter(t=>t!==id); fn(); }, delay); gameTimersRef.current.push(id); return id; };
+  useEffect(() => { return () => { gameTimersRef.current.forEach(id => clearTimeout(id)); gameTimersRef.current = []; }; }, []);
   const T = THEMES_CONFIG[theme];
   // Persist slider settings
   useEffect(()=>{try{localStorage.setItem('yamsAnimSpeed',String(animSpeed));}catch(e){}},[animSpeed]);
@@ -672,7 +676,7 @@ export default function YamsUltimateLegacy() {
   // IDLE DETECTION
   useEffect(() => {
     if(!isGameStarted() || isGameComplete()) { setIdleAvatars(false); return; }
-    const timer = setTimeout(() => setIdleAvatars(true), 30000);
+    const timer = safeTimeout(() => setIdleAvatars(true), 30000);
     setIdleAvatars(false);
     return () => clearTimeout(timer);
   }, [scores, lastPlayerToPlay]);
@@ -716,11 +720,11 @@ export default function YamsUltimateLegacy() {
     const pls=(game.players||game.results||[]);if(!pls.length)return '🎲 Partie';
     const winner=pls.find(p=>p.isWinner);const scores2=pls.map(p=>p.score).sort((a,b)=>b-a);
     const gap=scores2.length>=2?scores2[0]-scores2[1]:0;
-    const hasZeros=game.grid?Object.values(game.grid).some(g=>Object.values(g).filter(v=>parseInt(v)===0).length===0):false;
+    const allPerfect=game.grid?Object.values(game.grid).every(g=>Object.entries(g).filter(([k,v])=>!k.includes('History')&&!k.includes('suddenDeath')).every(([k,v])=>parseInt(v)!==0)):false;
     if(gap===0&&pls.length>1)return '⚔️ Égalité parfaite';
     if(gap<=5&&pls.length>1)return '📸 Photo Finish';
     if(gap>=80)return '💀 Le Massacre';
-    if(hasZeros)return '✨ Sans Faute';
+    if(allPerfect)return '✨ Sans Faute';
     if(scores2[0]>=280)return '🚀 Score Galactique';
     if(scores2[0]<=150)return '🌧️ Jour de pluie';
     return winner?'🎲 Victoire de '+winner.name:'🎲 Partie';
@@ -737,7 +741,7 @@ export default function YamsUltimateLegacy() {
       const sortedPlayers = players.map(p=>({name:p,score:calcTotal(p)})).sort((a,b)=>b.score-a.score);
       if(sortedPlayers.length >= 2 && sortedPlayers[0].score - sortedPlayers[1].score <= 5) {
           setShowPhotoFinish(true);
-          setTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
+          safeTimeout(() => { setShowPhotoFinish(false); setShowVictoryAnimation(true);setConfetti('winner');safeTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500); }, 3000);
       } else {
       }};
   const isGameComplete=()=>{if(!players.length)return false;const ids=playableCats.map(c=>c.id);return players.every(p=>ids.every(id=>scores[p]?.[id]!==undefined));};
@@ -749,9 +753,9 @@ export default function YamsUltimateLegacy() {
 
   const updateScore=(player,category,value, event)=>{
     const cellKey=`${player}-${category}`;
-    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); setTimeout(()=>setShowTurnWarning(null),3500); return; } }
-    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); setTimeout(()=>setShowTurnWarning(null),3500); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); setTimeout(()=>setShowTurnWarning(null),3500); return; } }
-    if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); setTimeout(() => setUndoData(null), 5000); }
+    if(imposedOrder && !editMode) { const pScores = scores[player] || {}; const firstEmptyIndex = playableCats.findIndex(c => pScores[c.id] === undefined); const targetIndex = playableCats.findIndex(c => c.id === category); if(targetIndex !== firstEmptyIndex) { setShowTurnWarning("Mode Ordre Imposé ! Tu dois remplir la première case vide."); safeTimeout(()=>setShowTurnWarning(null),3500); return; } }
+    if(!editMode) { const expectedPlayer = getNextPlayer(); if(player !== expectedPlayer) { setShowTurnWarning(`Hé non ! C'est à ${expectedPlayer} de commencer !`); safeTimeout(()=>setShowTurnWarning(null),3500); return; } if(lastPlayerToPlay === player && lastModifiedCell !== null) { setShowTurnWarning(`Doucement ${player}, tu as déjà joué !`); safeTimeout(()=>setShowTurnWarning(null),3500); return; } }
+    if (!editMode) { setUndoData({ player, category, previousLastPlayer: lastPlayerToPlay, previousLastCell: lastModifiedCell }); safeTimeout(() => setUndoData(null), 5000); }
     // LAST ROUND DETECTION
     if(!editMode && value !== '') {
       const afterScores = {...scores,[player]:{...scores[player],[category]:parseInt(value)||0}};
@@ -761,7 +765,7 @@ export default function YamsUltimateLegacy() {
       if(false) {
       }
       if(remaining <= players.length && remaining > 0) {
-        setTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});},800);
+        safeTimeout(()=>{pushNotif({icon:'🏁',title:'DERNIER TOUR !',description:'Plus qu\'une case chacun !'});},800);
       }
     }
     const ns={...scores,[player]:{...scores[player],[category]:value===''?undefined:parseInt(value)||0}};
@@ -769,7 +773,7 @@ export default function YamsUltimateLegacy() {
     // SAVE SCORE IMMEDIATELY - before any effects that might crash
     vibrate(15); setScores(ns); saveCurrentGame(ns);
     // HIGHLIGHT LAST CELL
-    if(!editMode && value !== '') { setLastCellKey(player+'-'+category); setTimeout(()=>setLastCellKey(null),2000); }
+    if(!editMode && value !== '') { setLastCellKey(player+'-'+category); safeTimeout(()=>setLastCellKey(null),2000); }
     
     if(value !== '') {
         const catName = categories.find(c=>c.id===category)?.name || category;
@@ -793,16 +797,16 @@ export default function YamsUltimateLegacy() {
         const catObj = categories.find(c=>c.id===category);
         if(catObj && catObj.max && valInt === catObj.max && !editMode && !showBonusFullscreen) {
             pushNotif({icon:'💯',title:'PARFAIT !',description:player+' fait le score max sur '+catName+' !'});
-            if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});setTimeout(()=>setShockwavePos(null),800);}
+            if(event){const r=event.target.getBoundingClientRect();setShockwavePos({x:r.left+r.width/2,y:r.top+r.height/2});safeTimeout(()=>setShockwavePos(null),800);}
             
         }
     }
-    if(value !== '' && value !== '0' && event) { const td = event.target.closest ? event.target.closest('td') : event.target.parentElement; const rect = (td || event.target).getBoundingClientRect(); const id = Date.now(); const pc = getPlayerColor(player, players.indexOf(player)); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt, color: pc.hex }]); setTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000);
+    if(value !== '' && value !== '0' && event) { const td = event.target.closest ? event.target.closest('td') : event.target.parentElement; const rect = (td || event.target).getBoundingClientRect(); const id = Date.now(); const pc = getPlayerColor(player, players.indexOf(player)); setFloatingScores([...floatingScores, { id, x: rect.left + rect.width/2, y: rect.top, value: valInt, color: pc.hex }]); safeTimeout(() => setFloatingScores(prev => prev.filter(f => f.id !== id)), 1000);
         // 13. SCORE PULSE - shockwave for high scores
         if(valInt >= 25 && !editMode) {
             setShockwavePos({x:rect.left+rect.width/2,y:rect.top+rect.height/2});
-            setTimeout(()=>setShockwavePos(null), valInt>=40?1200:800);
-            if(valInt >= 40) { setTimeout(()=>{setShockwavePos({x:rect.left+rect.width/2,y:rect.top+rect.height/2});setTimeout(()=>setShockwavePos(null),800);},400); }
+            safeTimeout(()=>setShockwavePos(null), valInt>=40?1200:800);
+            if(valInt >= 40) { safeTimeout(()=>{setShockwavePos({x:rect.left+rect.width/2,y:rect.top+rect.height/2});safeTimeout(()=>setShockwavePos(null),800);},400); }
         }
     }
     // SCORE PARTICLES
@@ -822,7 +826,7 @@ export default function YamsUltimateLegacy() {
             dx: (Math.random()-0.5)*pSpread, dy: isZeroScore ? 20+Math.random()*40 : -30 - Math.random()*80
         }));
         setScoreParticles(prev => [...prev, ...newParticles]);
-        setTimeout(() => setScoreParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id))), 1200);
+        safeTimeout(() => setScoreParticles(prev => prev.filter(p => !newParticles.find(np => np.id === p.id))), 1200);
     }
     // CONSECUTIVE ZEROS → MASSACRE
     if(value === '0' && !editMode) {
@@ -832,7 +836,7 @@ export default function YamsUltimateLegacy() {
             const level = newZeros[player];
             const variant = level >= 5 ? 'legendary' : level >= 4 ? 'apocalypse' : 'massacre';
             setMassacreScreen({player, variant});
-            setTimeout(() => setMassacreScreen(null), 2800);
+            safeTimeout(() => setMassacreScreen(null), 2800);
             if(level >= 5) setConsecutiveZeros({...newZeros, [player]: 0});
         }
     } else if(value !== '' && !editMode) {
@@ -844,38 +848,38 @@ export default function YamsUltimateLegacy() {
         const catMax = categories.find(c=>c.id===category)?.max||99;
         if(celeb && valInt >= catMax * 0.7) {
             setEmojiRain(celeb.emoji);
-            setTimeout(() => setEmojiRain(null), 2500);
+            safeTimeout(() => setEmojiRain(null), 2500);
             setFunQuote(celeb.text);
-            setTimeout(() => setFunQuote(null), 2500);
+            safeTimeout(() => setFunQuote(null), 2500);
         }
         // 14. NARRATOR
         if(valInt >= 25) {
             const pool = NARRATOR_PHRASES.bigScore;
             setFunQuote(pool[Math.floor(Math.random() * pool.length)]);
-            setTimeout(() => setFunQuote(null), 3000);
+            safeTimeout(() => setFunQuote(null), 3000);
         }
     }
     if(!editMode && value === '0') {
         const pool = NARRATOR_PHRASES.zero;
         setFunQuote(pool[Math.floor(Math.random() * pool.length)]);
-        setTimeout(() => setFunQuote(null), 3000);
+        safeTimeout(() => setFunQuote(null), 3000);
     }
     
     // NEW: DETECT YAMS 50
     if(category==='yams' && value==='50'){
-        setTimeout(() => setPendingYamsDetail({ player }), 2800);
+        safeTimeout(() => setPendingYamsDetail({ player }), 2800);
         setConfetti('gold');
         pushNotif({icon:'🎲',title:'YAMS !',description:player+' a réalisé un YAMS !'});
-        setTimeout(()=>{setConfetti(null);setEmojiRain(null);setShockwavePos(null);},4500);
+        safeTimeout(()=>{setConfetti(null);setEmojiRain(null);setShockwavePos(null);},4500);
     } else if(category==='yams' && value==='0') {
         // Yams barré - simple notification, pas d'effets dramatiques
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre Yams'});
     } else if(value==='0') {
         setConfetti('sad');
         pushNotif({icon:'❌',title:'BARRÉ !',description:player+' barre '+categories.find(c=>c.id===category)?.name});
-        setShakeScreen(true); setTimeout(()=>setShakeScreen(false),300);
-        setEmojiRain('💀'); setTimeout(()=>setEmojiRain(null),2000);
-        setTimeout(()=>setConfetti(null),2000);
+        setShakeScreen(true); safeTimeout(()=>setShakeScreen(false),300);
+        setEmojiRain('💀'); safeTimeout(()=>setEmojiRain(null),2000);
+        safeTimeout(()=>setConfetti(null),2000);
     } else { 
         setConfetti(null); 
     }
@@ -889,12 +893,12 @@ export default function YamsUltimateLegacy() {
       if(catDef && catDef.max && valInt3 === catDef.max) {
         isPerfect = true;
         setShowPerfect({player, category: catDef.name, icon: catDef.icon, value: valInt3});
-        setTimeout(() => setShowPerfect(null), PERFECT_DURATION);
+        safeTimeout(() => setShowPerfect(null), PERFECT_DURATION);
       }
     }
 
     const oldUp=calcUpper(player);const newUp=categories.filter(c=>c.upper).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0);
-    if(oldUp<63&&newUp>=63){const bonusDelay=isPerfect?PERFECT_DURATION+300:0;setTimeout(()=>{setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},bonusDelay);}
+    if(oldUp<63&&newUp>=63){const bonusDelay=isPerfect?PERFECT_DURATION+300:0;safeTimeout(()=>{setConfetti('gold');setShowBonusFullscreen({player,type:'obtained'});safeTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},bonusDelay);}
     
     // BONUS LOST DETECTION
     if(categories.find(c=>c.id===category)?.upper && value !== '') {
@@ -905,19 +909,19 @@ export default function YamsUltimateLegacy() {
       const allUpperFilled = emptyUpper.length === 0;
       if(allUpperFilled && currentUpperSum < 63) {
         const lostDelay=isPerfect?PERFECT_DURATION+300:0;
-        setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay);
+        safeTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');safeTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay);
       } else if(!allUpperFilled && currentUpperSum < 63) {
         const maxPossibleRemaining = emptyUpper.reduce((s,c)=>s+(c.max||0),0);
         if(currentUpperSum + maxPossibleRemaining < 63) {
           const lostDelay2=isPerfect?PERFECT_DURATION+300:0;
-          setTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');setTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay2);
+          safeTimeout(()=>{setShowBonusFullscreen({player,type:'lost'});setConfetti('sad');safeTimeout(()=>{setShowBonusFullscreen(null);setConfetti(null);},5500);},lostDelay2);
         }
       }
     }
     
     const newTotal=newUp + categories.filter(c=>c.lower).reduce((s,c)=>s+(ns[player]?.[c.id]||0),0)+(newUp>=63?35:0);
-    if(newTotal>=300&&calcTotal(player)<300){const legendDelay=isPerfect?PERFECT_DURATION+300:0;setTimeout(()=>{setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});
-    setTimeout(()=>setConfetti(null),4500);},legendDelay);}
+    if(newTotal>=300&&calcTotal(player)<300){const legendDelay=isPerfect?PERFECT_DURATION+300:0;safeTimeout(()=>{setConfetti('gold');pushNotif({icon:'🌟',title:'Score Légendaire !',description:player+' a dépassé les 300 points !'});
+    safeTimeout(()=>setConfetti(null),4500);},legendDelay);}
     // FINISHING MOVE (player fills last cell) + CLUTCH DETECTION
     if(!editMode && value !== '') {
         const playerCats = playableCats.filter(c=>ns[player]?.[c.id]!==undefined);
@@ -932,7 +936,7 @@ export default function YamsUltimateLegacy() {
                 const wasLosing = calcTotal(player) <= oldLeaderScore;
                 if(wasLosing && finalTotal > oldLeaderScore) {
                     setShowClutch(player);
-                    setTimeout(() => setShowClutch(null), 3000);
+                    safeTimeout(() => setShowClutch(null), 3000);
                 }
             }
         }
@@ -968,7 +972,7 @@ export default function YamsUltimateLegacy() {
     // HEADER ANIM ON SCORE
     if(!editMode && value !== '') {
       const hdrA = parseInt(value)===0?'header-zero-shake 0.4s ease-in-out':((categories.find(c=>c.id===category)?.max||999)===parseInt(value)?'header-perfect-bounce 0.5s ease-out':'');
-      if(hdrA){setHeaderAnim(prev=>({...prev,[player]:hdrA}));setTimeout(()=>setHeaderAnim(prev=>({...prev,[player]:''})),600);}
+      if(hdrA){setHeaderAnim(prev=>({...prev,[player]:hdrA}));safeTimeout(()=>setHeaderAnim(prev=>({...prev,[player]:''})),600);}
     }
     // 12b. AVATAR ANIMATIONS
     if(!editMode && value !== '') {
@@ -976,7 +980,7 @@ export default function YamsUltimateLegacy() {
       if(valInt4 === 0) setAvatarAnim(prev=>({...prev,[player]:'avatar-shake'}));
       else if(valInt4 >= 40) setAvatarAnim(prev=>({...prev,[player]:'avatar-spin'}));
       else if(valInt4 >= 25) setAvatarAnim(prev=>({...prev,[player]:'avatar-bounce-big'}));
-      setTimeout(() => setAvatarAnim(prev=>{const n={...prev};delete n[player];return n;}), 1500);
+      safeTimeout(() => setAvatarAnim(prev=>{const n={...prev};delete n[player];return n;}), 1500);
     }
     // 12. AVATAR REACTIONS
     if(!editMode && value !== '') {
@@ -991,7 +995,7 @@ export default function YamsUltimateLegacy() {
         if(leaderBefore !== leaderAfter && leaderBefore !== player) reactions[leaderBefore] = '😱';
         players.filter(p2=>p2!==player).forEach(p2=>{if(!reactions[p2]) reactions[p2]='🤔';});
         setAvatarReaction(reactions);
-        setTimeout(() => setAvatarReaction({}), 2500);
+        safeTimeout(() => setAvatarReaction({}), 2500);
     }
     if(editMode){ } else { 
         if(value!==''){
@@ -1021,10 +1025,10 @@ export default function YamsUltimateLegacy() {
                 const hasMassacre = isZero && (consecutiveZeros[player]||0) >= 2;
                 const perfectExtra = hasPerfect ? PERFECT_DURATION + 300 : 0;
                 const delay = (hasYams || hasBonus || hasBonusLost) ? 6500 + perfectExtra : hasPerfect ? PERFECT_DURATION + 500 : hasMassacre ? 3500 : isYamsZero ? 800 : isZero ? 2000 : hasCelebration ? 2200 : 800;
-                setTimeout(() => {
+                safeTimeout(() => {
                     if(!showBonusFullscreen && !pendingYamsDetail && !showPerfect) {
                         setHotSeatPlayer(nextP);
-                        setTimeout(() => setHotSeatPlayer(null), 1800);
+                        safeTimeout(() => setHotSeatPlayer(null), 1800);
                     }
                 }, delay);
             }
@@ -1055,13 +1059,13 @@ export default function YamsUltimateLegacy() {
       // Trigger hot seat after Yams detail is selected
       const nextP2 = players[(players.indexOf(pendingYamsDetail.player)+1)%players.length];
       if(players.length >= 2 && !isGameComplete()) {
-        setTimeout(() => { setHotSeatPlayer(nextP2); setTimeout(() => setHotSeatPlayer(null), 2000); }, 500);
+        safeTimeout(() => { setHotSeatPlayer(nextP2); safeTimeout(() => setHotSeatPlayer(null), 2000); }, 500);
       }
   };
 
   const toggleEditMode=()=>{if(!editMode){setScoresBeforeEdit(JSON.parse(JSON.stringify(scores)));setLastPlayerBeforeEdit(lastPlayerToPlay);setEditMode(true);}else{setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);}};
   const cancelEdit=()=>{if(scoresBeforeEdit!==null){setScores(scoresBeforeEdit);setLastPlayerToPlay(lastPlayerBeforeEdit);}setEditMode(false);setScoresBeforeEdit(null);setLastPlayerBeforeEdit(null);};
-  const resetGame = (forcedLoserName = null, skipConfirm = false) => { setPlayerEntrance(true); setTimeout(() => setPlayerEntrance(false), 2000); 
+  const resetGame = (forcedLoserName = null, skipConfirm = false) => { setPlayerEntrance(true); safeTimeout(() => setPlayerEntrance(false), 2000); 
       if(!forcedLoserName && !skipConfirm) { showConfirm("Commencer une nouvelle partie ?", () => { setConfirmModal(null); resetGame(null, true); }); return; } 
       setScores({}); setLastPlayerToPlay(null); setLastModifiedCell(null); setShowEndGameModal(false); setMoveLog([]); setPlayerCombos({}); setInGameStreak({});  setShowStudioModal(false); setSuddenDeathWinner(null); setSuddenDeathPlayers([]); setShowSuddenDeath(false); setGameEndShown(false); setGameNote('');
       if(forcedLoserName && players.includes(forcedLoserName)) { setStarterName(forcedLoserName); } 
@@ -1072,7 +1076,7 @@ export default function YamsUltimateLegacy() {
       setActiveChallenge(ch);
       pushNotif({icon:ch.icon,title:'DÉFI DE LA PARTIE',description:ch.desc},5500);
       // VS SCREEN
-      if (players.length >= 2) { setShowVSScreen(true); setTimeout(() => setShowVSScreen(false), 3000); }
+      if (players.length >= 2) { setShowVSScreen(true); safeTimeout(() => setShowVSScreen(false), 3000); }
   };
 
   const updateGameSeason = (id, newSeason) => {
@@ -1117,13 +1121,13 @@ export default function YamsUltimateLegacy() {
       setSuddenDeathWinner(null);
       setShowSuddenDeath(true);
       setConfetti('gold');
-      setTimeout(()=>setConfetti(null),3000);
+      safeTimeout(()=>setConfetti(null),3000);
     } else {
       setShowCinematic(true);
-      setTimeout(()=>{
+      safeTimeout(()=>{
         setShowCinematic(false);
-        if(players.length>=3){setShowPodiumAnim(true);setConfetti('winner');setTimeout(()=>{setShowPodiumAnim(false);setShowVictoryAnimation(true);setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);},4500);}
-        else{setShowVictoryAnimation(true);setConfetti('winner');setTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);}
+        if(players.length>=3){setShowPodiumAnim(true);setConfetti('winner');safeTimeout(()=>{setShowPodiumAnim(false);setShowVictoryAnimation(true);safeTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);},4500);}
+        else{setShowVictoryAnimation(true);setConfetti('winner');safeTimeout(()=>{setShowVictoryAnimation(false);setShowEndGameModal(true);setConfetti(null);},3500);}
       },3000);
     }
   }},[scores,showEndGameModal,showSuddenDeath]);
@@ -1163,8 +1167,33 @@ export default function YamsUltimateLegacy() {
   };
   const deleteGame= id=>{const nh=gameHistory.filter(g=>g.id!==id);setGameHistory(nh);saveHistory(nh);};
   const shareScore=async()=>{const w=getWinner();const t='Partie YAMS terminée ! Gagnant: '+w[0]+' avec '+calcTotal(w[0])+' points';if(navigator.share){try{await navigator.share({text:t});}catch(e){navigator.clipboard.writeText(t);alert('Score copié!');}}else{navigator.clipboard.writeText(t);alert('Score copié!');}};
-  const exportData=()=>{const b=new Blob([JSON.stringify({gameHistory,exportDate:new Date().toISOString(),version:'1.0'},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
-  const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.gameHistory&&Array.isArray(d.gameHistory)){setGameHistory(d.gameHistory);saveHistory(d.gameHistory);alert('Parties importées avec succès!');}else alert('Fichier invalide');}catch(err){alert('Erreur lors de l\'import');}};reader.readAsText(file);};
+  const exportData=()=>{const data={gameHistory,playerAvatars,playerColors,seasons,seasonDescriptions,customGages,enableDefaultGages,theme,gridSkin,diceSkin,customFont,globalXP,victorySigs,showGhostScores,animSpeed,effectsIntensity,fontScale,wakeLockEnabled,activeSeason,exportDate:new Date().toISOString(),version:'2.0'};const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='yams-backup-'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);};
+  const importData=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.gameHistory||!Array.isArray(d.gameHistory)){alert('Fichier invalide : historique manquant');return;}
+    // Validate structure of each game entry
+    const validGames=d.gameHistory.filter(g=>g&&(g.players||g.results)&&typeof g.date==='string');
+    if(validGames.length===0){alert('Aucune partie valide trouvée dans le fichier');return;}
+    // Merge: deduplicate by id, keep existing + add new
+    const existingIds=new Set(gameHistory.map(g=>g.id));
+    const newGames=validGames.filter(g=>!existingIds.has(g.id));
+    const merged=[...gameHistory,...newGames].sort((a,b)=>(b.id||0)-(a.id||0));
+    setGameHistory(merged);saveHistory(merged);
+    // Restore settings if v2.0 export
+    if(d.version==='2.0'){
+      if(d.playerAvatars)setPlayerAvatars(prev=>({...prev,...d.playerAvatars}));
+      if(d.playerColors)setPlayerColors(prev=>({...prev,...d.playerColors}));
+      if(d.seasons&&Array.isArray(d.seasons)){const merged2=[...new Set([...seasons,...d.seasons])];setSeasons(merged2);}
+      if(d.seasonDescriptions)setSeasonDescriptions(prev=>({...prev,...d.seasonDescriptions}));
+      if(d.customGages&&Array.isArray(d.customGages)){const existingGageIds=new Set(customGages.map(g=>g.id));const newGages=d.customGages.filter(g=>!existingGageIds.has(g.id));setCustomGages(prev=>[...prev,...newGages]);}
+      if(d.victorySigs)setVictorySigs(prev=>({...prev,...d.victorySigs}));
+      if(d.theme&&THEMES_CONFIG[d.theme])setTheme(d.theme);
+      if(d.gridSkin&&GRID_SKINS[d.gridSkin])setGridSkin(d.gridSkin);
+      if(d.diceSkin&&DICE_SKINS[d.diceSkin])setDiceSkin(d.diceSkin);
+      if(d.customFont&&FONT_OPTIONS[d.customFont])setCustomFont(d.customFont);
+      if(typeof d.globalXP==='number')setGlobalXP(prev=>Math.max(prev,d.globalXP));
+      if(typeof d.showGhostScores==='boolean')setShowGhostScores(d.showGhostScores);
+    }
+    alert(`Import réussi ! ${newGames.length} nouvelle(s) partie(s) ajoutée(s)${d.version==='2.0'?' + paramètres restaurés':''}.`);
+  }catch(err){alert('Erreur lors de l\'import : fichier corrompu');}};reader.readAsText(file);e.target.value='';};
 
   // DYNAMIC BACKGROUND based on game state
   const dynamicBgStyle = {};
@@ -1180,6 +1209,7 @@ export default function YamsUltimateLegacy() {
   }, [seasons, gameHistory]);
 
   // 14. NARRATOR - progress-based quotes
+  const firstPlayerFilledCount = players.length > 0 ? playableCats.filter(c=>scores[players[0]]?.[c.id]!==undefined).length : 0;
   useEffect(() => {
     if(!isGameStarted() || isGameComplete() || editMode) return;
     const totalCells = players.length * playableCats.length;
@@ -1187,13 +1217,13 @@ export default function YamsUltimateLegacy() {
     const pct = totalCells > 0 ? filled / totalCells : 0;
     if(filled === players.length && pct < 0.15) {
         const q = NARRATOR_PHRASES.start[Math.floor(Math.random()*NARRATOR_PHRASES.start.length)];
-        setFunQuote(q); setTimeout(()=>setFunQuote(null),3000);
+        setFunQuote(q); safeTimeout(()=>setFunQuote(null),3000);
     }
-  }, [players.length > 0 && playableCats.filter(c=>scores[players[0]]?.[c.id]!==undefined).length]);
+  }, [firstPlayerFilledCount]);
 
   // Filtrer l'historique par saison active (POUR STATS)
   const filteredHistory = useMemo(() => {
-    if(historyFilterSeason === 'favorites') return gameHistory.filter(g => g.favorite);
+    if(statsFilterSeason === 'favorites') return gameHistory.filter(g => g.favorite);
       if(!gameHistory || !Array.isArray(gameHistory)) return [];
       if(!statsFilterSeason || statsFilterSeason === 'Toutes') return gameHistory;
       return gameHistory.filter(g => {
@@ -2297,7 +2327,7 @@ export default function YamsUltimateLegacy() {
                 {openSettingsSection==='apparence'&&
                 
                 <div className="space-y-5">
-                  <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={10}/> Thème</div><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTheme(k);setTimeout(()=>setThemeTransition(false),50);}}} className={'relative overflow-hidden px-3 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105 opacity-80 hover:opacity-100')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k?<Check size={14}/>:td.icon}<span>{td.name}</span></button>;})}</div></div>
+                  <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={10}/> Thème</div><div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">{Object.keys(THEMES_CONFIG).map(k=>{const td=THEMES_CONFIG[k];return <button key={k} onClick={()=>{if(k!==theme){setThemeTransition(true);setTheme(k);safeTimeout(()=>setThemeTransition(false),50);}}} className={'relative overflow-hidden px-3 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5 '+(theme===k?'ring-2 ring-white scale-105':'hover:scale-105 opacity-80 hover:opacity-100')} style={{background:'linear-gradient(135deg,'+td.primary+','+td.secondary+')',color:'#fff'}}>{theme===k?<Check size={14}/>:td.icon}<span>{td.name}</span></button>;})}</div></div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Dices size={10}/> Dés</div><div className="grid grid-cols-2 gap-2">{Object.keys(DICE_SKINS).map(k=>{const s=DICE_SKINS[k];return <button key={k} onClick={()=>setDiceSkin(k)} className={`px-3 py-2 rounded-xl font-bold text-sm transition-all border ${diceSkin===k?'border-white/60 bg-white/15 text-white':'border-white/5 bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'}`}>{s.name}</button>;})}</div></div>
