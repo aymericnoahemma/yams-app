@@ -669,6 +669,13 @@ const PodiumConfetti = React.memo(({theme, effectsIntensity}) => {
 // P5 fix: <style> block mounted once, never re-rendered (saves ~29KB of vDOM work per state change)
 const YAMS_CSS_STRING = `  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
   * { font-family: 'Outfit', sans-serif; }
+  /* V1: Typography calm-down — font-black (900) felt overused everywhere. 
+     Lowering to 800 keeps the hierarchy but reduces visual fatigue. */
+  .font-black { font-weight: 800 !important; }
+  /* Keep the heaviest weight for truly emphatic contexts */
+  h1.font-black, h2.font-black, .winner-glow.font-black { font-weight: 900 !important; }
+  /* V3: Cinematic spotlight sweep for end-game modal */
+  @keyframes spotlight-sweep-2 { 0%{transform:skewX(-20deg) translateX(-100%);opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{transform:skewX(-20deg) translateX(400%);opacity:0} }
   @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
   @keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-8px)}20%,40%,60%,80%{transform:translateX(8px)}}
   .shake-animation{animation:shake 0.5s ease-in-out;}
@@ -1096,7 +1103,8 @@ export default function YamsUltimateLegacy() {
   const [funQuote, setFunQuote] = useState(null);
   const [customFont, setCustomFont] = useState('default');
   const [animSpeed, setAnimSpeed] = useState(()=>{try{const as2=parseFloat(localStorage.getItem('yamsAnimSpeed'));return isNaN(as2)||as2<=0?1:as2;}catch(e){return 1;}});
-  const [effectsIntensity, setEffectsIntensity] = useState(()=>{try{const ei=parseFloat(localStorage.getItem('yamsEffectsIntensity'));return isNaN(ei)?1:ei;}catch(e){return 1;}});
+  // V1.1: default effects intensity lowered from 1.0 → 0.75 for new users (less overwhelming)
+  const [effectsIntensity, setEffectsIntensity] = useState(()=>{try{const ei=parseFloat(localStorage.getItem('yamsEffectsIntensity'));return isNaN(ei)?0.75:ei;}catch(e){return 0.75;}});
   const [fontScale, setFontScale] = useState(()=>{try{const fs2=parseFloat(localStorage.getItem('yamsFontScale'));return isNaN(fs2)||fs2<=0?1:fs2;}catch(e){return 1;}});
   const replayIntervalRef = useRef(null);
   // Centralized timer management — prevents orphan setTimeout leaks
@@ -2087,13 +2095,15 @@ export default function YamsUltimateLegacy() {
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndHandler} className={'min-h-screen bg-gradient-to-br '+T.bg+' p-2 sm:p-4 md:p-6 overflow-x-hidden transition-all duration-[1500ms] ease-in-out '+(themeTransition?'opacity-95':'opacity-100')} style={{...dynamicBgStyle, fontFamily: FONT_OPTIONS[customFont]?.family || 'system-ui, sans-serif', '--anim-speed': animSpeed, fontSize: `${fontScale}rem`}}>
       <InteractiveParticles themeKey={theme}/>
       {(()=>{const bp=THEME_BG_PARTICLES[theme];if(!bp)return null;return <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">{Array.from({length:Math.max(0,Math.round(bp.count*(effectsIntensity||1)))},(_,i)=>i).map(i=><div key={i} className="absolute" style={{left:`${(i*7.3+3)%100}%`,top:`${(i*13.7+5)%100}%`,opacity:bp.opacity*effectsIntensity,fontSize:`${10+i%3*6}px`,animation:`bg-float ${bp.speed+i*3}s ease-in-out ${i*2}s infinite alternate`,color:'white'}}>{bp.particles[i%bp.particles.length]}</div>)}</div>;})()}
-      {/* GAME PROGRESS BAR */}
+      {/* GAME PROGRESS BAR — V1.2: thicker (3px) with pulsing head for better visibility */}
       {currentTab==='game'&&players.length>0&&isGameStarted()&&!isGameComplete()&&(()=>{
         const t2=players.length*playableCats.length;const f2=players.reduce((s,p)=>s+playableCats.filter(c=>scores[p]?.[c.id]!==undefined).length,0);const pct2=t2>0?Math.round((f2/t2)*100):0;
         const turnsPerPlayer=playableCats.length;const currentTurn=Math.floor(f2/players.length)+1;
-        return <div className="fixed top-0 left-0 right-0 z-[90] h-1.5 group cursor-default" style={{background:'rgba(0,0,0,0.3)'}} title={pct2+'% complété'}>
-          <div className="h-full rounded-r-full transition-all duration-700 ease-out relative" style={{width:pct2+'%',background:`linear-gradient(90deg,${T.primary},${T.secondary})`,boxShadow:`0 0 10px ${T.primary}60`}}>
-            <div className="absolute -right-1 -top-7 bg-black/90 text-white text-[9px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 flex items-center gap-1.5"><span>{pct2}%</span><span className="text-gray-500">•</span><span>Tour {Math.min(currentTurn,turnsPerPlayer)}/{turnsPerPlayer}</span></div>
+        return <div className="fixed top-0 left-0 right-0 z-[90] h-[3px] group cursor-default" style={{background:'rgba(0,0,0,0.4)'}} title={pct2+'% complété'}>
+          <div className="h-full rounded-r-full transition-all duration-700 ease-out relative" style={{width:pct2+'%',background:`linear-gradient(90deg,${T.primary},${T.secondary})`,boxShadow:`0 0 12px ${T.primary}80, 0 0 4px ${T.primary}`}}>
+            {/* Pulsing head dot */}
+            {pct2>0&&pct2<100&&<div className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full" style={{background:T.primary,boxShadow:`0 0 8px ${T.primary}, 0 0 16px ${T.primary}80`,animation:'subtle-pulse 1.5s ease-in-out infinite'}}/>}
+            <div className="absolute -right-1 -top-8 bg-black/90 text-white text-[9px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10 flex items-center gap-1.5"><span>{pct2}%</span><span className="text-gray-500">•</span><span>Tour {Math.min(currentTurn,turnsPerPlayer)}/{turnsPerPlayer}</span></div>
           </div>
         </div>;
       })()}
@@ -2556,6 +2566,10 @@ export default function YamsUltimateLegacy() {
           <div className="modal-content w-full max-w-sm">
             <div className="bg-gradient-to-b from-yellow-600 to-yellow-900 rounded-[40px] p-1 shadow-[0_0_60px_rgba(234,179,8,0.4)] glow-anim">
               <div className="bg-slate-900 rounded-[38px] overflow-hidden p-5 text-center relative max-h-[85vh] overflow-y-auto">
+                  {/* V3: Cinematic spotlight sweep */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[38px]">
+                    <div style={{position:'absolute',top:'-50%',left:'-20%',width:'60%',height:'200%',background:'linear-gradient(90deg,transparent,rgba(255,220,120,0.08) 40%,rgba(255,220,120,0.15) 50%,rgba(255,220,120,0.08) 60%,transparent)',transform:'skewX(-20deg)',animation:'spotlight-sweep-2 3s cubic-bezier(0.4,0,0.2,1) 0.8s infinite'}}/>
+                  </div>
                   <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-yellow-400/20 to-transparent"></div>
                   <div className="absolute -top-10 -left-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
                   <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
@@ -2704,6 +2718,24 @@ export default function YamsUltimateLegacy() {
                     <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Image size={10}/> Grille</div><div className="grid grid-cols-2 gap-2">{Object.keys(GRID_SKINS).map(k=>{const s=GRID_SKINS[k];return <button key={k} onClick={()=>setGridSkin(k)} className={`px-3 py-2 rounded-xl font-bold text-sm transition-all border ${gridSkin===k?'border-white/60 bg-white/15 text-white':'border-white/5 bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'}`}>{s.name}</button>;})}</div></div>
                   </div>
 
+                  {/* V1.1: Quick animation presets */}
+                  <div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">🎚️ Profil d'animations</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {id:'zen', label:'Zen', icon:'🧘', sub:'Discret', anim:0.75, fx:0.3},
+                        {id:'normal', label:'Normal', icon:'⚖️', sub:'Équilibré', anim:1, fx:0.75},
+                        {id:'max', label:'Maximum', icon:'🎉', sub:'Fête foraine', anim:1.25, fx:1.5},
+                      ].map(p=>{
+                        const active = Math.abs(animSpeed - p.anim) < 0.01 && Math.abs(effectsIntensity - p.fx) < 0.01;
+                        return <button key={p.id} onClick={()=>{setAnimSpeed(p.anim);setEffectsIntensity(p.fx);}} className={`p-2 rounded-xl transition-all border ${active?'border-white/50 bg-white/15':'border-white/5 bg-white/5 hover:bg-white/10'}`}>
+                          <div className="text-lg">{p.icon}</div>
+                          <div className={`text-xs font-bold ${active?'text-white':'text-gray-400'}`}>{p.label}</div>
+                          <div className="text-[9px] text-gray-500">{p.sub}</div>
+                        </button>;
+                      })}
+                    </div>
+                  </div>
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">🔄 Vitesse animations</div><div className="flex items-center gap-3"><input type="range" min="0.5" max="2" step="0.25" value={animSpeed} onChange={e=>setAnimSpeed(parseFloat(e.target.value))} className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-indigo-500"/><span className="text-white font-bold text-sm min-w-[40px] text-right">{animSpeed}x</span></div></div>
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">✨ Intensité effets</div><div className="flex items-center gap-3"><input type="range" min="0" max="1.5" step="0.25" value={effectsIntensity} onChange={e=>setEffectsIntensity(parseFloat(e.target.value))} className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-purple-500"/><span className="text-white font-bold text-sm min-w-[40px] text-right">{effectsIntensity===0?'Off':effectsIntensity<=0.5?'Min':effectsIntensity<=1?'Std':'Max'}</span></div></div>
                   <div><div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">🔤 Taille texte</div><div className="flex items-center gap-3"><input type="range" min="0.85" max="1.2" step="0.05" value={fontScale} onChange={e=>setFontScale(parseFloat(e.target.value))} className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500"/><span className="text-white font-bold text-sm min-w-[40px] text-right">{fontScale<=0.9?'S':fontScale<=1.05?'M':'L'}</span></div></div>
@@ -3074,12 +3106,12 @@ export default function YamsUltimateLegacy() {
                   const emptyList = getEmptyCells(nextP);
                   const isCompact = emptyList.length > 0 && emptyList.length <= 3;
                   return (
-                  <div className={"mb-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-2 border-green-400 rounded-2xl shadow-xl shadow-green-500/20 "+(isCompact?"p-2":"p-4")}>
+                  <div className={"mb-4 bg-gradient-to-r from-slate-900/60 via-slate-800/60 to-slate-900/60 border border-white/10 rounded-2xl backdrop-blur-sm "+(isCompact?"p-2":"p-4")} style={{borderLeft:`3px solid ${T.primary}`,boxShadow:`0 0 20px ${T.primary}15`}}>
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                           <div className="flex items-center gap-3">
                               <span className={isCompact?"text-lg":"text-2xl"}>🎯</span>
                               <div>
-                                  <div className={"text-white font-bold "+(isCompact?"text-sm":"")}>Prochain joueur: <span className={"text-green-400 font-black "+(isCompact?"text-base":"text-xl")}>{nextP}</span></div>
+                                  <div className={"text-white font-bold "+(isCompact?"text-sm":"")}>Prochain joueur: <span className={"font-black "+(isCompact?"text-base":"text-xl")} style={{color:T.primary}}>{nextP}</span></div>
                                   {emptyList.length>0 && (
                                       <div className={"text-gray-400 mt-0.5 "+(isCompact?"text-xs":"text-sm")}>
                                         {isCompact ? 'Plus que' : 'Il reste'}: <span className="text-orange-400 font-semibold">{emptyList.map(id=>{const cat=categories.find(c=>c.id===id);return cat?.name;}).filter(Boolean).join(', ')}</span>
@@ -3155,7 +3187,7 @@ export default function YamsUltimateLegacy() {
                                     )}
                                 </div>
                             )}
-                            <div className={'text-3xl cursor-pointer hover:scale-110 transition-transform relative '+(avatarAnim[p]||'')+(lastPlayerToPlay===p&&!avatarAnim[p]?' avatar-dance':getNextPlayer()===p&&!avatarAnim[p]?' avatar-bounce-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}}>{playerAvatars[p] || "👤"}{avatarReaction[p]&&<span className="absolute -top-2 -right-2 text-lg" style={{animation:'bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1)'}}>{avatarReaction[p]}</span>}</div>
+                            <div className={'text-3xl cursor-pointer hover:scale-110 transition-all duration-300 relative '+(avatarAnim[p]||'')+(lastPlayerToPlay===p&&!avatarAnim[p]?' avatar-dance':getNextPlayer()===p&&!avatarAnim[p]?' avatar-bounce-idle':'')+(hasFlame?' flame-effect':'')} onClick={()=>openAvatarSelector(i)} onContextMenu={(e)=>{e.preventDefault();setQuickStatsPlayer(p);}} style={getNextPlayer()===p&&isGameStarted()&&!isGameComplete()?{filter:`drop-shadow(0 0 8px ${pc.hex}80) drop-shadow(0 0 16px ${pc.hex}40)`}:{}}>{playerAvatars[p] || "👤"}{avatarReaction[p]&&<span className="absolute -top-2 -right-2 text-lg" style={{animation:'bounce-in 0.3s cubic-bezier(0.34,1.56,0.64,1)'}}>{avatarReaction[p]}</span>}</div>
                         </div>
                         {isGameStarted()&&!hideTotals&&<div className="text-[10px] font-mono font-bold" style={{color:pc.hex,opacity:0.7}}>{isFoggy(p)?'???':calcTotal(p)+' pts'}</div>}
                         {streaks[p]>=3&&<div className="flex items-center gap-0.5 streak-fire"><span className="text-xs">🔥</span><span className="text-orange-400 text-xs font-black">x{streaks[p]}</span></div>}
@@ -3180,7 +3212,10 @@ export default function YamsUltimateLegacy() {
                   if(cat.upperHeader)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-3"><div className="absolute inset-0 flex items-center"><div className="w-full" style={{height:'1px',background:`linear-gradient(90deg,transparent 5%,${T.primary}40 30%,${T.primary}60 50%,${T.primary}40 70%,transparent 95%)`}}/></div><div className="relative flex justify-center"><span className="px-5 py-1.5 text-xs font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-sm" style={{background:`linear-gradient(135deg,${T.primary}20,${T.primary}10)`,border:`1px solid ${T.primary}30`,color:T.primary,textShadow:`0 0 12px ${T.primary}40`}}>⬆ Partie Supérieure</span></div></div></td></tr>;
                   if(cat.upperDivider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-2"><div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div></div></td></tr>;
                   if(cat.divider)return <tr key={cat.id}><td colSpan={players.length+1} className="p-0"><div className="relative py-3"><div className="absolute inset-0 flex items-center"><div className="w-full" style={{height:'1px',background:`linear-gradient(90deg,transparent 5%,${T.secondary||T.primary}40 30%,${T.secondary||T.primary}60 50%,${T.secondary||T.primary}40 70%,transparent 95%)`}}/></div><div className="relative flex justify-center"><span className="px-5 py-1.5 text-xs font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-sm" style={{background:`linear-gradient(135deg,${T.secondary||T.primary}20,${T.secondary||T.primary}10)`,border:`1px solid ${T.secondary||T.primary}30`,color:T.secondary||T.primary,textShadow:`0 0 12px ${T.secondary||T.primary}40`}}>⬇ Partie Inférieure</span></div></div></td></tr>;
-                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 hover:bg-white/[0.03] '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);const igs=inGameStreak[p]||0;return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?(editMode?'edit-flash':'last-cell-pulse'):''} ${GRID_SKINS[gridSkin]?.cellBg||''} ${igs>=5?'streak-col-intense':igs>=3?'streak-col-glow':''}`} style={{...(isNextCol?{background:`${pc2.hex}18`,boxShadow:`inset 3px 0 0 ${pc2.hex}90, inset -3px 0 0 ${pc2.hex}90, inset 0 0 20px ${pc2.hex}10`}:{}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
+                  return <tr key={cat.id} className={'border-b border-white/10 transition-colors duration-150 hover:bg-white/[0.03] '+(cat.upperTotal||cat.bonus?'bg-white/5':'')+(cat.upper?' bg-blue-500/5':cat.lower?' bg-purple-500/5':'')+' '+(GRID_SKINS[gridSkin]?.rowBg||'')} style={{animation:`row-cascade 0.3s ease-out ${(categories.indexOf(cat)||0)*0.04}s backwards`}}><td className={`p-3 sticky left-0 z-10 bg-gradient-to-r ${GRID_SKINS[gridSkin]?.headerBg||'from-slate-900 to-slate-800'}`}><div className="flex items-center gap-3"><span className="text-2xl" style={{color:cat.color||'#fff'}}>{cat.icon}</span><div><span className={`font-bold block ${GRID_SKINS[gridSkin]?.text||'text-white'}`}>{cat.name}</span>{cat.desc&&<span className="text-xs text-gray-400 block mt-0.5">{cat.desc}</span>}</div></div></td>{players.map((p,pi)=>{const isNextCol=getNextPlayer()===p&&!editMode;const pc2=getPlayerColor(p,pi);const igs=inGameStreak[p]||0;
+                  // V1.2: subtle alternating column tint for better visual tracking (only on even columns, skipped when row is highlighted)
+                  const altBg = (pi % 2 === 1 && !isNextCol && !cat.upperTotal && !cat.bonus && !cat.upperGrandTotal && !cat.lowerTotal) ? 'rgba(255,255,255,0.015)' : 'transparent';
+                  return <td key={pi} className={`p-2 transition-all relative ${lastCellKey===(p+'-'+cat.id)?(editMode?'edit-flash':'last-cell-pulse'):''} ${GRID_SKINS[gridSkin]?.cellBg||''} ${igs>=5?'streak-col-intense':igs>=3?'streak-col-glow':''}`} style={{...(isNextCol?{background:`${pc2.hex}18`,boxShadow:`inset 3px 0 0 ${pc2.hex}90, inset -3px 0 0 ${pc2.hex}90, inset 0 0 20px ${pc2.hex}10`}:{background:altBg}),['--hover-glow']:T.primary}} onMouseEnter={e=>{if(!cat.upperTotal&&!cat.bonus&&!cat.upperGrandTotal&&!cat.lowerTotal)e.currentTarget.style.boxShadow=(isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80, `:'')+'inset 0 0 12px '+T.primary+'20';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow=isNextCol?`inset 2px 0 0 ${pc2.hex}80, inset -2px 0 0 ${pc2.hex}80`:'none';}}>
                   {cat.upperTotal?<div className="text-center py-3 px-2 rounded-xl font-black text-xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400">{isFoggy(p)?"???":calcUpper(p)}</div>
                   :cat.bonus?(()=>{
                     const upperCats2=categories.filter(c=>c.upper);
